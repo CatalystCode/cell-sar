@@ -29,7 +29,7 @@
         android:required="true" />
 
     <application
-        android:name="com.microsoft.cellsar.sample.SampleApplication"
+        android:name=".SampleApplication"
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="@string/app_name"
@@ -39,10 +39,10 @@
         <!-- DJI SDK -->
         <uses-library android:name="com.android.future.usb.accessory" />
         <meta-data
-            android:name="com.microsoft.sdk.API_KEY"
-            android:value="insert_your_app_key_here" />
+            android:name="com.dji.sdk.API_KEY"
+            android:value="e5cfce5534258e3ee6d862d1" />
 
-        <activity android:name="com.microsoft.cellsar.sample.MainActivity"
+        <activity android:name=".MainActivity"
                   android:screenOrientation="sensorLandscape"
                   android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen" >
             <intent-filter>
@@ -58,12 +58,12 @@
                 android:resource="@xml/accessory_filter" />
         </activity>
         <activity
-            android:name="com.microsoft.cellsar.sample.CompleteWidgetActivity"
+            android:name=".CompleteWidgetActivity"
             android:label="Default Widgets"
             android:screenOrientation="sensorLandscape"
             android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen"/>
         <activity
-            android:name="com.microsoft.cellsar.sample.CustomizedWidgetsActivity"
+            android:name=".CustomizedWidgetsActivity"
             android:label="Customized Widgets"
             android:screenOrientation="sensorLandscape"
             android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen"/>
