@@ -1,3 +1,8 @@
 <resources>
-    <string name="app_name">DJI Sample App</string>
+    <string name="app_name">Microsoft Cell-SAR</string>
+    <string name="product_information">Lorem Ipsum</string>
+    <string name="sdk_version">V0.0</string>
+    <string name="title_activity_demo">GSDemoActivity</string>
+    <string name="disconnected">Disconnected</string>
+    <string name="connection_lose">Status: No Product Connected</string>
 </resources>
