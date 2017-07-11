@@ -39,6 +39,8 @@ public class Mobile extends Application {
         super.onCreate();
 
         mHandler = new Handler(Looper.getMainLooper());
+
+        //This is used to start SDK services and initiate SDK.
         DJISDKManager.getInstance().registerApp(this, mDJISDKManagerCallback);
 
     }
@@ -48,6 +50,10 @@ public class Mobile extends Application {
         MultiDex.install(this);
     }
 
+    /**
+     * When starting SDK services, an instance of interface DJISDKManager.DJISDKManagerCallback will be used to listen to
+     * the SDK Registration result and the product changing.
+     */
     private DJISDKManager.SDKManagerCallback mDJISDKManagerCallback = new DJISDKManager.SDKManagerCallback() {
 
         @Override
@@ -65,6 +71,7 @@ public class Mobile extends Application {
                     }
                 });
                 Log.d(TAG, "Register success");
+                DJISDKManager.getInstance().startConnectionToProduct();
 
             } else {
                 Handler handler = new Handler(Looper.getMainLooper());
@@ -82,6 +89,7 @@ public class Mobile extends Application {
             Log.e(TAG, error == null ? "success" : error.getDescription());
         }
 
+        //Listens to the connected product changing, including two parts, component changing or product connection changing.
         @Override
         public void onProductChange(BaseProduct oldProduct, BaseProduct newProduct) {
 
