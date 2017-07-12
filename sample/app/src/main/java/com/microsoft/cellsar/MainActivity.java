@@ -123,6 +123,7 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMapCli
     }
 
     private void cameraUpdate(){
+
         LatLng pos = new LatLng(droneLocationLat, droneLocationLng);
         float zoomlevel = (float) 18.0;
         CameraUpdate cu = CameraUpdateFactory.newLatLngZoom(pos, zoomlevel);
@@ -155,7 +156,7 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMapCli
                     droneLocationLat = location.getLatitude();
                     droneLocationLng = location.getLongitude();
                     updateDroneLocation();
-                    cameraUpdate();
+
                 }
             });
 
@@ -190,6 +191,7 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMapCli
                 }
                 if (checkGpsCoordinates(droneLocationLat, droneLocationLng)) {
                     droneMarker = gMap.addMarker(markerOptions);
+                    cameraUpdate();
                 }
             }
         });

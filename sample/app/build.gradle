@@ -28,8 +28,9 @@ android {
 dependencies {
     compile fileTree(include: ['*.jar'], dir: 'libs')
     testCompile 'junit:junit:4.12'
-    compile project(':android-uilibrary-release')
     compile 'com.android.support:recyclerview-v7:23.2.0'
     compile 'com.google.android.gms:play-services-maps:11.0.1'
     compile 'com.android.support:multidex:1.0.1'
+    compile project(':dji-uilibrary')
+    compile project(':dji-sdk')
 }
