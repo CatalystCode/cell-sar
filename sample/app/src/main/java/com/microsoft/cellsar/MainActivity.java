@@ -5,6 +5,7 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
+import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.v4.app.ActivityCompat;
@@ -19,6 +20,8 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
+import com.google.android.gms.maps.model.Circle;
+import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
@@ -115,6 +118,7 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMapCli
         if (gMap == null) {
             gMap = googleMap;
             setUpMap();
+            cameraUpdate(new LatLng(47.639566, -122.129070));
         }
     }
 
@@ -122,9 +126,7 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMapCli
         gMap.setOnMapClickListener(this);// add the listener for click for amap object
     }
 
-    private void cameraUpdate(){
-
-        LatLng pos = new LatLng(droneLocationLat, droneLocationLng);
+    private void cameraUpdate(LatLng pos){
         float zoomlevel = (float) 18.0;
         CameraUpdate cu = CameraUpdateFactory.newLatLngZoom(pos, zoomlevel);
         gMap.moveCamera(cu);
@@ -163,11 +165,20 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMapCli
             mFlightController.setOnboardSDKDeviceDataCallback(new FlightController.OnboardSDKDeviceDataCallback() {
                 @Override
                 public void onReceive(byte[] bytes) {
-                    // do something with incoming OSDK data
-                    final String msg =  new String(bytes);
-                    Log.v("OnboardSDKDevice", msg);
-
-                    setResultToToast(msg);
+                    try {
+                        // do something with incoming OSDK data
+                        final String msg =  new String(bytes);
+                        Log.v("OnboardSDKDevice", msg);
+                        String[] parts = msg.split("_");
+                        String imsi = parts[0];
+                        String upRssi = parts[1];
+                        Integer upRssiInt = Integer.parseInt(upRssi);
+                        drawSignal(upRssiInt, droneLocationLat, droneLocationLng);
+                    }
+                    catch (Throwable e)
+                    {
+                        Log.v("OnboardSDKDevice", "failed parsing message");
+                    }
                 }
             });
         }
@@ -177,8 +188,38 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMapCli
         return (latitude > -90 && latitude < 90 && longitude > -180 && longitude < 180) && (latitude != 0f && longitude != 0f);
     }
 
+    private void drawSignal(int signal, double lat, double lon) {
+        if (checkGpsCoordinates(lat, lon)) {
+            final LatLng pos = new LatLng(lat, lon);
+            final int signalColor;
+            if (signal > -20)
+            {
+                signalColor = Color.argb(100, 0, 255, 0);
+            }
+            else if (signal > -50)
+            {
+                signalColor = Color.argb(100, 250, 220, 50);
+            }
+            else
+            {
+                signalColor = Color.argb(100, 255, 0, 0);
+            }
+
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    Circle circle = gMap.addCircle(new CircleOptions()
+                        .center(pos)
+                        .radius(10)
+                        .strokeWidth(0)
+                        .fillColor(signalColor));
+                }
+            });
+        }
+    }
+
     private void updateDroneLocation(){
-        LatLng pos = new LatLng(droneLocationLat, droneLocationLng);
+        final LatLng pos = new LatLng(droneLocationLat, droneLocationLng);
         //Create MarkerOptions object
         final MarkerOptions markerOptions = new MarkerOptions();
         markerOptions.position(pos);
@@ -191,7 +232,7 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMapCli
                 }
                 if (checkGpsCoordinates(droneLocationLat, droneLocationLng)) {
                     droneMarker = gMap.addMarker(markerOptions);
-                    cameraUpdate();
+                    cameraUpdate(pos);
                 }
             }
         });
