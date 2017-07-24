@@ -1,0 +1,36 @@
+; Configuration for the Search And Rescue Automation JavaScript.
+
+[general]
+; Whether the unit is in "testing" mode (limits IMSIs that can handshake to just known values below)
+testing=true
+
+; Sends a standard text SMS message instead of the "Silent SMS" message when polling for physical information
+; (This should be set to true in testing environments *only*)
+loud_sms=true
+
+; Country code the radio is transmitting in
+country_code=1
+
+; Phone number the sensor identifies itself as when communicating with cell phones
+sensor_phone_number=1234
+
+; Configuration of specific IMSIs. Each section describes an IMSI value and its configuration 
+; within the Search And Rescue engine.
+; 
+; Properties:
+;    allowed  -  When in testing mode, this IMSI can connect to the cellular sensor.
+;                IMSIs with this flag enabled should be limited to developer phones or similar,
+;                to be used in development and testing only.
+;    forbidden - When NOT in testing mode, this IMSI can never connect to the cellular sensor.
+;                IMSIs with this flag enabled should be Search and Rescue phones,
+;                in order to eliminate false positives when searching.
+
+; [123456789000000]
+; Bob's Developer Phone
+; allowed=true
+; forbidden=false
+
+; [987654321000000]
+; Alice's (Contoso Search and Rescue) Phone
+; allowed=false
+; forbidden=true
