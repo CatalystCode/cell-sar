@@ -1,13 +1,26 @@
-/**
- * Search and Rescue Library
- * Saving Lives with Mobile Cellular Sensors
- * Microsoft, Summer 2017
- *
- * Project Team:
- * Anthony Turner, Cellular Sensor Design
- * Stefan Gordon, Drone Integration
- * Cameron Taylor, DevOps and Scripting
-**/
+/** sar_lib.js: engine utility functions for the searchandrescue.js automation
+  *
+  * Cellular Search and Rescue - Cellular Sensor BTS
+  *   Copyright (C) 2017 Microsoft
+  * Yet Another Telephony Engine - Base Transceiver Station
+  *   Copyright (C) 2013-2014 Null Team Impex SRL
+  *   Copyright (C) 2014 Legba, Inc
+  * 
+  * This file is part of cell-sar/the Yate-BTS Project http://www.yatebts.com
+  * 
+  * cell-sar is free software: you can redistribute it and/or modify
+  * it under the terms of the GNU General Public License as published by
+  * the Free Software Foundation, either version 2 of the License, or
+  * (at your option) any later version.
+  * 
+  * cell-sar is distributed in the hope that it will be useful,
+  * but WITHOUT ANY WARRANTY; without even the implied warranty of
+  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+  * GNU General Public License for more details.
+  * 
+  * You should have received a copy of the GNU General Public License
+  * along with cell-sar.  If not, see <http://www.gnu.org/licenses/>.
+  */
 
 Engine.debugName("searchandrescue");
 var onInterval, onPhoneDetected, onPhoneLost, onSendSMS, onSMSReceived, onSignalReceived;
