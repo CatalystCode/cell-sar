@@ -11,8 +11,9 @@ if (COVERAGE)
 endif ()
 
 include_directories(inc)
+include_directories(../ocp-common)
 
-FILE(GLOB SOURCE_FILES inc/*.h src/*.cpp)
+FILE(GLOB SOURCE_FILES inc/*.h src/*.cpp ../ocp-common/*.cpp ../ocp-common/*.h)
 add_executable(${PROJECT_NAME} ${SOURCE_FILES})
 
 target_link_libraries(${PROJECT_NAME} ${BLOCKING_LINK_LIBRARIES} -lrt)

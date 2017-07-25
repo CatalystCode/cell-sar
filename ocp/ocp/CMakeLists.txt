@@ -14,11 +14,13 @@ include_directories(../osdk-core/inc)
 include_directories(../osdk-wrapper/inc)
 include_directories(../platform/linux/inc)
 include_directories(inc)
+include_directories(../ocp-common)
 if (LIDAR_LOGGING)
   include_directories(../sensor-integration/velodyne_vlp16puck_lite_API_example/vlp16lidar-driver/inc)
 endif ()
 
-FILE(GLOB SOURCE_FILES inc/*.h src/*.cpp)
+
+FILE(GLOB SOURCE_FILES inc/*.h src/*.cpp ../ocp-common/*.cpp ../ocp-common/*.h)
 add_executable(${PROJECT_NAME} ${SOURCE_FILES})
 
 add_dependencies(${PROJECT_NAME} djiosdk-wrapper)

@@ -49,7 +49,7 @@
 #include <DJI_Version.h>
 #include <DJI_WayPoint.h>
 
-#include "MQCommon.h"
+#include "mqcommon.h"
 
 
 //Local Mission Planning Suite Headers
@@ -96,31 +96,15 @@ int main(int argc, char *argv[])
   //unsigned short broadcastAck = api->setBroadcastFreqDefaults(1);
   //usleep(500000);
 
-  /* prep queue */
-  mqd_t mq;
-  struct mq_attr attr;
-  char buffer[MAX_SIZE + 1];
-
-  /* initialize the queue attributes */
-  attr.mq_flags = 0;
-  attr.mq_maxmsg = 10;
-  attr.mq_msgsize = MAX_SIZE;
-  attr.mq_curmsgs = 0;
-
-  /* create the message queue */
-  mq = mq_open(QUEUE_NAME, O_CREAT | O_RDONLY | O_NONBLOCK, 0666, &attr);
-  CHECK((mqd_t)-1 != mq);
 
   /* listen for messages */
    while (!stop)
    {
-        ssize_t bytes_read;
+        char* buffer = MQCommon::pop();
 
-        /* receive the message */
-        bytes_read = mq_receive(mq, buffer, MAX_SIZE, NULL);
-        if (bytes_read >= 0)
+        if (buffer != NULL)
         {
-          std::cout << "Bytes read: " << bytes_read << "\n" << buffer << "\n";
+          std::cout << buffer << "\n";
           try {
               Json::Value root;
               Json::Reader reader;
@@ -141,11 +125,8 @@ int main(int argc, char *argv[])
               std::cout << ex.what() << "\n";
             }
         }
-        sleep(1);
+        usleep(500000);
     }
-
-  // Cleanup
-  CHECK((mqd_t)-1 != mq_close(mq));
 
   #ifdef ENABLE_DRONE
   int cleanupStatus = cleanup(serialDevice, api, flight, &read);
