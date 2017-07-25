@@ -25,6 +25,12 @@ import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.maps.model.Polygon;
+import com.google.android.gms.maps.model.PolygonOptions;
+
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
 
 import dji.common.flightcontroller.FlightControllerState;
 import dji.common.flightcontroller.LocationCoordinate3D;
@@ -169,11 +175,21 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMapCli
                         // do something with incoming OSDK data
                         final String msg =  new String(bytes);
                         Log.v("OnboardSDKDevice", msg);
-                        String[] parts = msg.split("_");
-                        String imsi = parts[0];
-                        String upRssi = parts[1];
-                        Integer upRssiInt = Integer.parseInt(upRssi);
-                        drawSignal(upRssiInt, droneLocationLat, droneLocationLng);
+
+                        // Is this a STATUS or an IR (IMSI/RSSI) message?
+                        if (msg.startsWith("!"))
+                        {
+                            // STATUS message
+                            setResultToToast(msg);
+                        }
+                        else {
+                            // IR message
+                            String[] parts = msg.split("_");
+                            String imsi = parts[0];
+                            String upRssi = parts[1];
+                            Integer upRssiInt = Integer.parseInt(upRssi);
+                            drawSignal(upRssiInt, droneLocationLat, droneLocationLng);
+                        }
                     }
                     catch (Throwable e)
                     {
@@ -188,9 +204,13 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMapCli
         return (latitude > -90 && latitude < 90 && longitude > -180 && longitude < 180) && (latitude != 0f && longitude != 0f);
     }
 
+    private HashMap<Integer, Polygon> scannedGrid = new HashMap<>();
+
     private void drawSignal(int signal, double lat, double lon) {
         if (checkGpsCoordinates(lat, lon)) {
-            final LatLng pos = new LatLng(lat, lon);
+            // round lat/long to 0.0001 for roughly 10 meter grids
+            final LatLng pos = new LatLng(Math.round(lat * 10000d)/10000d, Math.round(lon * 10000d)/10000d);
+
             final int signalColor;
             if (signal > -20)
             {
@@ -205,14 +225,24 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMapCli
                 signalColor = Color.argb(100, 255, 0, 0);
             }
 
+            // Check if we already have a polygon here, if so, remove it.
+            if (scannedGrid.containsKey(pos.hashCode()))
+            {
+                scannedGrid.get(pos.hashCode()).remove();
+            }
+
             runOnUiThread(new Runnable() {
                 @Override
                 public void run() {
-                    Circle circle = gMap.addCircle(new CircleOptions()
-                        .center(pos)
-                        .radius(10)
-                        .strokeWidth(0)
-                        .fillColor(signalColor));
+                    scannedGrid.put(pos.hashCode(), gMap.addPolygon(new PolygonOptions()
+                            .add(
+                                    pos,
+                                    new LatLng(pos.latitude + 0.0001, pos.longitude),
+                                    new LatLng(pos.latitude + 0.0001, pos.longitude + 0.0001),
+                                    new LatLng(pos.latitude, pos.longitude + 0.0001))
+                            .strokeWidth(0)
+                            .fillColor(signalColor)
+                    ));
                 }
             });
         }
