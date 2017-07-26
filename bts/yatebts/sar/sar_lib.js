@@ -30,7 +30,7 @@ var onInterval, onPhoneDetected, onPhoneLost, onSendSMS, onSMSReceived, onSignal
 
 var testing = true;
 var loud_sms = false;
-var polling_rate = 5;
+var polling_rate = 2;
 
 var country_code = 1;
 var nnsf_bits = 8;
