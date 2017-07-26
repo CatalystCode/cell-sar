@@ -1,12 +1,12 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 23
+    compileSdkVersion 24
     buildToolsVersion '25.0.0'
     defaultConfig {
         applicationId "com.microsoft.cellsar"
-        minSdkVersion 17
-        targetSdkVersion 22
+        minSdkVersion 24
+        targetSdkVersion 24
         versionCode 1
         versionName "4.0.1.1.0.0"
         multiDexEnabled true
@@ -20,8 +20,10 @@ android {
     dexOptions {
         javaMaxHeapSize "3g"
     }
-    lintOptions{
+    lintOptions {
         abortOnError false
+    }
+    productFlavors {
     }
 }
 

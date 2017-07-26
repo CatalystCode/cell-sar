@@ -1,6 +1,7 @@
 package com.microsoft.cellsar;
 
 import android.Manifest;
+import android.animation.ArgbEvaluator;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
@@ -29,6 +30,7 @@ import com.google.android.gms.maps.model.Polygon;
 import com.google.android.gms.maps.model.PolygonOptions;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -130,6 +132,7 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMapCli
 
     private void setUpMap() {
         gMap.setOnMapClickListener(this);// add the listener for click for amap object
+        gMap.setMapType(GoogleMap.MAP_TYPE_HYBRID);
     }
 
     private void cameraUpdate(LatLng pos){
@@ -204,6 +207,7 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMapCli
         return (latitude > -90 && latitude < 90 && longitude > -180 && longitude < 180) && (latitude != 0f && longitude != 0f);
     }
 
+    private HashMap<Integer, Integer> scannedGridSignal = new HashMap<>();
     private HashMap<Integer, Polygon> scannedGrid = new HashMap<>();
 
     private void drawSignal(int signal, double lat, double lon) {
@@ -211,41 +215,64 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMapCli
             // round lat/long to 0.0001 for roughly 10 meter grids
             final LatLng pos = new LatLng(Math.round(lat * 10000d)/10000d, Math.round(lon * 10000d)/10000d);
 
-            final int signalColor;
-            if (signal > -20)
-            {
-                signalColor = Color.argb(100, 0, 255, 0);
-            }
-            else if (signal > -50)
-            {
-                signalColor = Color.argb(100, 250, 220, 50);
-            }
-            else
-            {
-                signalColor = Color.argb(100, 255, 0, 0);
+            // Set RSSI and get color ranges
+            scannedGridSignal.put(pos.hashCode(), signal);
+
+            int minSignal = Collections.min(scannedGridSignal.values());
+            int maxSignal = Collections.max(scannedGridSignal.values());
+            
+            // Update all old polygons
+            for(Map.Entry<Integer, Polygon> entry : scannedGrid.entrySet()) {
+                Integer k = entry.getKey();
+                final Polygon v = entry.getValue();
+
+                final int newColor = getSignalColor(scannedGridSignal.get(k), minSignal, maxSignal);
+
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        v.setFillColor(newColor);
+                    }
+                });
             }
 
-            // Check if we already have a polygon here, if so, remove it.
-            if (scannedGrid.containsKey(pos.hashCode()))
+            // Check if we already have a polygon here, if not, add it
+            if (!scannedGrid.containsKey(pos.hashCode()))
             {
-                scannedGrid.get(pos.hashCode()).remove();
-            }
+                final int signalColor;
+                signalColor = getSignalColor(signal, minSignal, maxSignal);
 
-            runOnUiThread(new Runnable() {
-                @Override
-                public void run() {
-                    scannedGrid.put(pos.hashCode(), gMap.addPolygon(new PolygonOptions()
-                            .add(
-                                    pos,
-                                    new LatLng(pos.latitude + 0.0001, pos.longitude),
-                                    new LatLng(pos.latitude + 0.0001, pos.longitude + 0.0001),
-                                    new LatLng(pos.latitude, pos.longitude + 0.0001))
-                            .strokeWidth(0)
-                            .fillColor(signalColor)
-                    ));
-                }
-            });
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        scannedGrid.put(pos.hashCode(), gMap.addPolygon(new PolygonOptions()
+                                .add(
+                                        pos,
+                                        new LatLng(pos.latitude + 0.0001, pos.longitude),
+                                        new LatLng(pos.latitude + 0.0001, pos.longitude + 0.0001),
+                                        new LatLng(pos.latitude, pos.longitude + 0.0001))
+                                .strokeWidth(0)
+                                .fillColor(signalColor)
+                        ));
+                    }
+                });
+            }
         }
+    }
+
+    private int getSignalColor(int signal, int minSignal, int maxSignal) {
+        int signalColor;
+        float normalizedSignal = (float)(signal - minSignal)/(float)(maxSignal - minSignal);
+
+        if (normalizedSignal <= 0.5)
+        {
+            signalColor = (int)(new ArgbEvaluator().evaluate(normalizedSignal * 2, 0xff0000, 0xfcdc33)) | 0x64000000;;
+        }
+        else
+        {
+            signalColor = (int)(new ArgbEvaluator().evaluate(normalizedSignal * 2, 0xfcdc33, 0x00ff00)) | 0x64000000;;
+        }
+        return signalColor;
     }
 
     private void updateDroneLocation(){
@@ -267,5 +294,7 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMapCli
             }
         });
     }
+
+
 
 }
