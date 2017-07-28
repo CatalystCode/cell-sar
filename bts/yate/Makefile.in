@@ -170,7 +170,7 @@ $(APIINDEX): @srcdir@/docs/Doxyfile \
 
 .PHONY: strip sex love war
 strip: all
-	-strip --strip-debug --discard-locals $(PROGS) $(SLIBS)
+	-strip --preserve-dates --strip-debug --discard-locals $(PROGS) $(SLIBS)
 
 sex: strip
 	@echo 'Stripped for you!'
@@ -225,7 +225,6 @@ install-noconf: all
 	$(MAKE) -C ./modules install
 	$(MAKE) -C ./clients install
 	$(MAKE) -C ./share install
-	$(MAKE) -C ./tools install
 	@$(LDCONFIG)
 	@mkdir -p "$(DESTDIR)$(mandir)/man8/" && \
 	for i in $(MAN8) ; do \
@@ -259,7 +258,7 @@ install-noconf: all
 install-api: $(APIDOCS)
 	@mkdir -p "$(DESTDIR)$(docdir)/api/" && \
 	install -m 0644 @srcdir@/docs/*.html "$(DESTDIR)$(docdir)/" && \
-	test -f "$(APIINDEX)" && \
+	test ! -f "$(APIINDEX)" || \
 	install -m 0644 @srcdir@/docs/api/*.* "$(DESTDIR)$(docdir)/api/"
 
 uninstall uninstall-root:

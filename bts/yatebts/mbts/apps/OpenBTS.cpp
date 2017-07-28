@@ -100,7 +100,7 @@ GSMConfig gBTS;
 // the Logger may not have been initialized yet.
 
 // Our interface to the software-defined radio.
-TransceiverManager gTRX(gConfig.getNum("GSM.Radio.ARFCNs"), gConfig.getStr("TRX.IP").c_str(), gConfig.getNum("TRX.Port"));
+TransceiverManager gTRX(gConfig.getNum("GSM.Radio.ARFCNs"), gConfig.getNum("TRX.Port"));
 
 // Subscriber registry and http authentication
 //SubscriberRegistry gSubscriberRegistry;
@@ -246,6 +246,7 @@ int main(int argc, char *argv[])
 		COUT("\nStarting the system...");
 
 	// Reset the transceiver
+	gTRX.logInit();
 	if (!gTRX.reset()) {
 		LOG(ALERT) << "Failed to reset transceiver";
 		return 1;
@@ -288,7 +289,8 @@ int main(int argc, char *argv[])
 	unsigned C0 = gConfig.getNum("GSM.Radio.C0");
 	unsigned numARFCNs = gConfig.getNum("GSM.Radio.ARFCNs");
 	// TODO what to do if tuning faild?
-	C0radio->tune(C0,true);
+	if (!C0radio->tune(C0,true))
+		return 1;
 	for (unsigned i=1; i<numARFCNs; i++) {
 		// Tune the radios.
 		unsigned ARFCN = C0 + i*2;
@@ -362,7 +364,7 @@ int main(int argc, char *argv[])
 	};
 	Thread C0T0SDCCHControlThread[4];
 	// Subchannel 2 used for CBCH if SMSCB enabled.
-	bool SMSCB = (gConfig.getStr("Control.SMSCB.Table").length() != 0);
+	bool SMSCB = gConfig.getBool("Control.SMSCB");
 	CBCHLogicalChannel CBCH(gSDCCH_4_2);
 	Thread CBCHControlThread;
 	for (int i=0; i<4; i++) {

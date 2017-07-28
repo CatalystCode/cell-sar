@@ -180,7 +180,7 @@ Radio.C0=
 ; TX.OffsetQ: integer: Radio interface transmitter DC offset correction for Q
 ; Set at the factory, do not adjust without proper calibration.
 ; Interval allowed: -63..63.
-;TX.OffsetI=0
+;TX.OffsetQ=0
 
 ; TxAttenOffset: integer: Transmitter attenuation in dB.
 ; Hardware-specific gain adjustment for transmitter, matched to the amplifier.
@@ -220,13 +220,13 @@ Radio.C0=
 
 ; radio_read_priority: keyword: Radio read thread priority
 ; Allowed values: lowest, low, normal, high, highest
-; Defaults to 'high' if missing or invalid
-;radio_read_priority=high
+; Defaults to 'highest' if missing or invalid
+;radio_read_priority=highest
 
 ; radio_send_priority: keyword: Radio send thread priority
 ; Allowed values: lowest, low, normal, high, highest
-; Defaults to 'normal' if missing or invalid
-;radio_send_priority=normal
+; Defaults to 'high' if missing or invalid
+;radio_send_priority=high
 
 ; tx_silence_debug_interval: integer: Interval, in milliseconds, to silence tx bursts
 ;  time related debug messages (avoid delayed/missing/expired bursts debug messages on startup)
@@ -267,6 +267,12 @@ Radio.C0=
 ; If VEA is selected, [gsm_advanced] CellSelection.NECI should be set to 1.
 ; Defaults to yes.
 ;VEA=yes
+
+; SMSCB: boolean: Add support for the Cell Broadcast service.
+; If enabled the SDDCH/4-2 of a C-V will be configured to act as a CBCH.
+; Since this leaves ony 3 SDCCHs you should add a C-VII in [gsm_advanced]
+; Defaults to no.
+;SMSCB=no
 
 ; LUR.AttachDetach: boolean: Use the attach/detach procedure.
 ; This will make initial LUR more prompt.
@@ -550,7 +556,7 @@ Radio.C0=
 ;Radio.RSSITarget=-50
 
 ; Radio.RxGain: integer: Receiver gain setting in dB.
-; Ideal value is dictated by the hardware; 47 dB for RAD1, less for USRPs.
+; Ideal value is dictated by the hardware
 ; Interval allowed: 0..75.
 ; Defaults to 0 (but some radios provide their own calibrated default).
 ;Radio.RxGain=0
@@ -883,7 +889,12 @@ Radio.C0=
 ;  to load for the operation. Possible values are:
 ;    - nib: loads script necessary for Network In a Box mode of operation
 ;    - roaming: loads script necessary for the roaming mode of operation
-mode=searchandrescue
+;mode=nib
+
+; autostart: boolean: Start the BTS automatically when program starts
+; If autostart is disabled it will wait for an "ybts start" command.
+; Defaults to true.
+;autostart=yes
 
 ; heartbeat_ping: integer: Interval, in milliseconds, to send heartbeat (PING)
 ;  to MBTS application. Ping is sent only if idle, e.g. it is not sent if there

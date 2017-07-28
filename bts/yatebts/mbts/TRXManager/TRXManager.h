@@ -59,8 +59,10 @@ class TransceiverManager {
 	Thread mClockThread;	
 	Mutex mControlLock;			///< lock to prevent overlapping transactions
 	UDPSocket mControlSocket;		///< socket for radio control
+	std::string mInitData;			///< Init data (for debug)
 
 	bool mExitRecv;                         ///< Exiting received from lower layer
+	bool m_statistics;                      ///< Statistics are enabled (BTS started)
 
 	public:
 
@@ -90,9 +92,11 @@ class TransceiverManager {
 		@param numARFCNs Number of ARFCNs supported by the transceiver.
 		@param wTRXAddress IP address of the transceiver.
 		@param wBasePort The base port for the interface, as defined in README.TRX.
+		@param wLocalAddr Local address
 	*/
-	TransceiverManager(int numARFCNs,
-		const char* wTRXAddress, int wBasePort);
+	TransceiverManager(int numARFCNs, int wBasePort,
+		const char* wTRXAddress = "127.0.0.1",
+		const char* wLocalAddr = "127.0.0.1");
 
 	/**@name Accessors. */
 	//@{
@@ -108,6 +112,11 @@ class TransceiverManager {
 	/** Block until the clock is set over the UDP link. */
 	//void waitForClockInit() const;
 
+	/**
+		Log init data
+	*/
+	void logInit();
+
 	/** Start the clock management thread and all ARFCN managers. */
 	void start();
 
@@ -119,7 +128,8 @@ class TransceiverManager {
 	*/
 	int sendCommandPacket(const char* command, char* response);
 
-	bool sendCommand(const char* cmd, int* iParam = 0, const char* sParam = 0, int* rspParam = 0);
+	bool sendCommand(const char* cmd, int* iParam = 0, const char* sParam = 0,
+	    int* rspParam = 0, int arfcn = -1);
 
 	/**
 		Reset the transceiver
@@ -144,7 +154,10 @@ class TransceiverManager {
 		@return True on success.
 	*/
 	inline bool statistics(bool on)
-	{ return sendCommand("STATISTICS",0,on ? "ON" : "OFF"); }
+	{
+		m_statistics = on;
+		return sendCommand("STATISTICS",0,on ? "ON" : "OFF");
+	}
 
 	/** Clock service loop. */
 	friend void* ClockLoopAdapter(TransceiverManager*);
@@ -189,7 +202,8 @@ class ARFCNManager {
 
 	public:
 
-	ARFCNManager(unsigned int wArfncPos, const char* wTRXAddress, int wBasePort, TransceiverManager &wTRX);
+	ARFCNManager(unsigned int wArfncPos, const char* wTRXAddress, int wBasePort,
+		const char* wLocalAddr, TransceiverManager &wTRX);
 
 	/** Start the uplink thread. */
 	void start();

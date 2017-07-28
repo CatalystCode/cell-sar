@@ -1,32 +1,26 @@
-/** ybts.cpp: a Yate module that handles communication between 
-  * the SAR javascript automation and the OCP program.
-  *    
-  * Cellular Search and Rescue - Cellular Sensor BTS
-  *   Copyright (C) 2017 Microsoft
-  * Yet Another Telephony Engine - Base Transceiver Station
-  *   Copyright (C) 2013-2014 Null Team Impex SRL
-  *   Copyright (C) 2014 Legba, Inc
-  * 
-  * This file is part of cell-sar/the Yate-BTS Project http://www.yatebts.com
-  * 
-  * cell-sar is free software: you can redistribute it and/or modify
-  * it under the terms of the GNU General Public License as published by
-  * the Free Software Foundation, either version 2 of the License, or
-  * (at your option) any later version.
-  * 
-  * cell-sar is distributed in the hope that it will be useful,
-  * but WITHOUT ANY WARRANTY; without even the implied warranty of
-  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  * GNU General Public License for more details.
-  * 
-  * You should have received a copy of the GNU General Public License
-  * along with cell-sar.  If not, see <http://www.gnu.org/licenses/>.
-  */
+/**
+ * ybts.cpp
+ * This file is part of the Yate-BTS Project http://www.yatebts.com
+ *
+ * Yet Another BTS Channel
+ *
+ * Yet Another Telephony Engine - Base Transceiver Station
+ * Copyright (C) 2013-2014 Null Team Impex SRL
+ *
+ * This software is distributed under multiple licenses;
+ * see the COPYING file in the main directory for licensing
+ * information for this specific distribution.
+ *
+ * This use of this software may be subject to additional restrictions.
+ * See the LEGAL file in the main directory for details.
+ *
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+ */
 
 #include <yatephone.h>
 #include <yateradio.h>
-
-#include <iostream>
 
 #ifdef _WINDOWS
 #error This module is not for Windows
@@ -40,11 +34,6 @@
 #include <signal.h>
 #include <stdio.h>
 #include <syslog.h>
-
-#include <iostream>
-#include <stdio.h>
-#include <regex>
-#include <string>
 
 using namespace TelEngine;
 namespace { // anonymous
@@ -222,54 +211,6 @@ static inline const String& index2str(int index, const String* array)
 	if (i == index)
 	    return *array;
     return String::empty();
-}
-
-static const std::string parse_phyinfo_value(const std::string &raw_phyinfo, const std::regex &ptrn) {
-   std::smatch match;
-
-   if (std::regex_match(raw_phyinfo, match, ptrn) && match.size() >= 2)
-      return match[1].str();
-
-   return std::string("");
-}
-
-static const std::regex UpRSSI_ptrn = std::regex(".*UpRSSI=(\\-?\\d+(\\.\\d+)?).*");
-static const std::regex TxPwr_ptrn = std::regex(".*TxPwr=(\\-?\\d+(\\.\\d+)?).*");
-static const std::regex DnRSSIdBm_ptrn = std::regex(".*DnRSSIdBm=(\\-?\\d+(\\.\\d+)?).*");
-static const std::regex time_ptrn = std::regex(".*time=(\\-?\\d+(\\.\\d+)?).*");
-static const std::regex TA_ptrn = std::regex(".*TA=(\\-?\\d+(\\.\\d+)?).*");
-static const std::regex TE_ptrn = std::regex(".*TE=(\\-?\\d+(\\.\\d+)?).*");
-
-static void send_phyinfo_message(const char *imsi, const char *tmsi, 
-      const char *data, const unsigned int len) {   
-
-   // ex: TA=0 TE=2.000 UpRSSI=-46 TxPwr=33 DnRSSIdBm=-111 time=1498692346.983
-   std::string raw_info(data, len);
-
-   // parse out the parameters
-   std::string IMSI = imsi ? std::string(imsi) : std::string("");
-   std::string TMSI = tmsi ? std::string(tmsi) : std::string("");
-   std::string UpRSSI = parse_phyinfo_value(raw_info, UpRSSI_ptrn);
-   std::string TxPwr = parse_phyinfo_value(raw_info, TxPwr_ptrn);
-   std::string DnRSSIdBm = parse_phyinfo_value(raw_info, DnRSSIdBm_ptrn);
-   std::string time = parse_phyinfo_value(raw_info, time_ptrn);
-   std::string TA = parse_phyinfo_value(raw_info, TA_ptrn);
-   std::string TE = parse_phyinfo_value(raw_info, TE_ptrn);
-
-   // build the message
-   Message *m = new Message("phyinfo");
-   m->addParam("IMSI", IMSI.c_str());
-   m->addParam("TMSI", TMSI.c_str());
-   m->addParam("UpRSSI", UpRSSI.c_str());
-   m->addParam("TxPwr", TxPwr.c_str());
-   m->addParam("DnRSSIdBm", DnRSSIdBm.c_str());
-   m->addParam("time", time.c_str());
-   m->addParam("TA", TA.c_str());
-   m->addParam("TE", TE.c_str());
-
-   // and dispatch it
-   Engine::dispatch(m);
-   m->destruct();
 }
 
 class YBTSConnIdHolder
@@ -727,7 +668,10 @@ public:
 	    Lock lck(this);
 	    msg.addParam("phy_info",m_phyInfo,false);
 	}
-    void setPhyInfo(const String& info); 
+    inline void setPhyInfo(const String& info) {
+	    Lock lck(this);
+	    m_phyInfo = info;
+	}
     inline const String& extraRelease() const
 	{ return m_extraRelease; }
     inline void extraRelease(const char* hexa)
@@ -1129,6 +1073,7 @@ protected:
     int handlePDU(YBTSMessage& msg);
     void handleRRM(YBTSMessage& msg);
     int handleHandshake(YBTSMessage& msg);
+    int handleStopNotification(YBTSMessage& msg);
     void printMsg(YBTSMessage& msg, bool recv);
     void setTimer(uint64_t& dest, const char* name, unsigned int intervalMs,
 	uint64_t timeUs = Time::now()) {
@@ -2225,13 +2170,27 @@ const TokenDict YBTSMessage::s_priName[] =
     MAKE_SIG(PdpDeactivate),
     MAKE_SIG(Handshake),
     MAKE_SIG(RadioReady),
+    MAKE_SIG(Stop),
     MAKE_SIG(StartPaging),
     MAKE_SIG(StopPaging),
     MAKE_SIG(NeighborsList),
     MAKE_SIG(HandoverRequest),
     MAKE_SIG(HandoverReject),
+    MAKE_SIG(BroadcastWrite),
+    MAKE_SIG(BroadcastKill),
     MAKE_SIG(Heartbeat),
 #undef MAKE_SIG
+    {0,0}
+};
+
+static const TokenDict s_stopInfoName[] = {
+#define MAKE_BTS_NAME(x) {#x, Bts##x}
+    MAKE_BTS_NAME(Normal),
+    MAKE_BTS_NAME(RadioLost),
+    MAKE_BTS_NAME(InternalError),
+    MAKE_BTS_NAME(RadioExiting),
+    MAKE_BTS_NAME(RadioError),
+#undef MAKE_BTS_NAME
     {0,0}
 };
 
@@ -2690,6 +2649,24 @@ static inline bool addXmlFromParam(ObjList& dest, const NamedList& list,
     return !p.null();
 }
 
+// Conditionally add an xml child element from list parameter
+static bool addXmlFromParam(XmlElement& xml, const NamedList& list, const String& param, bool onlyNumber = false)
+{
+    const String& p = list[param];
+    if (p) {
+	if (onlyNumber && (p.toInteger(-1) < 0))
+	    return false;
+	String buf;
+	XmlSaxParser::escape(buf,p);
+	buf.trimBlanks();
+	if (buf) {
+	    xml.addChildSafe(new XmlElement(param,buf));
+	    return true;
+	}
+    }
+    return false;
+}
+
 // Safely retrieve a global string
 static inline void getGlobalStr(String& buf, const String& value)
 {
@@ -2891,6 +2868,16 @@ static inline XmlElement* buildTID(const char* callRef, bool tiFlag)
     XmlElement* tid = new XmlElement(s_ccCallRef,callRef);
     tid->setAttribute(s_ccTIFlag,String::boolText(tiFlag));
     return tid;
+}
+
+static inline void appendChildText(String& str, const XmlElement* x, const String& name)
+{
+    x = x ? x->findFirstChild(name) : 0;
+    if (!x)
+	return;
+    if (str)
+	str << " ";
+    str << name << "=" << x->getText();
 }
 
 
@@ -3318,6 +3305,10 @@ YBTSMessage* YBTSMessage::parse(YBTSSignalling* recv, uint8_t* data, unsigned in
 	case SigGprsAttachOk:
 	case SigGprsDetach:
 	    break;
+	case SigStop:
+	    if (len)
+		m->m_xml = decodeTagged("Stop",String((const char*)data,len));
+	    break;
 	default:
 	    reason = "No decoder";
     }
@@ -3399,6 +3390,8 @@ bool YBTSMessage::build(YBTSSignalling* sender, DataBlock& buf, const YBTSMessag
 	    break;
 	case SigStartPaging:
 	case SigStopPaging:
+	case SigBroadcastWrite:
+	case SigBroadcastKill:
 	    if (!msg.xml()){
 		reason = "Missing XML";
 		break;
@@ -3872,14 +3865,6 @@ void YBTSConn::setCSFB(const XmlElement* xml)
     TelEngine::destruct(l);
 }
 
-void YBTSConn::setPhyInfo(const String& info) {
-   Lock lck(this);
-   m_phyInfo = info;
-
-   const char *imsi = ue() ? ue()->imsi().c_str() : 0;
-   const char *tmsi = ue() ? ue()->tmsi().c_str() : 0;
-   send_phyinfo_message(imsi, tmsi, info.c_str(), info.length());
-}
 
 //
 // YBTSGprsConn
@@ -5040,6 +5025,8 @@ int YBTSSignalling::handlePDU(YBTSMessage& msg)
 	    dropConn(msg.connId(),false);
 	    dropGprsConn(msg.connId(),false);
 	    return Ok;
+	case SigStop:
+	    return handleStopNotification(msg);
     }
     Debug(this,DebugNote,"Unhandled message %u (%s) [%p]",msg.primitive(),msg.name(),this);
     return Ok;
@@ -5109,6 +5096,39 @@ int YBTSSignalling::handleHandshake(YBTSMessage& msg)
 	return FatalError;
     }
     return Error;
+}
+
+int YBTSSignalling::handleStopNotification(YBTSMessage& msg)
+{
+    if (__plugin.stopping() || m_state < Running)
+	return Ok;
+    bool restart = true;
+    String s;
+    String notif = lookup(msg.info(),s_stopInfoName);
+    if (!notif)
+	notif = msg.info();
+    if (msg.xml()) {
+	const String* code = msg.xml()->childText(YSTRING("code"));
+	if (!TelEngine::null(code)) {
+	    unsigned int n = (unsigned int)code->toInt64(0);
+	    if (n) {
+		String tmp;
+		s << tmp.printf(" code=0x%x (%s)",n,RadioInterface::errorName(n));
+		if (n & RadioInterface::NoAutoRestartMask)
+		    restart = false;
+	    }
+	    else
+		s << " code=" << *code;
+	}
+	else
+	    appendChildText(s,msg.xml(),YSTRING("reason"));
+	appendChildText(s,msg.xml(),YSTRING("operation"));
+    }
+    if (restart)
+	Debug(this,DebugNote,"Peer stop notification '%s'%s [%p]",notif.c_str(),s.safe(),this);
+    else
+	Alarm(this,"system",DebugWarn,"Peer fatal stop notification '%s'%s [%p]",notif.c_str(),s.safe(),this);
+    return restart ? Error : FatalError;
 }
 
 void YBTSSignalling::printMsg(YBTSMessage& msg, bool recv)
@@ -9169,10 +9189,8 @@ void YBTSDriver::handleSmsCPData(YBTSMessage& m, YBTSConn* conn,
 	    causeRp = 97; // Unknown message type
 	    SMS_CPDATA_DONE("unknown RP message " + String(rpMsgType));
 	}
-	if (rpMsgType == RPSMMAFromMs) {
-	    causeRp = 98; // Unexpected message
-	    SMS_CPDATA_DONE("unhandled RP-SMMA");
-	}
+	if (rpMsgType == RPSMMAFromMs)
+	    called = "SMMA";
 	// RP-DATA from MS
 	if (!called)
 	    Debug(this,DebugNote,
@@ -9704,8 +9722,7 @@ void YBTSDriver::start()
     if (m_restartIndex >= n) {
 	m_stopped = true;
 	Alarm(this,"system",DebugGoOn,
-	    "Restart index reached maximum value %u. Exiting ...",n);
-	Engine::halt(ECANCELED);
+	    "Restart index reached maximum value %u. Stopping ...",n);
 	return;
     }
     m_restartIndex++;
@@ -10547,6 +10564,7 @@ void YBTSDriver::initialize()
     s_globalMutex.unlock();
     if (s_first) {
 	s_first = false;
+	m_stopped = !ybts.getBoolValue("autostart",true);
 	setup();
 	installRelay(Progress);
 	installRelay(Update);
@@ -10759,6 +10777,41 @@ bool YBTSDriver::received(Message& msg, int id)
 		    Debug(this,DebugMild,"Handover Request %d failed (%s)",ref,err);
 		    return false;
 		}
+		if (oper == YSTRING("cbadd")) {
+		    id = msg.getIntValue(YSTRING("id"),-1);
+		    if ((id < 0) || (id >= 0xffff))
+			return false;
+		    YBTSSignalling* sig = signalling();
+		    if (!sig)
+			return false;
+		    XmlElement* xml = new XmlElement("CB");
+		    xml->addChildSafe(new XmlElement("id",String(id)));
+		    addXmlFromParam(*xml,msg,YSTRING("gs"),true);
+		    if (!(addXmlFromParam(*xml,msg,YSTRING("code"),true)
+			    && addXmlFromParam(*xml,msg,YSTRING("dcs"),true)
+			    && addXmlFromParam(*xml,msg,YSTRING("data")))) {
+			TelEngine::destruct(xml);
+			return false;
+		    }
+		    YBTSMessage m(SigBroadcastWrite,0,0,xml);
+		    return sig->send(m);
+		}
+		if (oper == YSTRING("cbdel")) {
+		    const String& mid = msg[YSTRING("id")];
+		    id = mid.toInteger(-1);
+		    if ((mid == "*") || (mid == "all"))
+			id = 0xffff;
+		    if ((id < 0) || (id > 0xffff))
+			return false;
+		    YBTSSignalling* sig = signalling();
+		    if (!sig)
+			return false;
+		    XmlElement* xml = new XmlElement("CB");
+		    xml->addChildSafe(new XmlElement("id",String(id)));
+		    addXmlFromParam(*xml,msg,YSTRING("code"),true);
+		    YBTSMessage m(SigBroadcastKill,0,0,xml);
+		    return sig->send(m);
+		}
 		return false;
 	    }
 	    break;
@@ -10917,6 +10970,12 @@ void YBTSDriver::genUpdate(Message& msg)
     Driver::genUpdate(msg);
     msg.setParam("state",stateName());
     msg.setParam("operational",String::boolText(RadioUp == m_state));
+    bool restart = true;
+    if (Idle == m_state) {
+	Lock lck(m_stateMutex);
+	restart = (Idle != m_state) || m_restart;
+    }
+    msg.setParam("autorestart",String::boolText(restart));
 }
 
 bool YBTSDriver::initOpMode()

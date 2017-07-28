@@ -29,6 +29,14 @@
 #require "lib_str_util.js"
 #require "handover.js"
 
+// Returns 16 bit (or more) hex value, false if not a number
+function get16bitHexVal(val)
+{
+    val = parseInt(val);
+    if (isNaN(val))
+	return false;
+    return val.toString(16,4);
+}
 
 /**
  * Handle "auth" message
@@ -39,7 +47,7 @@ function onAuth(msg)
     var imsi = msg.imsi;
     var tmsi = msg.tmsi;
 
-    var sr = buildRegister(imsi,tmsi,expires,msg.imei);
+    var sr = buildRegister(imsi,tmsi,reg_expires,msg.imei);
     if (sr==false)
 	return false;
     if (!addAuthParams(sr,msg,imsi,tmsi))
@@ -72,7 +80,7 @@ function onRegister(msg, unresponsive_server)
 
     Engine.debug(Engine.DebugInfo, "Preparing to send REGISTER imsi='"+imsi+"', tmsi='"+tmsi+"', unresponsive server='"+unresponsive_server+"'");
 
-    var sr = buildRegister(imsi,tmsi,expires,msg.imei,null,msg,unresponsive_server);
+    var sr = buildRegister(imsi,tmsi,reg_expires,msg.imei,null,msg,unresponsive_server);
     if (sr==false)
 	return false;
     if (!addAuthParams(sr,msg,imsi,tmsi))
@@ -85,10 +93,10 @@ function onRegister(msg, unresponsive_server)
 	    var contact = sr["sip_contact"];
 	    var res = contact.match(/expires *= *"?([^ ;]+)"?/);
 	    if (res)
-		expires = res[1];
+		var expires = res[1];
 	    else 
 		// otherwise check for it in the Expires header
-		expires = sr["sip_expires"];
+		var expires = sr["sip_expires"];
 
 	    expires = parseInt(expires);
 
@@ -237,7 +245,10 @@ function buildCallID()
 function getNewRegistrar(server)
 {
     var no_try = 0;
-    var max_tries = 100;
+    var max_tries = nodes_sip.length;
+    if (!max_tries)
+	max_tries = 1;
+
     var new_server = getSIPRegistrar();
 
     while (new_server==server) {
@@ -594,9 +605,40 @@ function routeSMS(msg)
 	msg["sms.caller"] = caller;
 	addRoutingParams(msg,imsi,"o");
 	msg.retValue("ybts/IMSI"+imsi);
+	// Check if we can return the RPDU in 200 OK instead of new MESSAGE
+	if (("" != msg.sip_supported) && ("" != msg.rpdu)) {
+	    if (0 <= msg.sip_supported.indexOf("sms-response"))
+		msg.retValue("mt_" + msg.retValue());
+	}
     }
 
     return true;
+}
+
+/**
+ * Handle SMS submit or delivery
+ * @param msg Object. Message to be handled
+ */
+function onMsgExecute(msg)
+{
+    switch (msg.callto) {
+	case "smsc_yatebts":
+	    return onMoSMS(msg);
+	case /^mt_ybts[[:punct:]]/:
+	    break;
+	default:
+	    return false;
+    }
+    // We are here only if we should return RPDU in 200 OK
+    var m = new Message("msg.execute",false,msg);
+    m.handlers = undefined;
+    m.callto = msg.callto.substr(3);
+    var ok = m.dispatch(true);
+    if (m.rpdu != msg.xsip_body)
+	msg.xsip_body = m.rpdu;
+    msg.error = m.error;
+    msg.reason = m.reason;
+    return ok;
 }
 
 /**
@@ -633,11 +675,15 @@ function onMoSMS(msg)
 
     addRoutingParams(msg,imsi,"i");
 
-    var dest = msg["sms.called"];
-    if (msg["sms.called.nature"]=="international" && dest.substr(0,1)!="+")
-	dest = "+"+dest;
-    if (msg.callednumtype=="international" && msg.called.substr(0,1)!="+")
-	msg.called = "+"+msg.called;
+    var dest;
+    var smma = ("SMMA" == msg.called);
+    if (!smma) {
+	dest = msg["sms.called"];
+	if (msg["sms.called.nature"]=="international" && dest.substr(0,1)!="+")
+	    dest = "+"+dest;
+	if (msg.callednumtype=="international" && msg.called.substr(0,1)!="+")
+	    msg.called = "+"+msg.called;
+    }
 
     var msisdn_caller = subscribers[imsi]["msisdn"];
 
@@ -645,7 +691,8 @@ function onMoSMS(msg)
     m.method = "MESSAGE";
     m.user = msisdn_caller; 
     m["sip_Supported"] = "sms-response";
-    m["sip_P-Called-Party-ID"] = "<tel:" + dest + ">";
+    if (!smma)
+	m["sip_P-Called-Party-ID"] = "<tel:" + dest + ">";
     if (text_sms && msg.text != "") {
 	m.xsip_type = "text/plain";
 	m.xsip_body = msg.text;
@@ -995,9 +1042,7 @@ function readYBTSConf()
     if (t3212 == 0)
 	Engine.alarm(alarm_conf, "Incompatible configuration: Timer.T3212=0. When sending requests to SIP/IMS server Timer.T3212 is in 6..60 range.");
 
-    expires = roaming_section.getValue("expires");
-    if (expires=="") 
-	    expires = 3600;
+    reg_expires = roaming_section.getIntValue("expires",3600,t3212 * 2,86400);
 
     nodes_sip = JSON.parse(roaming_section.getValue("nodes_sip"));
 
@@ -1080,15 +1125,14 @@ function readUEsFromConf()
     var keys = ues.keys();
     var count_ues = 0;
     for (var imsi of keys) {
-	// Ex:310410123456789=000000bd,310410123456789,,1401097352
+	// Ex:226030182676743=000000bd,354695033561290,,1401097352
 	// imsi=tmsi,imei,msisdn,expires
 	var subscriber_info = ues.getValue(imsi);
 	subscriber_info = subscriber_info.split(",");
 	var tmsi = subscriber_info[0];
 	var imei = subscriber_info[1];
 	var msisdn = subscriber_info[2];
-	var expires = subscriber_info[3];
-	var expires = parseInt(expires);
+	var expires = parseInt(subscriber_info[3]);
 	var callid = subscriber_info[4];
 	subscribers[imsi] = {"tmsi":tmsi,"imei":imei,"msisdn":msisdn,"expires":expires,"callid":callid};
 	count_ues = count_ues+1;
@@ -1478,7 +1522,7 @@ Message.install(onRegister,"user.register",80);
 Message.install(onUnregister,"user.unregister",80);
 Message.install(onRoute,"call.route",80);
 Message.install(onAuth,"auth",80);
-Message.install(onMoSMS,"msg.execute",80,"callto","smsc_yatebts");
+Message.install(onMsgExecute,"msg.execute",80);
 Message.install(onDisconnected,"chan.disconnected",40);
 Message.install(onHangup,"chan.hangup",80,"module","ybts");
 Message.install(onExecute,"call.execute",80);

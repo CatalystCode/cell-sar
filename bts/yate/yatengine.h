@@ -1433,8 +1433,6 @@ public:
     inline static const String& trackParam()
 	{ return s_self ? s_self->m_dispatcher.trackParam() : String::empty(); }
 
-    inline static bool isInstantiated() { return s_self ? true : false; }
-
     /**
      * Appends a new message hook to the hooks list.
      * @param hook The message hook to append.

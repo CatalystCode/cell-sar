@@ -1,26 +1,22 @@
-/** CLI.cpp: Handles 'mbts' commands from the rmanager client
-  *
-  * Cellular Search and Rescue - Cellular Sensor BTS
-  *   Copyright (C) 2017 Microsoft
-  * Yet Another Telephony Engine - Base Transceiver Station
-  *   Copyright (C) 2013-2014 Null Team Impex SRL
-  *   Copyright (C) 2014 Legba, Inc
-  * 
-  * This file is part of cell-sar/the Yate-BTS Project http://www.yatebts.com
-  * 
-  * cell-sar is free software: you can redistribute it and/or modify
-  * it under the terms of the GNU General Public License as published by
-  * the Free Software Foundation, either version 2 of the License, or
-  * (at your option) any later version.
-  * 
-  * cell-sar is distributed in the hope that it will be useful,
-  * but WITHOUT ANY WARRANTY; without even the implied warranty of
-  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-  * GNU General Public License for more details.
-  * 
-  * You should have received a copy of the GNU General Public License
-  * along with cell-sar.  If not, see <http://www.gnu.org/licenses/>.
-  */
+/*
+* Copyright 2009, 2010 Free Software Foundation, Inc.
+* Copyright 2010 Kestrel Signal Processing, Inc.
+* Copyright 2011, 2012 Range Networks, Inc.
+* Copyright (C) 2013-2014 Null Team Impex SRL
+* Copyright (C) 2014 Legba, Inc
+*
+* This software is distributed under multiple licenses;
+* see the COPYING file in the main directory for licensing
+* information for this specific distribuion.
+*
+* This use of this software may be subject to additional restrictions.
+* See the LEGAL file in the main directory for details.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
+
+*/
 
 #include <iostream>
 #include <iomanip>
@@ -275,31 +271,13 @@ int printStats(int argc, char** argv, ostream& os)
 /** Get/Set MCC, MNC, LAC, CI. */
 int cellID(int argc, char** argv, ostream& os)
 {
-	if (argc == 1) {
-
-   	os << "MCC=" << gConfig.getStr("GSM.Identity.MCC")
-   	<< " MNC=" << gConfig.getStr("GSM.Identity.MNC")
-   	<< " LAC=" << gConfig.getNum("GSM.Identity.LAC")
-   	<< " CI=" << gConfig.getNum("GSM.Identity.CI")
-   	<< endl;
-	   return SUCCESS;
-
-   } else if (argc == 3) {
-
-      os << "Setting MCC to " << argv[1] << endl;
-      os << "Setting MNC to " << argv[2] << endl;
-
-      gConfig.set("GSM.Identity.MCC", argv[1]);
-      gConfig.set("GSM.Identity.MNC", argv[2]);
-
-      os << "Updated MCC " << gConfig.getStr("GSM.Identity.MCC") 
-         << " and MNC " << gConfig.getStr("GSM.Identity.MNC") << endl;
-
-      return SUCCESS;
-
-   } else {
-      return BAD_NUM_ARGS;
-   }
+	if (argc!=1) return BAD_NUM_ARGS;
+	os << "MCC=" << gConfig.getStr("GSM.Identity.MCC")
+	<< " MNC=" << gConfig.getStr("GSM.Identity.MNC")
+	<< " LAC=" << gConfig.getNum("GSM.Identity.LAC")
+	<< " CI=" << gConfig.getNum("GSM.Identity.CI")
+	<< endl;
+	return SUCCESS;
 }
 
 static string s_useReloadTrx[] = {"TRX.MinimumRxRSSI","TRX.RadioFrequencyOffset","TRX.TxAttenOffset",""};
@@ -777,14 +755,6 @@ int reload(int argc, char** argv, ostream& os)
 	return SUCCESS;
 }
 
-int reloadPLMN(int argc, char** argv, ostream& os) {
-   if (argc != 1) return BAD_NUM_ARGS;
-
-   gBTS.regenerateBeacon();
-
-   return SUCCESS;
-}
-
 
 /** Change the registration timers. */
 int regperiod(int argc, char** argv, ostream& os)
@@ -1169,7 +1139,6 @@ void Parser::addCommands()
         addCommand("noise", noise, "-- report receive noise level in RSSI dB");
         addCommand("radio", radio, "[command] -- execute custom radio command");
         addCommand("reload", reload, "-- reload configuration from file");
-        addCommand("reloadPLMN", reloadPLMN, "-- reload the in-memory configuraiton");
 	addCommand("rmconfig", rmconfig, "key -- set a configuration value back to its default or remove a custom key/value pair");
 	addCommand("unconfig", unconfig, "key -- disable a configuration key by setting an empty value");
 	addCommand("notices", notices, "-- show startup copyright and legal notices");

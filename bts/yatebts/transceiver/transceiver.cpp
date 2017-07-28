@@ -638,11 +638,13 @@ static inline int getCommand(String& buf, String& cmd)
 }
 
 static inline bool buildCmdRsp(String* rsp, const char* cmd, int status,
-    const char* param = 0)
+    const char* param = 0, unsigned int rCode = 0)
 {
     if (rsp) {
 	*rsp << "RSP " << cmd << " " << status;
 	rsp->append(param," ");
+	if (rCode)
+	    *rsp << " code=" << rCode;
     }
     return status == 0;
 }
@@ -1015,6 +1017,7 @@ Transceiver::Transceiver(const char* name)
     m_radioRxStore(100,"TrxRadioRx"),
     m_rxFreq(0),
     m_txFreq(0),
+    m_freqNotExact(10),
     m_txPower(-10),
     m_txAttnOffset(TX_ATTEN_OFFS_DEF),
     m_txPowerScale(1.0f),
@@ -1058,7 +1061,7 @@ Transceiver::~Transceiver()
 }
 
 // Initialize the transceiver. This method should be called after construction
-bool Transceiver::init(RadioInterface* radio, const NamedList& params)
+bool Transceiver::init(RadioInterface* radio, const NamedList& params, unsigned int& code)
 {
     if (m_state != Invalid) {
 	reInit(params);
@@ -1082,13 +1085,13 @@ bool Transceiver::init(RadioInterface* radio, const NamedList& params)
 	int port = rAddr ? params.getIntValue(YSTRING("port")) : 0;
 	const char* lAddr = rAddr ? params.getValue(YSTRING("localaddr"),*rAddr) : 0;
 	if (rAddr &&
-	    !(m_clockIface.setAddr(true,lAddr,port,*this) &&
-	    m_clockIface.setAddr(false,*rAddr,port + 100,*this)))
+	    !(m_clockIface.setAddr(true,lAddr,port + 2,*this) &&
+	    m_clockIface.setAddr(false,*rAddr,port + 3,*this)))
 	    break;
 	if (!resetARFCNs(arfcns,port,rAddr,lAddr,nFillers))
 	    break;
-	m_radioReadPrio = Thread::priority(params[YSTRING("radio_read_priority")],Thread::High);
-	m_radioOutPrio = Thread::priority(params[YSTRING("radio_send_priority")]);
+	m_radioReadPrio = Thread::priority(params[YSTRING("radio_read_priority")],Thread::Highest);
+	m_radioOutPrio = Thread::priority(params[YSTRING("radio_send_priority")],Thread::High);
 	if (debugAt(DebugAll)) {
 	    String tmp;
 	    tmp << "\r\nARFCNs=" << m_arfcnCount;
@@ -1100,7 +1103,7 @@ bool Transceiver::init(RadioInterface* radio, const NamedList& params)
 	p.addParam("cmd:setSampleRate",
 	    String((uint64_t)(m_oversamplingRate * (13e6 / 48) + 1)));
 	p.addParam("cmd:setFilter","1500000");
-	unsigned int code = m_radio->setParams(p,false);
+	code = m_radio->setParams(p,false);
 	if (!radioCodeOk(code))
 	    break;
 	// I/O errors check
@@ -1160,6 +1163,7 @@ void Transceiver::reInit(const NamedList& params)
     }
     change(this,m_radioLatencySlots,params,YSTRING("radio_latency_slots"),latency,0,256);
     change(this,m_txSlots,params,YSTRING("tx_slots"),txSlots,1,1024);
+    m_freqNotExact = params.getIntValue(YSTRING("freq_not_exact_threshold"),10,0,1000);
     m_printStatus = params.getIntValue(YSTRING("print_status"));
     m_printStatusBursts = m_printStatus &&
 	params.getBoolValue(YSTRING("print_status_bursts"),true);
@@ -1202,9 +1206,15 @@ void Transceiver::runReadRadio()
 	unsigned int code = m_radio->read(io.timestamp,bufs,incTn);
 	if (thShouldExit(this))
 	    break;
-	if (!io.updateError(code == 0)) {
-	    Alarm(this,"system",DebugWarn,"Too many read errors, last: 0x%x %s [%p]",
-		code,RadioInterface::errorName(code),this);
+	unsigned int fatal = code & RadioInterface::FatalErrorMask;
+	if (fatal || !io.updateError(code == 0)) {
+	    if (fatal)
+		Alarm(this,"system",DebugWarn,"Fatal read error: 0x%x %s [%p]",
+		    code,RadioInterface::errorName(code),this);
+	    else
+		Alarm(this,"system",DebugWarn,"Too many read errors, last: 0x%x %s [%p]",
+		    code,RadioInterface::errorName(code),this);
+	    syncGSMTimeExiting(code,"radio-read");
 	    fatalError();
 	    break;
 	}
@@ -1505,11 +1515,21 @@ bool Transceiver::sendBurst(GSMTime time)
 	(float*)data.data(),data.length(),&m_txPowerScale);
     m_txIO.timestamp += data.length();
     m_txIO.bursts++;
-    if (m_txIO.updateError(code == 0))
+    if (!code) {
+	m_txIO.updateError(true);
 	return true;
-    if (!thShouldExit(this)) {
-	Alarm(this,"system",DebugWarn,"Too many send errors, last: 0x%x %s [%p]",
-	    code,RadioInterface::errorName(code),this);
+    }
+    if (code & RadioInterface::Cancelled)
+	return false;
+    unsigned int fatal = code & RadioInterface::FatalErrorMask;
+    if (fatal || !m_txIO.updateError(code == 0)) {
+	if (fatal)
+	    Alarm(this,"system",DebugWarn,"Fatal send error: 0x%x %s [%p]",
+		code,RadioInterface::errorName(code),this);
+	else
+	    Alarm(this,"system",DebugWarn,"Too many send errors, last: 0x%x %s [%p]",
+		code,RadioInterface::errorName(code),this);
+	syncGSMTimeExiting(code,"radio-send");
 	fatalError();
     }
     return false;
@@ -1604,6 +1624,7 @@ bool Transceiver::command(const char* str, String* rsp, unsigned int arfcn)
     String reason;
     String rspParam;
     int status = CmdEOk;
+    unsigned int rCode = 0;
     int c = getCommand(s,cmd);
     switch (c) {
 	case CmdHandover:
@@ -1624,7 +1645,7 @@ bool Transceiver::command(const char* str, String* rsp, unsigned int arfcn)
 	    break;
 	case CmdRxTune:
 	case CmdTxTune:
-	    status = handleCmdTune(c == CmdRxTune,arfcn,s,&rspParam);
+	    status = handleCmdTune(c == CmdRxTune,arfcn,s,&rspParam,rCode);
 	    break;
 	case CmdSetTsc:
 	    status = handleCmdSetTsc(arfcn,s,&rspParam);
@@ -1684,7 +1705,7 @@ bool Transceiver::command(const char* str, String* rsp, unsigned int arfcn)
     else
 	Debug(this,DebugAll,"Command '%s' (ARFCN=%u) RSP '%s'",str,arfcn,rspParam.c_str());
     syncGSMTime();
-    return buildCmdRsp(rsp,cmd,status,rspParam);
+    return buildCmdRsp(rsp,cmd,status,rspParam,rCode);
 }
 
 bool Transceiver::control(const String& oper, const NamedList& params)
@@ -1899,17 +1920,18 @@ bool Transceiver::resetARFCNs(unsigned int arfcns, int port, const String* rAddr
 	}
 	m_arfcn[i]->m_fillerTable.init(nFillers,filler);
     }
-    if (rAddr)
-	for (unsigned int i = 0; i < m_arfcnCount; i++) {
+    if (rAddr) {
+	int p = port + 4;
+	for (unsigned int i = 0; i < m_arfcnCount; i++, p += 2) {
 	    ARFCNSocket* a = static_cast<ARFCNSocket*>(m_arfcn[i]);
-	    int p = port + 2 * i + 1;
-	    if (a->initUDP(p + 100 + 1,*rAddr,p + 1,lAddr))
+	    if (a->initUDP(p + 1,*rAddr,p,lAddr))
 		continue;
 	    clearARFCNs(m_arfcn,m_arfcnCount);
 	    if (old)
 		arfcnListChanged();
 	    return false;
 	}
+    }
     arfcnListChanged();
     return true;
 }
@@ -2084,7 +2106,8 @@ int Transceiver::handleCmdSetTxAttenuation(unsigned int arfcn, String& cmd, Stri
 }
 
 // Handle RXTUNE/TXTUNE commands
-int Transceiver::handleCmdTune(bool rx, unsigned int arfcn, String& cmd, String* rspParam)
+int Transceiver::handleCmdTune(bool rx, unsigned int arfcn, String& cmd, String* rspParam,
+    unsigned int& rCode)
 {
     int code = CmdEFailure;
     while (true) {
@@ -2094,13 +2117,23 @@ int Transceiver::handleCmdTune(bool rx, unsigned int arfcn, String& cmd, String*
 	    TRX_SET_ERROR_BREAK(CmdEInvalidARFCN);
 	if (!cmd)
 	    TRX_SET_ERROR_BREAK(CmdEInvalidParam);
-	int freq = cmd.toInteger();
+	uint64_t freq = cmd.toInteger();
 	// Frequency is given in KHz, radio expects it in Hz
 	freq *= 1000;
 	// Adjust frequency (we are using multiple ARFCNs)
 	freq += 600000;
-	unsigned int code = rx ? m_radio->setRxFreq(freq) : m_radio->setTxFreq(freq);
-	if (!radioCodeOk(code))
+	rCode = rx ? m_radio->setRxFreq(freq) : m_radio->setTxFreq(freq);
+	if (0 != (rCode & RadioInterface::NotExact) && m_freqNotExact) {
+	    uint64_t f = 0;
+	    if (rx)
+		m_radio->getRxFreq(f);
+	    else
+		m_radio->getTxFreq(f);
+	    int64_t delta = f ? (f - freq) : 0;
+	    if (delta && delta >= -(int)m_freqNotExact && delta <= (int)m_freqNotExact)
+		rCode &= ~RadioInterface::NotExact;
+	}
+	if (!radioCodeOk(rCode))
 	    break;
 	double& f = rx ? m_rxFreq : m_txFreq;
 	f = freq;
@@ -2169,11 +2202,13 @@ int Transceiver::handleCmdFreqCorr(String& cmd, String* rspParam)
 	    TRX_SET_ERROR_BREAK(CmdEInvalidState);
 	if (!cmd)
 	    TRX_SET_ERROR_BREAK(CmdEInvalidParam);
-	int newVal = 0;
-	unsigned int code = m_radio->setFreqOffset(cmd.toInteger(),&newVal);
+	float newVal = 0;
+	unsigned int code = m_radio->setFreqOffset(cmd.toDouble(),&newVal);
 	if (!radioCodeOk(code))
 	    break;
-	*rspParam = newVal;
+	// Upper layer expects integer value
+	if (rspParam)
+	    *rspParam = (int)newVal;
 	return 0;
     }
     if (rspParam)
@@ -2517,16 +2552,16 @@ static void adjustParam(TransceiverObj* obj, NamedList& p, const String& param,
 }
 
 // Initialize the transceiver. This method should be called after construction
-bool TransceiverQMF::init(RadioInterface* radio, const NamedList& params)
+bool TransceiverQMF::init(RadioInterface* radio, const NamedList& params, unsigned int& code)
 {
     if (m_state != Invalid)
-	return Transceiver::init(radio,params);
+	return Transceiver::init(radio,params,code);
     // First init: adjust ARFCNs and oversampling
     NamedList p(params);
     adjustParam(this,p,YSTRING("oversampling"),8);
     adjustParam(this,p,YSTRING("arfcns"),4);
     p.addParam("conf_arfcns",params.getValue(YSTRING("arfcns"),"1"));
-    return Transceiver::init(radio,p);
+    return Transceiver::init(radio,p,code);
 }
 
 // Re-Initialize the transceiver

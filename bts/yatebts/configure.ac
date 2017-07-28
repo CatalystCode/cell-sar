@@ -8,7 +8,7 @@ if echo "$ac_confdir/$ac_pwd" | grep -q '[[[:space:]\\\$\"'\'']]'; then
     AC_ERROR([Unsupported character(s) in source or current directory name])
 fi
 
-PACKAGE_RELEASE="1"
+PACKAGE_RELEASE="2"
 PACKAGE_STATUS="devel"
 
 PACKAGE_REVISION=`svn info 2>/dev/null | sed -n 's,^Revision: *,,p'`
@@ -128,6 +128,10 @@ if [[ "1$yver" -lt "1$yreq" ]]; then
     AC_ERROR([Requires at least Yate version $YATE_REQ])
 fi
 fi
+AC_ARG_WITH(conf,AC_HELP_STRING([--with-conf=DIR],[use Yate with config DIR]),[ac_cv_use_conf=$withval],[ac_cv_use_conf=])
+if [[ "x$ac_cv_use_conf" != "x" ]]; then
+    YATE_CFG="$ac_cv_use_conf"
+fi
 AC_SUBST(YATE_REQ)
 AC_SUBST(YATE_VER)
 AC_SUBST(YATE_DEF)
@@ -221,9 +225,9 @@ AC_CONFIG_FILES([yate-bts.spec
                  mbts/apps/Makefile:mbts/Makefile.head.in:mbts/apps/Makefile.in:mbts/Makefile.tail.in
                  transceiver/Makefile
                  roaming/Makefile
+		 scripts/Makefile
                  nib/Makefile
-                 nib/auth/Makefile
-                 sar/Makefile])
+                 nib/auth/Makefile])
 CONFIGURE_FILES=`echo "$ac_config_files config.h config.status config.log" | sed 's/yate-[[^ ]]*\.spec *//; s/:[[^ ]]\+//g'`
 AC_SUBST(CONFIGURE_FILES)
 AC_OUTPUT

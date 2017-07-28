@@ -5,4 +5,4 @@ INCLUDES := $(ALL_INCLUDES)
 INCFILES := ../../config.h ControlCommon.h RadioResource.h
 
 LIBS := libControl.a
-OBJS := ControlCommon.o DCCHDispatch.o RadioResource.o SMSCB.o 
+OBJS := ControlCommon.o DCCHDispatch.o RadioResource.o SMSCB.o

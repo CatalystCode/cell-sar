@@ -45,9 +45,17 @@ static const TokenDict dict_payloads[] = {
     {"g729",   IAXFormat::G729},
     {"adpcm",  IAXFormat::ADPCM},
     {"g726",   IAXFormat::G726},
+    {"g726aal2", IAXFormat::G726AAL2},
     {"slin",   IAXFormat::SLIN},
     {"g722",   IAXFormat::G722},
     {"amr",    IAXFormat::AMR},
+    // video payloads
+    {"jpeg",   IAXFormat::JPEG},
+    {"png",    IAXFormat::PNG},
+    {"h261",   IAXFormat::H261},
+    {"h263",   IAXFormat::H263},
+    {"h263p",  IAXFormat::H263p},
+    {"h264",   IAXFormat::H264},
     {"gsmhr",  IAXFormat::GSM_HR},
     {0, 0}
 };

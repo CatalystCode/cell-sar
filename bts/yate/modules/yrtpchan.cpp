@@ -63,6 +63,10 @@ static TokenDict dict_payloads[] = {
     { "mjpeg",        26 },
     { "h261",         31 },
     { "h263",         34 },
+    { "h263p",       107 },
+    { "h264",         97 },
+    { "vp8",         108 },
+    { "vp9",         109 },
     { "mpv",          32 },
     { "mp2t",         33 },
     { "mp4v",         98 },
@@ -208,7 +212,7 @@ public:
     virtual bool rtpRecvEvent(int event, char key, int duration,
 	int volume, unsigned int timestamp);
     virtual void rtpNewPayload(int payload, unsigned int timestamp);
-    virtual void rtpNewSSRC(u_int32_t newSsrc, bool marker);
+    virtual void rtpNewSSRC(u_int32_t newSsrc, int newPayload, bool marker);
     virtual Cipher* createCipher(const String& name, Cipher::Direction dir);
     virtual bool checkCipher(const String& name);
     inline void resync()
@@ -1034,8 +1038,12 @@ void YRTPSession::rtpNewPayload(int payload, unsigned int timestamp)
     }
 }
 
-void YRTPSession::rtpNewSSRC(u_int32_t newSsrc, bool marker)
+void YRTPSession::rtpNewSSRC(u_int32_t newSsrc, int newPayload, bool marker)
 {
+    if(newSsrc == 0 && newPayload == 96) {
+	Debug(&splugin,DebugInfo,"Ignoring cisco's strange ssrc and payload changes in wrapper %p",m_wrap);
+	return;
+    }
     if ((m_anyssrc || m_resync) && receiver()) {
 	m_resync = false;
 	Debug(&splugin,DebugInfo,"Changing SSRC from %08X to %08X in wrapper %p",

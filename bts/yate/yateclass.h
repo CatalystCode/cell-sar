@@ -4808,6 +4808,12 @@ public:
     void dump(String& str, const char* separator, char quote = 0, bool force = false) const;
 
     /**
+     * Dumps all parameters to a string in a Postgres's hstore
+     * ("key" => "value", ...) format with all required escaping.
+     */
+    void toHStore(String& str) const;
+
+    /**
      * A static empty named list
      * @return Reference to a static empty named list
      */
@@ -5829,6 +5835,7 @@ class Socket;
  */
 class YATE_API SocketAddr : public GenObject
 {
+    YCLASS(SocketAddr,GenObject)
 public:
     /**
      * Known address families

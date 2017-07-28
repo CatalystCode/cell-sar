@@ -11,6 +11,7 @@ PACKAGE_RELEASE="1"
 PACKAGE_STATUS="devel"
 PACKAGE_REVISION=`svn info 2>/dev/null | sed -n 's,^Revision: *,,p'`
 test -z "$PACKAGE_REVISION" && PACKAGE_REVISION=`cat "$srcdir/packing/revision.txt" 2>/dev/null`
+AC_ARG_WITH(status,AC_HELP_STRING([--with-status=NAME],[use NAME as package status]),[PACKAGE_STATUS=$withval])
 
 PACKAGE_VERSION_MAJOR="${PACKAGE_VERSION%%.*}"
 PACKAGE_VERSION_MINOR="${PACKAGE_VERSION#*.}"
@@ -33,15 +34,18 @@ AC_MSG_RESULT([$uname_os])
 
 # Check if we should look for alternate library names
 AC_ARG_WITH(archlib,AC_HELP_STRING([--with-archlib=NAME],[use NAME as library directory name]),[ac_cv_use_archlib=$withval])
+AC_ARG_WITH(archinc,AC_HELP_STRING([--with-archinc=NAME],[use NAME as include directory name]),[ac_cv_use_archinc=$withval])
 AC_MSG_CHECKING([for libraries directory name])
 archname=`dpkg-architecture -qDEB_HOST_MULTIARCH 2>/dev/null`
 test -z "$archname" && archname=`uname -m 2>/dev/null`
 test -z "$archname" && archname=`arch -k 2>/dev/null`
 test -z "$archname" && archname=`arch 2>/dev/null`
 ARCHLIB="lib"
+ARCHINC="include"
 case "x$archname" in
     x*-*-*)
 	ARCHLIB="lib/$archname"
+	ARCHINC="include/$archname"
 	;;
     x*x86_64*|xppc64*|xaarch64)
 	ARCHLIB=lib64
@@ -59,6 +63,20 @@ esac
 test -d "/usr/$ARCHLIB" || ARCHLIB="lib"
 AC_MSG_RESULT([$ARCHLIB])
 AC_SUBST(ARCHLIB)
+AC_MSG_CHECKING([for include directory name])
+case "x$ac_cv_use_archinc" in
+    x|xyes)
+	;;
+    xno)
+	ARCHINC="inc"
+	;;
+    *)
+	ARCHINC="$ac_cv_use_archinc"
+esac
+test -d "/usr/$ARCHINC" || ARCHINC="inc"
+AC_MSG_RESULT([$ARCHINC])
+AC_SUBST(ARCHINC)
+
 
 # Checks for programs.
 AC_PROG_CXX
@@ -1131,7 +1149,7 @@ if [[ "x$ac_cv_use_spandsp" = "xstatic" ]]; then
     SPANDSP_LIB="-Wl,-Bstatic $SPANDSP_LIB -ltiff -lz -ljpeg -Wl,-Bdynamic"
 fi
 if [[ "x$ac_cv_use_spandsp" = "xyes" ]]; then
-for i in /usr/include /usr/local/include; do
+for i in /usr/include /usr/local/include "/usr/$ARCHINC"; do
     ac_cv_use_spandsp="$i"
     test -f "$ac_cv_use_spandsp/spandsp.h" && break
 done
@@ -1774,8 +1792,7 @@ AC_CONFIG_FILES([packing/rpm/yate.spec
                  share/sounds/Makefile
                  share/help/Makefile
                  share/data/Makefile
-                 conf.d/Makefile
-                 tools/Makefile])
+                 conf.d/Makefile])
 AC_CONFIG_FILES([yate-config],[chmod +x yate-config])
 AC_CONFIG_FILES([run],[chmod +x run])
 CONFIGURE_FILES=`echo "$ac_config_files config.status config.log" | sed 's,packing/[[^ ]]* *,,g'`

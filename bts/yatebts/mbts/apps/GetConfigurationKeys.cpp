@@ -139,16 +139,13 @@ ConfigurationKeyMap getConfigurationKeys()
 	map[tmp->getName()] = *tmp;
 	delete tmp;
 
-	tmp = new ConfigurationKey("Control.SMSCB.Table","",
+	tmp = new ConfigurationKey("Control.SMSCB","no",
 		"",
-		ConfigurationKey::CUSTOMERWARN,
-		ConfigurationKey::FILEPATH_OPT,// audited
+		ConfigurationKey::CUSTOMER,
+		ConfigurationKey::BOOLEAN,
 		"",
 		true,
-		"File path for SMSCB scheduling database.  "
-			"By default, this feature is disabled.  "
-			"To enable, specify a file path for the database e.g. /var/run/SMSCB.db.  "
-			"To disable again, execute \"unconfig Control.SMSCB.Table\"."
+		"Configure a Cell Broadcast channel instead of SDCCH/4-2."
 	);
 	map[tmp->getName()] = *tmp;
 	delete tmp;
@@ -985,6 +982,17 @@ ConfigurationKeyMap getConfigurationKeys()
 	);
 	map[tmp->getName()] = *tmp;
 	delete tmp;
+        
+	tmp = new ConfigurationKey("GPRS.CellOptions.AdvertiseEDGE","no",
+		"",
+		ConfigurationKey::CUSTOMERTUNE,
+		ConfigurationKey::BOOLEAN,
+		"",
+		true,
+		"Announce EDGE service in SI13."
+	);
+	map[tmp->getName()] = *tmp;
+	delete tmp;
 
 	tmp = new ConfigurationKey("GPRS.Uplink.Persist","4000",
 		"milliseconds",
@@ -1776,17 +1784,6 @@ ConfigurationKeyMap getConfigurationKeys()
 		false,
 		"Also known as T3314, 3GPP 24.008 4.7.2.1.  "
 			"Inactivity period required before MS may perform another routing area or cell update, in seconds."
-	);
-	map[tmp->getName()] = *tmp;
-	delete tmp;
-
-	tmp = new ConfigurationKey("TRX.IP","127.0.0.1",
-		"",
-		ConfigurationKey::CUSTOMERWARN,
-		ConfigurationKey::IPADDRESS,
-		"",
-		true,
-		"IP address of the transceiver application."
 	);
 	map[tmp->getName()] = *tmp;
 	delete tmp;

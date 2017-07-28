@@ -30,8 +30,10 @@
 #include <GSML3RRMessages.h>
 #include <GSMTransfer.h>
 #include <GSMConfig.h>
+#include <ControlCommon.h>
 #include <NeighborTable.h>
 #include <SgsnConn.h>
+#include <limits.h>
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
@@ -60,6 +62,25 @@ static std::string getPrefixed(const char* tag, const char* buf)
 	}
     }
     return str;
+}
+
+// Utility function to convert text to integer
+static int toInteger(const char* str, int defVal = -1)
+{
+    if (str) {
+	char* eptr = 0;
+	long val = ::strtol(str,&eptr,0);
+	if (eptr && !*eptr && (val < INT_MAX) && (val > INT_MIN))
+	    return val;
+    }
+    return defVal;
+}
+
+// Utility function to extract prefixed integer
+static int getInteger(const char* tag, const char* buf, int defVal = -1)
+{
+    std::string tmp = getPrefixed(tag,buf);
+    return tmp.empty() ? defVal : toInteger(tmp.c_str());
 }
 
 static void processPaging(L3MobileIdentity& ident, uint8_t type)
@@ -103,6 +124,17 @@ static void processPaging(const char* data, uint8_t type)
 	LOG(ERR) << "received unknown Paging identity " << ident;
 }
 
+static void writeBroadcast(const char* data)
+{
+    Control::SMSCBwrite(getInteger("id=",data),getInteger("code=",data),
+	getInteger("gs=",data,0),getInteger("dcs=",data),getPrefixed("data=",data));
+}
+
+static void killBroadcast(const char* data)
+{
+    Control::SMSCBkill(getInteger("id=",data),getInteger("code=",data));
+}
+
 static void processHandover(SigConnection* conn, unsigned char info)
 {
     if (!gBTS.hold()) {
@@ -143,11 +175,18 @@ static void processHandover(SigConnection* conn, unsigned char info)
 }
 
 
-bool SigConnection::send(BtsPrimitive prim, unsigned char info)
+bool SigConnection::send(BtsPrimitive prim, unsigned char info, const void* data, size_t len)
 {
     assert((prim & 0x80) != 0);
     if (!valid())
 	return false;
+    if (data && len) {
+	unsigned char buf[len + 2];
+	buf[0] = (unsigned char)prim;
+	buf[1] = info;
+	::memcpy(buf + 2,data,len);
+	return send(buf,len + 2);
+    }
     unsigned char buf[2];
     buf[0] = (unsigned char)prim;
     buf[1] = info;
@@ -236,6 +275,18 @@ void SigConnection::process(BtsPrimitive prim, unsigned char info, const unsigne
 	case SigNeighborsList:
 	    if (!gNeighborTable.setNeighbors((const char*)data))
 		LOG(ERR) << "received invalid Neighbors List of length " << len;
+	    break;
+	case SigBroadcastWrite:
+	    if (len >= 25)
+		writeBroadcast((const char*)data);
+	    else
+		LOG(ERR) << "received short Broadcast Write of length " << len;
+	    break;
+	case SigBroadcastKill:
+	    if (len >= 4)
+		killBroadcast((const char*)data);
+	    else
+		LOG(ERR) << "received short Broadcast Kill of length " << len;
 	    break;
 	default:
 	    LOG(ERR) << "unexpected primitive " << prim << " with data";

@@ -19,7 +19,8 @@
 
 */
 
-#include <yatengine.h>
+
+
 
 #include "ControlCommon.h"
 #include "RadioResource.h"
@@ -36,10 +37,7 @@
 #include <Globals.h>
 #include <Timeval.h>
 
-#include <fstream>
 #include <stdio.h>
-#include <sstream>
-#include <string>
 
 using namespace std;
 using namespace GSM;
@@ -53,11 +51,11 @@ using namespace Connection;
 static void sendPhyInfo(LogicalChannel* chan, unsigned int id)
 {
 	char buf[128];
-	int len = snprintf(buf, sizeof(buf), 
-      "TA=%d TE=%0.3f UpRSSI=%0.0f TxPwr=%d DnRSSIdBm=%d time=%9.3lf",
-		chan->actualMSTiming(), chan->timingError(), chan->RSSI(), chan->actualMSPower(), 
-      chan->measurementResults().RXLEV_FULL_SERVING_CELL_dBm(), chan->timestamp());
-
+	int len = snprintf(buf, sizeof(buf), "TA=%d TE=%0.3f UpRSSI=%0.0f TxPwr=%d DnRSSIdBm=%d time=%9.3lf",
+		chan->actualMSTiming(), chan->timingError(),
+		chan->RSSI(), chan->actualMSPower(),
+		chan->measurementResults().RXLEV_FULL_SERVING_CELL_dBm(),
+		chan->timestamp());
 	if (len > 0)
 		gSigConn.send(Connection::SigPhysicalInfo,0,id,buf,len);
 }
@@ -129,8 +127,8 @@ static void connDispatchLoop(LogicalChannel* chan, unsigned int id)
 		}
 		if (!frame)
 			continue;
-		switch (frame->primitive()) { 
-         case ERROR:
+		switch (frame->primitive()) {
+			case ERROR:
 				LOG(NOTICE) << "error reading on connection " << id;
 				break;
 			case DATA:
@@ -215,7 +213,6 @@ static bool connDispatchEstablish(LogicalChannel* chan)
 {
 	if (!gSigConn.valid())
 		return false;
-
 	unsigned timeout_ms = chan->N200() * T200ms;
 	L3Frame* frame = chan->recv(timeout_ms,0); // What about different SAPI?
 	if (frame) {
@@ -226,7 +223,6 @@ static bool connDispatchEstablish(LogicalChannel* chan)
 			delete frame;
 			throw UnexpectedPrimitive();
 		}
-
 		if (frame->PD() == GSM::L3RadioResourcePD) {
 			switch (frame->MTI()) {
 				case L3RRMessage::AssignmentComplete:
@@ -251,11 +247,12 @@ static bool connDispatchEstablish(LogicalChannel* chan)
 	return true;
 }
 
+
+
 /** Example of a closed-loop, persistent-thread control function for the DCCH. */
 // (pat) DCCH is a TCHFACCHLogicalChannel or SDCCHLogicalChannel
 void Control::DCCHDispatcher(LogicalChannel *DCCH)
 {
-	
 	while (1) {
 		try {
 			// Wait for a transaction to start.
@@ -263,9 +260,8 @@ void Control::DCCHDispatcher(LogicalChannel *DCCH)
 			L3Frame *frame = DCCH->waitForEstablishOrHandover();
 			LOG(DEBUG) << *DCCH << " received " << *frame;
 			Primitive prim = frame->primitive();
-         delete frame;
+			delete frame;
 			LOG(DEBUG) << "received primtive " << prim;
-
 			switch (prim) {
 				case ESTABLISH: {
 					// Pull the first message and dispatch a new transaction.
@@ -287,7 +283,6 @@ void Control::DCCHDispatcher(LogicalChannel *DCCH)
 				// We should never come here.
 				default: assert(0);
 			}
-
 		}
 
 		// Catch the various error cases.

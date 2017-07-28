@@ -45,6 +45,8 @@ public:
 	Message* s = message("chan.startup",exeMsg);
 	if (outgoing)
 	    s->copyParams(exeMsg,"caller,callername,called,billid,callto,username");
+	else
+	    s->copyParams(exeMsg,exeMsg.getValue("copyparams"));
 	Engine::enqueue(s);
     };
     ~DumbChannel();
@@ -110,6 +112,11 @@ bool DumbDriver::msgExecute(Message& msg, String& dest)
     m.copyParam(msg,"maxcall");
     m.copyParam(msg,"timeout");
     m.copyParams(msg,msg.getValue("copyparams"));
+
+    if (msg.getBoolValue(YSTRING("add_billid"))) {
+    	Debug(this,DebugNote,"Call with 'add_billid' == true. Adding '%s' to call.route message.",c->billid().c_str());
+    	m.addParam("billid", c->billid());
+    }
 
     const String& callto = msg["direct"];
     if (callto || Engine::dispatch(m)) {

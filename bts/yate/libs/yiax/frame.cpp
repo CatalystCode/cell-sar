@@ -474,6 +474,7 @@ bool IAXIEList::createFromFrame(const IAXFullFrame* frame, bool incoming)
 	    case IAXInfoElement::CALLINGTNS:
 	    case IAXInfoElement::FIRMWAREVER:
 	    case IAXInfoElement::RR_DELAY:
+	    case IAXInfoElement::ENCRYPTION:
 		if (data[i] != 2) {
 		    i = 0xFFFF;
 		    break;
@@ -487,7 +488,6 @@ bool IAXIEList::createFromFrame(const IAXFullFrame* frame, bool incoming)
 	    case IAXInfoElement::CALLINGPRES:
 	    case IAXInfoElement::CALLINGTON:
 	    case IAXInfoElement::CAUSECODE:
-	    case IAXInfoElement::ENCRYPTION:
 		if (data[i] != 1) {
 		    i = 0xFFFF;
 		    break;

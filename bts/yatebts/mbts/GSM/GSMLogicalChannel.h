@@ -73,7 +73,6 @@ class LogicalChannel {
 	
 protected:	
 
-
 	/**@name Contained layer processors. */
 	//@{
 	L1FEC *mL1;			///< L1 forward error correction
@@ -101,10 +100,12 @@ public:
 		for (int i=0; i<4; i++) mL2[i]=NULL;
 	}
 
+
 	
 	/** The destructor doesn't do anything since logical channels should not be destroyed. */
 	virtual ~LogicalChannel() {};
 	
+
 	/**@name Accessors. */
 	//@{
 	SACCHLogicalChannel* SACCH() { return mSACCH; }
