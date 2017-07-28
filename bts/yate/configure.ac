@@ -1774,7 +1774,8 @@ AC_CONFIG_FILES([packing/rpm/yate.spec
                  share/sounds/Makefile
                  share/help/Makefile
                  share/data/Makefile
-                 conf.d/Makefile])
+                 conf.d/Makefile
+                 tools/Makefile])
 AC_CONFIG_FILES([yate-config],[chmod +x yate-config])
 AC_CONFIG_FILES([run],[chmod +x run])
 CONFIGURE_FILES=`echo "$ac_config_files config.status config.log" | sed 's,packing/[[^ ]]* *,,g'`

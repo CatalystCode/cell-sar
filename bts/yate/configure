@@ -7784,7 +7784,7 @@ fi
 
 
 
-ac_config_files="$ac_config_files packing/rpm/yate.spec packing/portage/yate.ebuild yate.pc yateversn.h yateiss.inc Makefile engine/Makefile modules/Makefile modules/test/Makefile clients/Makefile clients/qt4/Makefile libs/ilbc/Makefile libs/ysip/Makefile libs/yrtp/Makefile libs/ysdp/Makefile libs/yiax/Makefile libs/yjabber/Makefile libs/yscript/Makefile libs/ymgcp/Makefile libs/ysig/Makefile libs/ypbx/Makefile libs/ymodem/Makefile libs/yasn/Makefile libs/ysnmp/Makefile libs/miniwebrtc/Makefile libs/yradio/Makefile share/Makefile share/scripts/Makefile share/skins/Makefile share/sounds/Makefile share/help/Makefile share/data/Makefile conf.d/Makefile"
+ac_config_files="$ac_config_files packing/rpm/yate.spec packing/portage/yate.ebuild yate.pc yateversn.h yateiss.inc Makefile engine/Makefile modules/Makefile modules/test/Makefile clients/Makefile clients/qt4/Makefile libs/ilbc/Makefile libs/ysip/Makefile libs/yrtp/Makefile libs/ysdp/Makefile libs/yiax/Makefile libs/yjabber/Makefile libs/yscript/Makefile libs/ymgcp/Makefile libs/ysig/Makefile libs/ypbx/Makefile libs/ymodem/Makefile libs/yasn/Makefile libs/ysnmp/Makefile libs/miniwebrtc/Makefile libs/yradio/Makefile share/Makefile share/scripts/Makefile share/skins/Makefile share/sounds/Makefile share/help/Makefile share/data/Makefile conf.d/Makefile tools/Makefile"
 
 ac_config_files="$ac_config_files yate-config"
 
@@ -8532,6 +8532,7 @@ do
     "share/help/Makefile") CONFIG_FILES="$CONFIG_FILES share/help/Makefile" ;;
     "share/data/Makefile") CONFIG_FILES="$CONFIG_FILES share/data/Makefile" ;;
     "conf.d/Makefile") CONFIG_FILES="$CONFIG_FILES conf.d/Makefile" ;;
+    "tools/Makefile") CONFIG_FILES="$CONFIG_FILES tools/Makefile" ;;
     "yate-config") CONFIG_FILES="$CONFIG_FILES yate-config" ;;
     "run") CONFIG_FILES="$CONFIG_FILES run" ;;
 
