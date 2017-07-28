@@ -225,6 +225,7 @@ install-noconf: all
 	$(MAKE) -C ./modules install
 	$(MAKE) -C ./clients install
 	$(MAKE) -C ./share install
+	$(MAKE) -C ./tools install
 	@$(LDCONFIG)
 	@mkdir -p "$(DESTDIR)$(mandir)/man8/" && \
 	for i in $(MAN8) ; do \

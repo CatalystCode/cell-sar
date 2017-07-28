@@ -23,38 +23,20 @@
   * along with cell-sar.  If not, see <http://www.gnu.org/licenses/>.
   */
 
-#include <yatengine.h>
-#include <yatescript.h>
-
+#include <ctime>
 #include <fstream>
-#include <limits>
 #include <iostream>
+#include <limits>
 #include <sstream>
 #include <stdlib.h>
 #include <string>
-#include <ctime>
+
+#include <yatengine.h>
+#include <yatescript.h>
+
+#include "mqcommon.h"
 
 using namespace TelEngine;
-
-struct Phyinfo {
-
-   float TA;
-   float TE;
-   float UpRSSI;
-   float TxPwr;
-   float DnRSSIdBm;
-   float time;
-
-   Phyinfo();
-
-};
-
-struct SMS {
-   
-   std::string message;
-
-   SMS();
-};
 
 class SearchAndRescue : public JsObject {
    YCLASS(SearchAndRescue, JsObject)
@@ -73,17 +55,13 @@ public:
 
 protected:
 
-   bool runNative(ObjList &stack, const ExpOperation &oper, GenObject *context);
+   // bool runNative(ObjList &stack, const ExpOperation &oper, GenObject *context);
 
-   void write_packet(std::string imsi, std::string tmsi, std::string type, std::string data_json);
+   bool runFunction(ObjList &stack, const ExpOperation &oper, GenObject *context);
 
-   void write_phyinfo(ObjList &stack, const ExpOperation &oper, GenObject *context);
+   void write_to_ocp(ObjList &stack, const ExpOperation &oper, GenObject *context);
 
-   void write_sms(ObjList &stack, const ExpOperation &oper, GenObject *context);
-
-   std::string build_json(const Phyinfo info);
-
-   std::string build_json(const SMS sms);
+   void change_plmn(ObjList &stack, const ExpOperation &oper, GenObject *context);
 
 };
 
@@ -111,20 +89,6 @@ private:
 };
 
 /* ######################### IMPLEMENTATION ######################### */
-
-// --- Phyinfo ---
-
-Phyinfo::Phyinfo() : 
-      TA(std::numeric_limits<float>::min()),
-      TE(std::numeric_limits<float>::min()),
-      UpRSSI(std::numeric_limits<float>::min()), 
-      TxPwr(std::numeric_limits<float>::min()), 
-      DnRSSIdBm(std::numeric_limits<float>::min()), 
-      time(std::numeric_limits<float>::min()) { }
-
-// --- SMS ---
-
-SMS::SMS() : message("") { }
 
 // --- SearchAndRescue ---
 
@@ -167,139 +131,69 @@ void SearchAndRescue::initialize(ScriptContext *context) {
       Debug(DebugInfo, "A SearchAndRescue already exists, nothing to do");
 }
 
-bool SearchAndRescue::runNative(ObjList &stack, const ExpOperation &oper, GenObject *context) {
-   if (oper.name() == YSTRING("writePhyinfo")) {
-      this->write_phyinfo(stack, oper, context);
-   } else if (oper.name() == YSTRING("writeSms")) {
-      this->write_sms(stack, oper, context);
-   } else {
-      return JsObject::runNative(stack, oper, context);
-   }
+bool SearchAndRescue::runFunction(ObjList &stack, const ExpOperation &oper, GenObject *context) {
+   if (oper.name() == YSTRING("writeToOCP"))
+      this->write_to_ocp(stack, oper, context);
    return true;
 }
 
-void SearchAndRescue::write_packet(std::string imsi, std::string tmsi, std::string type, std::string data_json) {
-   std::ofstream file;
-   file.open(SearchAndRescue::OUT_FILE, std::ios_base::app);
-   // file.open(SearchAndRescue::OUT_FILE, std::ios_base::trunc);
-
-   long int timestamp = time(0); // now
-
-   file << "{\"IMSI\": \"" << imsi << "\", \"TMSI\": \"" << tmsi << "\", \"type\": \"" 
-      << type << "\", \"timestamp\": \"" << timestamp << "\", \"data\": " 
-      << data_json << "}" << std::endl;
-
-   file.close();
-}
-
-void SearchAndRescue::write_phyinfo(ObjList &stack, const ExpOperation &oper, GenObject *context) {
-
+void SearchAndRescue::write_to_ocp(ObjList &stack, const ExpOperation &oper, GenObject *context) {
    ObjList args;
    int argc = extractArgs(stack, oper, context, args);
-   Phyinfo phyinfo;
-   std::string imsi;
-   std::string tmsi;
    String tmp;
-   tmp << "SearchAndRescue: argc=" << argc;
+   tmp << "SearchAndRescue::write_to_ocp '";
+   std::string message;
+
+   // Evaluate
+   if (argc < 1) {
+      tmp << " ''";
+      ExpEvaluator::pushOne(stack, new ExpOperation(tmp));      
+   } else {
+      ExpOperation *msg = static_cast<ExpOperation*>(args[0]);
+      tmp << " '" << msg->c_str() << "'";
+      ExpEvaluator::pushOne(stack, new ExpOperation(tmp));
+      message = std::string(msg->c_str());
+   }
+
+   // write to the POSIX queue
+   MQCommon::push((message + "\n").c_str());
+
+   // write to the log file
+   std::ofstream sar_log;
+   sar_log.open(SearchAndRescue::OUT_FILE, std::ios_base::app);
+   sar_log << message.c_str() << std::endl;
+   sar_log.close();
+}
+
+void SearchAndRescue::change_plmn(ObjList &stack, const ExpOperation &oper, GenObject *context) {
+   std::string mcc = "";
+   std::string mnc = "";
+   
+   ObjList args;
+   int argc = extractArgs(stack, oper, context, args);
+   String tmp;
+   tmp << "SearchAndRescue: change_plmn ";
 
    for (int i = 0; i < argc; ++i) {
       ExpOperation *op = static_cast<ExpOperation*>(args[i]);
-      if (!op || !op->c_str()) continue;
-
-      tmp << " '" << *op << "'";
 
       switch (i) {
       case 0:
-         imsi = std::string(op->c_str());
+         mcc = std::string(op->c_str());
+         tmp << "MCC='" << *op << "' ";
          break;
       case 1:
-         tmsi = std::string(op->c_str());
-         break;
-      case 2:
-         phyinfo.TA = atof(op->c_str());
-         break;
-      case 3:
-         phyinfo.TE = atof(op->c_str());
-         break;
-      case 4:
-         phyinfo.UpRSSI = atof(op->c_str());
-         break;
-      case 5:
-         phyinfo.TxPwr = atof(op->c_str());
-         break;
-      case 6:
-         phyinfo.DnRSSIdBm = atof(op->c_str());
-         break;
-      case 7:
-         phyinfo.time = atof(op->c_str());
+         mnc = std::string(op->c_str());
+         tmp << "MNC='" << *op << "' ";
          break;
       }
    }
 
    ExpEvaluator::pushOne(stack, new ExpOperation(tmp));
 
-   this->write_packet(imsi, tmsi, std::string("phy"), this->build_json(phyinfo));
-}
-
-void SearchAndRescue::write_sms(ObjList &stack, const ExpOperation &oper, GenObject *context) {
-
-   ObjList args;
-   int argc = extractArgs(stack, oper, context, args);
-   SMS sms;
-   std::string imsi;
-   std::string tmsi;
-   String tmp;
-   tmp << "SearchAndRescue: argc=" << argc;
-
-   for (int i = 0; i < argc; ++i) {
-      ExpOperation *op = static_cast<ExpOperation*>(args[i]);
-      tmp << " '" << *op << "'";
-
-      switch (i) {
-      case 0:
-         imsi = std::string(op->c_str());
-         break;
-      case 1:
-         tmsi = std::string(op->c_str());
-         break;
-      case 2:
-         sms.message = std::string(op->c_str());
-         break;
-      }
-   }
-
-   ExpEvaluator::pushOne(stack, new ExpOperation(tmp));
-
-   this->write_packet(imsi, tmsi, std::string("sms"), this->build_json(sms));
-}
-
-std::string SearchAndRescue::build_json(const Phyinfo info) {
-   std::stringstream result;
-
-   result << "{";
-
-   result << "\"TA\": " << info.TA << ", ";
-   result << "\"TE\": " << info.TE << ", ";
-   result << "\"UpRSSI\": " << info.UpRSSI << ", ";
-   result << "\"TxPwr\": " << info.TxPwr << ", ";
-   result << "\"DnRSSIdBm\": " << info.DnRSSIdBm << ", ";
-   result << "\"time\": " << info.time;
-
-   result << "}";
-
-   return result.str();
-}
-
-std::string SearchAndRescue::build_json(const SMS sms) {
-   std::stringstream result;
-
-   result << "{";
-
-   result << "\"message\": \"" << sms.message;
-
-   result << "\"}";
-
-   return result.str();
+   String chplmn;
+   chplmn << "chplmn.sh " << mcc.c_str() << " " << mnc.c_str() << " &";
+   system(chplmn.c_str());
 }
 
 // --- Handler ---

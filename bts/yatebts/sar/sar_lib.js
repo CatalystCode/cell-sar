@@ -64,6 +64,12 @@ function imsiPermitted(imsi) {
       || (!testing && !forbiddenImsis[imsi]);
 }
 
+function writeToOCP(obj) {
+   var objStr = JSON.stringify(obj);
+   Engine.debug(Engine.DebugInfo, "Writing to OCP: " + objStr);
+   sar.writeToOCP(objStr);
+}
+
 /* ############### SAR Initialization ############### */
 
 var nnsf_node_mask, nnsf_node_shift, nnsf_local_mask;
@@ -572,18 +578,19 @@ function onPhyinfo(msg) {
    }
 
    // call the searchandrescue C++ module
-   sar.writePhyinfo(subscriber['imsi'], subscriber['tmsi'], 
-      msg.TA, msg.TE, msg.UpRSSI, msg.TxPwr, msg.DnRSSIdBm, msg.time);
-
-   // update the subscriber's phyinfo
-   subscriber.lastPhyinfo = {
+   var phyinfo = {
+      'IMSI': subscriber.imsi,
+      'TMSI': subscriber.tmsi,
       'TA': msg.TA,
       'TE': msg.TE,
       'UpRSSI': msg.UpRSSI,
-      'TxPwr': msg.TxPwr,
       'DnRSSIdBm': msg.DnRSSIdBm,
       'time': msg.time
    };
+   writeToOCP(phyinfo);
+
+   // update the subscriber's phyinfo
+   subscriber.lastPhyinfo = phyinfo;
 
    if (onSignalReceived) 
       onSignalReceived(subscriber, msg.TA, msg.TE, msg.UpRSSI, msg.TxPwr, msg.DnRSSIdBm, msg.time);

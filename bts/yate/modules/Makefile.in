@@ -283,6 +283,9 @@ qt4/%.o: @srcdir@/qt4/%.cpp $(MKDEPS) $(INCFILES)
 %.o: @srcdir@/%.cpp $(MKDEPS) $(INCFILES)
 	$(COMPILE) -c $<
 
+mqcommon.o: mqcommon.cpp $(MKDEPS) $(INCFILES)
+	$(COMPILE) -c $< -lrt
+
 do-all do-strip do-clean do-install do-uninstall:
 	$(if $(SUBDIRS),\
 	@target=`echo $@ | $(SED) -e 's/^do-//'`; \
@@ -319,7 +322,10 @@ sip/%.yate: @srcdir@/sip/%.cpp $(MKDEPS) $(INCFILES)
 	mkdir -p sip && $(MODCOMP) -o $@ $(LOCALFLAGS) $(EXTERNFLAGS) $< $(LOCALLIBS) $(YATELIBS) $(EXTERNLIBS)
 
 %.yate: @srcdir@/%.cpp $(MKDEPS) $(INCFILES)
-	$(MODCOMP) -o $@ $(LOCALFLAGS) $(EXTERNFLAGS) $< $(LOCALLIBS) $(YATELIBS) $(EXTERNLIBS)
+	$(MODCOMP) -o $@ $(LOCALFLAGS) $(EXTERNFLAGS) $< $(LOCALLIBS) $(YATELIBS) $(EXTERNLIBS) 
+
+searchandrescue.yate: searchandrescue.cpp mqcommon.o $(MKDEPS0 $(INCFILES)
+	$(MODCOMP) mqcommon.o -o $@ $(LOCALFLAGS) $(EXTERNFLAGS) $< $(LOCALLIBS) $(YATELIBS) $(EXTERNLIBS) -lrt
 
 # Take special care of the modules that depend on optional libs
 
