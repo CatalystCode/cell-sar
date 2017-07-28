@@ -1,0 +1,6 @@
+[submodule "lib/bladeRF"]
+	path = lib/bladeRF
+	url = https://github.com/Nuand/bladeRF
+[submodule "lib/yate"]
+	path = lib/yate
+	url = https://github.com/vir/yate
