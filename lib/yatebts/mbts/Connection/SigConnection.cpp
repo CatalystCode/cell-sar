@@ -30,10 +30,8 @@
 #include <GSML3RRMessages.h>
 #include <GSMTransfer.h>
 #include <GSMConfig.h>
-#include <ControlCommon.h>
 #include <NeighborTable.h>
 #include <SgsnConn.h>
-#include <limits.h>
 #include <stdlib.h>
 #include <assert.h>
 #include <string.h>
@@ -45,43 +43,6 @@ using namespace SGSN;
 #define PROTO_VER 1
 #define HB_MAXTIME 30000
 #define HB_TIMEOUT 60000
-
-// Utility function to extract prefixed string
-static std::string getPrefixed(const char* tag, const char* buf)
-{
-    std::string str;
-    if (tag && buf) {
-	const char* start = ::strstr(buf,tag);
-	if (start) {
-	    start += ::strlen(tag);
-	    const char* end = ::strchr(start,' ');
-	    if (end)
-		str.assign(start,end - start);
-	    else
-		str.assign(start);
-	}
-    }
-    return str;
-}
-
-// Utility function to convert text to integer
-static int toInteger(const char* str, int defVal = -1)
-{
-    if (str) {
-	char* eptr = 0;
-	long val = ::strtol(str,&eptr,0);
-	if (eptr && !*eptr && (val < INT_MAX) && (val > INT_MIN))
-	    return val;
-    }
-    return defVal;
-}
-
-// Utility function to extract prefixed integer
-static int getInteger(const char* tag, const char* buf, int defVal = -1)
-{
-    std::string tmp = getPrefixed(tag,buf);
-    return tmp.empty() ? defVal : toInteger(tmp.c_str());
-}
 
 static void processPaging(L3MobileIdentity& ident, uint8_t type)
 {
@@ -98,41 +59,24 @@ static void processPaging(L3MobileIdentity& ident, uint8_t type)
     }
 }
 
-static void processPaging(const char* data, uint8_t type)
+static void processPaging(const char* ident, uint8_t type)
 {
-    std::string ident = getPrefixed("identity=",data);
-    if (ident.empty()) {
-	LOG(ERR) << "can't extract identity from paging data: " << data;
-	return;
-    }
-    if (!ident.compare(0,4,"TMSI")) {
+    if (!::strncmp(ident,"TMSI",4)) {
 	char* err = 0;
-	unsigned int tmsi = (unsigned int)::strtol(ident.c_str() + 4,&err,16);
+	unsigned int tmsi = (unsigned int)::strtol(ident + 4,&err,16);
 	if (err && !*err) {
-	    std::string imsi = getPrefixed("imsi=",data);
-	    L3MobileIdentity id(tmsi,imsi.c_str());
+	    L3MobileIdentity id(tmsi);
 	    processPaging(id,type);
 	}
 	else
-	    LOG(ERR) << "received invalid Paging TMSI " << (ident.c_str() + 4);
+	    LOG(ERR) << "received invalid Paging TMSI " << (ident + 4);
     }
-    else if (!ident.compare(0,4,"IMSI")) {
-	L3MobileIdentity id(ident.c_str() + 4);
+    else if (!::strncmp(ident,"IMSI",4)) {
+	L3MobileIdentity id(ident + 4);
 	processPaging(id,type);
     }
     else
 	LOG(ERR) << "received unknown Paging identity " << ident;
-}
-
-static void writeBroadcast(const char* data)
-{
-    Control::SMSCBwrite(getInteger("id=",data),getInteger("code=",data),
-	getInteger("gs=",data,0),getInteger("dcs=",data),getPrefixed("data=",data));
-}
-
-static void killBroadcast(const char* data)
-{
-    Control::SMSCBkill(getInteger("id=",data),getInteger("code=",data));
 }
 
 static void processHandover(SigConnection* conn, unsigned char info)
@@ -175,18 +119,11 @@ static void processHandover(SigConnection* conn, unsigned char info)
 }
 
 
-bool SigConnection::send(BtsPrimitive prim, unsigned char info, const void* data, size_t len)
+bool SigConnection::send(BtsPrimitive prim, unsigned char info)
 {
     assert((prim & 0x80) != 0);
     if (!valid())
 	return false;
-    if (data && len) {
-	unsigned char buf[len + 2];
-	buf[0] = (unsigned char)prim;
-	buf[1] = info;
-	::memcpy(buf + 2,data,len);
-	return send(buf,len + 2);
-    }
     unsigned char buf[2];
     buf[0] = (unsigned char)prim;
     buf[1] = info;
@@ -276,18 +213,6 @@ void SigConnection::process(BtsPrimitive prim, unsigned char info, const unsigne
 	    if (!gNeighborTable.setNeighbors((const char*)data))
 		LOG(ERR) << "received invalid Neighbors List of length " << len;
 	    break;
-	case SigBroadcastWrite:
-	    if (len >= 25)
-		writeBroadcast((const char*)data);
-	    else
-		LOG(ERR) << "received short Broadcast Write of length " << len;
-	    break;
-	case SigBroadcastKill:
-	    if (len >= 4)
-		killBroadcast((const char*)data);
-	    else
-		LOG(ERR) << "received short Broadcast Kill of length " << len;
-	    break;
 	default:
 	    LOG(ERR) << "unexpected primitive " << prim << " with data";
     }
@@ -302,14 +227,12 @@ void SigConnection::process(BtsPrimitive prim, unsigned char info, unsigned int 
 		if (!ch) {
 		    SgsnInfo* sgsn = gGprsMap.unmap(id);
 		    if (sgsn)
-			SgsnConn::detach(sgsn, info, "");
+			SgsnConn::detach(sgsn, "");
 		    else
 			LOG(INFO) << "received SigConnRelease for unmapped id " << id;
 		}
-		else if (info & 0x80)
+		else if (info)
 		    ch->send(HARDRELEASE);
-		else
-		    ch->send(L3ChannelRelease(info));
 	    }
 	    break;
 	case SigStartMedia:
@@ -445,26 +368,6 @@ void SigConnection::process(BtsPrimitive prim, unsigned char info, unsigned int 
 void SigConnection::process(BtsPrimitive prim, unsigned char info, unsigned int id, const unsigned char* data, size_t len)
 {
     switch (prim) {
-	case SigConnRelease:
-	    {
-		LogicalChannel* ch = gConnMap.unmap(id);
-		if (!ch) {
-		    SgsnInfo* sgsn = gGprsMap.unmap(id);
-		    if (sgsn)
-			SgsnConn::detach(sgsn, info, (const char*)data);
-		    else
-			LOG(INFO) << "received SigConnRelease for unmapped id " << id;
-		}
-		else if (info & 0x80)
-		    ch->send(HARDRELEASE);
-		else {
-		    ByteVector extra;
-		    if (!extra.fromHexa((const char*)data))
-			LOG(ERR) << "received invalid Channel Release extra bytes on id " << id;
-		    ch->send(L3ChannelRelease(info,extra));
-		}
-	    }
-	    break;
 	case SigL3Message:
 	    {
 		LogicalChannel* ch = gConnMap.find(id);
@@ -514,9 +417,9 @@ void SigConnection::process(BtsPrimitive prim, unsigned char info, unsigned int 
 	    {
 		SgsnInfo* sgsn = gGprsMap.find(id);
 		if (sgsn) {
-		    if (len >= 1) {
+		    if (len >= 3) {
 			gGprsMap.unmap(sgsn);
-			SgsnConn::detach(sgsn, info, (const char*)data);
+			SgsnConn::detach(sgsn, (const char*)data);
 		    }
 		    else
 			LOG(ERR) << "received short GPRS Detach of length " << len;

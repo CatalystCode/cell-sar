@@ -161,7 +161,6 @@ struct SignalQuality {
 	GprsTimer mTimerTA;
 	void setRadData(RadData &rd);
 	void setRadData(float wRSSI,float wTimingError);
-	void initRadData(float wRSSI,float wTimingError);
 	inline int msGetAlpha(bool transmit = true)
 		 { return transmit ? (mLastAlpha = GetPowerAlpha(),mLastAlpha) : mLastAlpha; }
 	inline int msGetGamma(bool transmit = true)
@@ -546,16 +545,10 @@ class MSInfo : public SGSN::MSUEAdapter, public SignalQuality, public MSStat
 	// This queue is not between separate threads for BSSG,
 	// and it is no longer for the internal sgsn either.
 	//InterthreadQueue<BSSG::BSSGMsgDLUnitData> msDownlinkQueue;
-	InterthreadQueue2<SGSN::GprsSgsnDownlinkPdu,SortedSingleLinkList<SGSN::GprsSgsnDownlinkPdu> > msDownlinkQueue;
+	InterthreadQueue2<SGSN::GprsSgsnDownlinkPdu,SingleLinkList<> > msDownlinkQueue;
 	Statistic<unsigned> msDownlinkQStat;
 	Statistic<double> msDownlinkQDelay;
 	Timeval msDownlinkQOldest;			// The timeval from the last guy in the queue.
-
-
-	// Queue for control messages generated from other threads (messages like paging)
-	InterthreadQueue2<RLCDownlinkMessage> msDownlinkCtrlQueue;
-	bool processCtrlQueue(TBF* tbf, PDCHL1Downlink* down);
-	void page(const ByteVector& imsi, uint32_t tmsi, GSM::ChannelType chanType, bool pageForRR = true);
 
 	// Can this TBF use the specified uplink?
 	bool canUseUplink(PDCHL1Uplink*up) {

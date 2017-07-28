@@ -58,7 +58,7 @@ function create_form_ybts_section($section, $subsection, $fields_sect_err=false,
 		}
 	}
 
-	print "<div id=\"err_$subsection\">";
+	print "<div id=\"err_$subsection\">";	
 	error_handle($error, $fields[$section][$subsection],$error_fields);
 	print "</div>";
 	start_form();
@@ -150,7 +150,6 @@ function create_fields_from_conffile($fields_from_file,$exists_in_file = false)
 		}
 	}
 
-	$network_map = "";
 	foreach($structure as $section => $data) {
 		foreach($data as $key => $subsection) {
 			if (isset($fields_from_file[$subsection])) {
@@ -159,17 +158,9 @@ function create_fields_from_conffile($fields_from_file,$exists_in_file = false)
 						continue;
 					if (!isset($fields[$section][$subsection]))
 						continue;
-					if ($subsection=="gprs_roaming" && substr($param,0,2)=="__") {
-						if (strlen($network_map))
-							$network_map .= "\n";
-						$network_map .= substr($param,2)."=$data";
-						continue;
-					}
-					if ($subsection=="gprs_roaming" && $param=="nnsf_bits")
-						$param = "gprs_nnsf_bits";
 					if (!isset($fields[$section][$subsection][$param])) 
 						continue;
-
+					
 					if ($fields[$section][$subsection][$param]["display"] == "select") 
 						$fields[$section][$subsection][$param][0]["selected"] = $data;
 					elseif ($fields[$section][$subsection][$param]["display"] == "checkbox") 
@@ -180,8 +171,6 @@ function create_fields_from_conffile($fields_from_file,$exists_in_file = false)
 			}
 		}
 	}
-	if (strlen($network_map)) 
-		$fields["YBTS"]["gprs_roaming"]["network_map"]["value"] = $network_map;
 
 	if (isset($fields['GSM']['gsm']['Radio.Band'][0]["selected"])) {
 		$particle = $fields['GSM']['gsm']['Radio.Band'][0]["selected"];
@@ -197,7 +186,7 @@ function create_fields_from_conffile($fields_from_file,$exists_in_file = false)
 function validate_fields_ybts($section, $subsection)
 {
         // this array contains the name of the params that can be empty in configuration file (ybts.conf)
-	$allow_empty_params = array("Args", "DNS", "ShellScript", "MS.IP.Route", "Logfile.Name", "peer_arg", "RadioFrequencyOffset", "TxAttenOffset", "Radio.RxGain", "my_sip", "reg_sip", "nodes_sip", "gstn_location", "neighbors", "gprs_nnsf_bits", "nnsf_dns", "network_map", "local_breakout" );
+	$allow_empty_params = array("Args", "DNS", "ShellScript", "MS.IP.Route", "Logfile.Name", "peer_arg", "RadioFrequencyOffset", "TxAttenOffset", "Radio.RxGain" );
 	
 	$fields = get_default_fields_ybts();
 	$new_fields = array();
@@ -214,11 +203,10 @@ function validate_fields_ybts($section, $subsection)
 		$field_param = getparam($paramname);
 		if (isset($data["display"]) && $data["display"] == "checkbox" && $field_param == NULL) 
 			$field_param = "off";
-		$field_param = htmlspecialchars_decode($field_param);
 
 		if (!valid_param($field_param)) {
 			if (!in_array($param_name, $allow_empty_params))
-				$error_field[] = array("Field $param_name can't be empty.", $param_name);
+				$error_field[] = array("This field $param_name can't be empty.", $param_name);
 		}
 
 		$res = array(true);
@@ -243,30 +231,6 @@ function validate_fields_ybts($section, $subsection)
 			$new_fields[$section][$subsection][$param_name]["value"] = $field_param;
 	}
 
-	// validate roaming mode params if roaming mode is activated
-	if (getparam("mode")=="roaming" && $subsection=="roaming") {
-		$res = validate_roaming_params();
-		if (!$res[0])
-			$error_field[] = array($res[1], $param_name);
-		elseif ($res[0] && isset($res[1]))
-			$warning_field[] = array($res[1], $param_name);
-	}
-
-	if (getparam("mode")=="dataroam" && $subsection=="gprs_roaming") {
-		$res = validate_dataroam_params();
-		if (!$res[0])
-			$error_field[] = array($res[1], $param_name);
-		elseif ($res[0] && isset($res[1]))
-			$warning_field[] = array($res[1], $param_name);
-	}
-	if (getparam("mode")=="dataroam" && $subsection=="roaming") {
-		$res = validate_piece_roaming();
-		if (!$res[0])
-			$error_field[] = array($res[1], $param_name);
-		elseif ($res[0] && isset($res[1]))
-			$warning_field[] = array($res[1], $param_name);
-	}
-
 	$warning = "";
 	$warning_fields = array();
 	foreach ($warning_field as $key => $err) {
@@ -287,66 +251,6 @@ function validate_fields_ybts($section, $subsection)
 	}
 
 	return array(false,"fields"=>$new_fields,"error"=>$error,"error_fields"=>$error_fields,"warning"=>$warning, "warning_fields"=>$warning_fields);
-}
-
-function validate_roaming_params()
-{
-	$required = array("nnsf_bits", "gstn_location");
-
-	foreach ($required as $field_name)
-		if (!getparam($field_name))
-			return array(false, "Field $field_name is required in roaming mode.", array($field_name));
-
-	$reg_sip = getparam("reg_sip");
-	$nodes_sip = getparam("nodes_sip");
-	if (!$reg_sip && !$nodes_sip)
-		return array(false, "You need to set 'Reg sip' or 'Nodes sip' in roaming mode.", array("reg_sip", "nodes_sip"));
-
-	$nnsf_bits = getparam("nnsf_bits");
-	$expires = getparam("expires");
-	if (valid_param($expires) && !is_valid_number($expires))
-		return array(false, "Field 'Expires' field should be numeric.", array("expires"));
-	if (valid_param($nnsf_bits) && (!is_valid_number($nnsf_bits) || $nnsf_bits<0))
-		return array(false, "Field 'NNSF bits' should be a positive int.", array("nnsf_bits"));
-
-	return array(true);
-}
-
-function validate_piece_roaming()
-{
-	// verify fields from roaming as well, if set
-	$nnsf_bits = getparam("nnsf_bits");
-	$expires = getparam("expires");
-	if (valid_param($expires) && !is_valid_number($expires))
-		return array(false, "Field 'Expires' field should be numeric.", array("expires"));
-	if (valid_param($nnsf_bits) && (!is_valid_number($nnsf_bits) || $nnsf_bits<0))
-		return array(false, "Field 'NNSF bits' should be a positive int.", array("nnsf_bits"));
-
-
-	return array(true);
-}
-
-function validate_dataroam_params()
-{
-	$nnsf_bits = getparam("gprs_nnsf_bits");
-	if (valid_param($nnsf_bits) && (!is_valid_number($nnsf_bits) || $nnsf_bits<0))
-		return array(false, "NNSF bits must be a positive int, if set.", array("gprs_nnsf_bits"));
-
-	$map = getparam("network_map");
-	if (!strlen($map))
-		return array(true);
-	$map = explode("\n", $map);
-	foreach ($map as $map_entry) {
-		$entry = explode("=",$map_entry);
-		if (count($entry)!=2)
-			return array(false, "Invalid format for 'Network map'.", array("network_map"));
-		if (Numerify($entry[0])=="NULL")
-			return array(false, "Invalid value '".$entry[0]."'. Should be numeric.", array("network_map"));
-		if (filter_var(trim($entry[1]),FILTER_VALIDATE_IP)===false)
-			return array(false, "Invalid value '".$entry[1]."'. Should be a valid IP address.", array("network_map"));
-	}
-
-	return array(true);
 }
 
 /* Makes the callback for the function set in "validity" field from array $fields (from ybts_fields.php).  
@@ -391,28 +295,6 @@ function call_function_from_validity_field($validity, $param_name, $field_param)
 	return $res;
 }
 
-
-function get_package_marker($structure, $start_marker)
-{
-	// retrieve existing commencts for mode param in ybts section
-	$old_comments = array();
-	foreach ($structure["ybts"] as $ind=>$ind_value) {
-		if (is_numeric($ind))
-			$old_comments[] = $ind_value;
-		elseif ($ind!="mode")
-			$old_comments = array();
-		else
-			break;
-	}
-
-	// see if we have package_marker between them
-	foreach ($old_comments as $ind=>$ind_value)
-		if (substr($ind_value,0,strlen($start_marker))==$start_marker)
-			return $ind_value;
-
-	return null;
-}
-
 /*
  * This function will write the new values of the parameters for each SECTION 
  * the comments are written one time when the section is created (they are not overwritten every time the section is updated)
@@ -424,7 +306,7 @@ function write_params_conf($fields)
 	$c0 = $fields[0]['GSM']['gsm']['Radio.C0'][0]['selected'];
 	$c0 = explode("-",$c0);
 	$c0 = $c0[1];
-	$fields[0]['GSM']['gsm']['Radio.C0'][0]['selected'] = $c0;
+	$fields[0]['GSM']['gsm']['Radio.C0'][0]['selected'] = $c0;	
 
 	$structure = get_fields_structure_from_menu(); 
 
@@ -433,44 +315,18 @@ function write_params_conf($fields)
 	// old structure
 	$structure = $ybts->structure;
 	$ybts = new ConfFile($filename,false,true,"\n\n");
-
-	$dont_copy = array();
-	$start_marker = "; Installed by yate-bts-";
-	$found_marker = false;
-	$package_marker = null;
-
+	
 	foreach ($fields as $key => $arr) {
 		foreach($arr as $section => $params) {
-			$i=0;
+				$i=0;
 			foreach ($params as $subsection => $data1) {
-				$dont_copy[$subsection] = array();
 				foreach ($data1 as $param => $data) {
-
-					if ($subsection=="gprs_roaming" && $param=="gprs_nnsf_bits")
-						$param = "nnsf_bits";
-
-					// if this is the ybts subsection and param is mode
-					// make sure we don't delete package markers
-					// are not deleted: Installed by ...
-					if ($subsection=="ybts" && $param=="mode") 
-						$package_marker = get_package_marker($structure,$start_marker);
-
 					// write the comments
 					$comment_arr = explode("<br/>", $data["comment"]);
 					$total = count($comment_arr);
 					for ($j = 0; $j< $total; $j++) {
-						if ( $package_marker &&
-						    substr($comment_arr[$j],0,strlen($start_marker))==$start_marker )
-							$found_marker = true;
-
 						$ybts->structure[$subsection][$i] = ";".$comment_arr[$j];
 						$i++;
-					}
-					// add package_marker to comments if we have one and a marker was not already added
-					if ($package_marker && !$found_marker) {
-						$ybts->structure[$subsection][$i] = $package_marker;
-						$i++;
-						$package_marker = null;
 					}
 
 					//prepare the data to be written
@@ -481,17 +337,9 @@ function write_params_conf($fields)
 					else
 						$value = $data["value"];
 
-					if (strlen($value)) {
-						if ($subsection=="gprs_roaming" && $param=="network_map") {
-							$network_map = explode("\n",$value);
-							foreach ($network_map as $map_entry) {
-								$expl = explode("=", $map_entry);
-								$ybts->structure[$subsection][$expl[0]] = array($expl[1]);
-							}
-						} else
-							$ybts->structure[$subsection][$param] = array($value);
-					} else {
-						$dont_copy[$subsection][] = $param;
+					if (strlen($value))
+						$ybts->structure[$subsection][$param] = array($value);
+					else {
 						// write field commented
 						$ybts->structure[$subsection][$i] = ";$param=\n";
 						$i++;
@@ -501,7 +349,7 @@ function write_params_conf($fields)
 		}
 	}
 
-	// add unknown sections at the end of the file and unknown parameters that don't start with __ at the end of each section
+	// add unknown sections at the end of the file and unknown parameters at the end of each section
 	foreach($structure as $subsection_name=>$subsection) {
 		if (!isset($ybts->structure[$subsection_name]))
 			$ybts->structure[$subsection_name] = $subsection;
@@ -509,9 +357,7 @@ function write_params_conf($fields)
 			foreach ($subsection as $field_name=>$field_value) {
 				if (is_numeric($field_name))
 					continue;
-				if (in_array($field_name,$dont_copy[$subsection_name]))
-					continue;
-				if (!isset($ybts->structure[$subsection_name][$field_name]) && substr($field_name,0,2)!="__")
+				if (!isset($ybts->structure[$subsection_name][$field_name]))
 					$ybts->structure[$subsection_name][$field_name] = $field_value;
 			}
 	}

@@ -160,6 +160,7 @@ DatagramSocket::~DatagramSocket()
 
 int DatagramSocket::write( const char * message, size_t length )
 {
+	assert(length<=MAX_UDP_LENGTH);
 	int retVal = sendto(mSocketFD, message, length, 0,
 		(struct sockaddr *)mDestination, addressSize());
 	if (retVal == -1 ) perror("DatagramSocket::write() failed");
@@ -168,6 +169,7 @@ int DatagramSocket::write( const char * message, size_t length )
 
 int DatagramSocket::writeBack( const char * message, size_t length )
 {
+	assert(length<=MAX_UDP_LENGTH);
 	int retVal = sendto(mSocketFD, message, length, 0,
 		(struct sockaddr *)mSource, addressSize());
 	if (retVal == -1 ) perror("DatagramSocket::write() failed");
@@ -192,6 +194,7 @@ int DatagramSocket::writeBack( const char * message)
 
 int DatagramSocket::send(const struct sockaddr* dest, const char * message, size_t length )
 {
+	assert(length<=MAX_UDP_LENGTH);
 	int retVal = sendto(mSocketFD, message, length, 0, dest, addressSize());
 	if (retVal == -1 ) perror("DatagramSocket::send() failed");
 	return retVal;
@@ -243,18 +246,18 @@ int DatagramSocket::read(char* buffer, unsigned timeout)
 
 
 
-UDPSocket::UDPSocket(unsigned short wSrcPort, const char* wSrcIP)
+UDPSocket::UDPSocket(unsigned short wSrcPort)
 	:DatagramSocket()
 {
-	open(wSrcPort,wSrcIP);
+	open(wSrcPort);
 }
 
 
 UDPSocket::UDPSocket(unsigned short wSrcPort,
-          	 const char * wDestIP, unsigned short wDestPort, const char* wSrcIP)
+          	 const char * wDestIP, unsigned short wDestPort )
 	:DatagramSocket()
 {
-	open(wSrcPort,wSrcIP);
+	open(wSrcPort);
 	destination(wDestPort, wDestIP);
 }
 
@@ -266,7 +269,7 @@ void UDPSocket::destination( unsigned short wDestPort, const char * wDestIP )
 }
 
 
-void UDPSocket::open(unsigned short localPort, const char* localIP)
+void UDPSocket::open(unsigned short localPort)
 {
 	// create
 	mSocketFD = socket(AF_INET,SOCK_DGRAM,0);
@@ -284,15 +287,10 @@ void UDPSocket::open(unsigned short localPort, const char* localIP)
 	struct sockaddr_in address;
 	size_t length = sizeof(address);
 	bzero(&address,length);
-	bool ok = true;
-	if (localIP && *localIP)
-	    ok = resolveAddress(&address,localIP,localPort);
-	else {
-	    address.sin_family = AF_INET;
-	    address.sin_addr.s_addr = INADDR_ANY;
-	    address.sin_port = htons(localPort);
-	}
-	if (ok && bind(mSocketFD,(struct sockaddr*)&address,length)<0) {
+	address.sin_family = AF_INET;
+	address.sin_addr.s_addr = INADDR_ANY;
+	address.sin_port = htons(localPort);
+	if (bind(mSocketFD,(struct sockaddr*)&address,length)<0) {
 		perror("bind() failed");
 		throw SocketError();
 	}

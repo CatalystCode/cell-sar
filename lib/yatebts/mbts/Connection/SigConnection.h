@@ -36,9 +36,9 @@ class SigConnection : public GenConnection
 {
 public:
     inline SigConnection(int fileDesc = -1)
-	: GenConnection(fileDesc,2600), mHbRecv(0,0), mHbSend(0,0)
+	: GenConnection(fileDesc), mHbRecv(0,0), mHbSend(0,0)
 	{ }
-    bool send(BtsPrimitive prim, unsigned char info = 0, const void* data = 0, size_t len = 0);
+    bool send(BtsPrimitive prim, unsigned char info = 0);
     bool send(BtsPrimitive prim, unsigned char info, unsigned int id);
     bool send(BtsPrimitive prim, unsigned char info, unsigned int id, const void* data, size_t len);
     inline bool send(BtsPrimitive prim, unsigned char info, unsigned int id, const std::string str)

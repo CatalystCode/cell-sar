@@ -57,6 +57,11 @@ Radio.C0=
 ; Defaults to 0.
 ;Identity.BSIC.NCC=0
 
+; Identity.ShortName: string: Network short name, displayed on some phones.
+; Optional, but must be defined if you want the network to send time-of-day.
+; Defaults to YateBTS.
+;Identity.ShortName=YateBTS
+
 ; Radio.PowerManager.MaxAttenDB: integer: Maximum transmitter attenuation level
 ;  in dB wrt full scale on the D/A output.
 ; This sets the minimum power output level in the output power control loop.
@@ -146,17 +151,16 @@ Radio.C0=
 
 
 [transceiver]
-; This section controls how the radio transceiver is configured and operated.
+; This section controls how the radio transceiver is started and operated.
 
-; In newer versions of YateBTS the transceiver is no longer an external executable.
-; The "gsmtrx" Yate module implements the device independent transceiver logic and
-;  uses the configuration from this section.
-; The radio device is implemented in another Yate module named "ybladerf". If you
-;  need to configure board specific parameters please edit ybladerf.conf
-; For compatibility the RadioFrequencyOffset, TX.OffsetI and TX.OffsetQ set in this
-;  section override any similar setting made in ybladerf.conf
-; If you install prebuilt packages the yate-bladerf package holds the ybladerf module
-;  as well as the FPGA images with which YateBTS is known to work.
+; Path: string: Path to the transceiver relative to where the MBTS is started.
+; Should be one of: ./transceiver-rad1 ./transceiver-usrp1 ./transceiver-uhd
+; Defaults to ./transceiver.
+;Path=./transceiver
+
+; Args: string: Extra arguments passed by MBTS to the executable transceiver.
+; Defaults to no arguments.
+;Args=
 
 ; MinimumRxRSSI: integer: Minimum signal strength (in dB) of acceptable bursts.
 ; Bursts received at the physical layer below this threshold are ignored.
@@ -165,22 +169,12 @@ Radio.C0=
 ; Defaults to -63.
 ;MinimumRxRSSI=-63
 
-; RadioFrequencyOffset: integer: Master radio interface clock frequency adjustment.
-; Fine-tuning adjustment for the transceiver master clock.
+; RadioFrequencyOffset: integer: Master clock frequency adjustment.
+; Fine-tuning adjustment for the transceiver master clock, roughly 170 Hz/step.
 ; Set at the factory, do not adjust without proper calibration.
 ; Interval allowed: 64..192.
 ; Defaults to 128 (but some radios provide their own calibrated default).
 ;RadioFrequencyOffset=128
-
-; TX.OffsetI: integer: Radio interface transmitter DC offset correction for I
-; Set at the factory, do not adjust without proper calibration.
-; Interval allowed: -63..63.
-;TX.OffsetI=0
-
-; TX.OffsetQ: integer: Radio interface transmitter DC offset correction for Q
-; Set at the factory, do not adjust without proper calibration.
-; Interval allowed: -63..63.
-;TX.OffsetQ=0
 
 ; TxAttenOffset: integer: Transmitter attenuation in dB.
 ; Hardware-specific gain adjustment for transmitter, matched to the amplifier.
@@ -195,66 +189,6 @@ Radio.C0=
 ; Defaults to 10.
 ;Timeout.Clock=10
 
-; clock_update_offset: integer: Offset (in GSM timeslots) for radio clock advertised to upper layer
-; This value is added to current radio clock when synchronizing with upper layer
-; This parameter is applied on reload
-; Defaults to 16. Allowed interval [0..256]
-;clock_update_offset=16
-
-; tx_slots: integer: The number of timeslots to send in one loop
-; This parameter is applied on reload
-; Defaults to 16 if no radio capabilities are available
-; Otherwise: the default value will be taken from radio capabilities
-; I.e. this parameter may be used to override radio capabilities
-; Allowed interval [1..1024]
-;tx_slots=16
-
-; radio_latency_slots: integer: Estimated radio latency in timeslots
-; This value is used to drop old bursts from send queue (avoid sending old data to radio)
-; This parameter is applied on reload
-; Defaults to 5 if no radio capabilities are available
-; Otherwise: the default value will be taken from radio capabilities
-; I.e. this parameter may be used to override radio capabilities
-; Allowed interval [0..256]
-;radio_latency_slots=5
-
-; radio_read_priority: keyword: Radio read thread priority
-; Allowed values: lowest, low, normal, high, highest
-; Defaults to 'highest' if missing or invalid
-;radio_read_priority=highest
-
-; radio_send_priority: keyword: Radio send thread priority
-; Allowed values: lowest, low, normal, high, highest
-; Defaults to 'high' if missing or invalid
-;radio_send_priority=high
-
-; tx_silence_debug_interval: integer: Interval, in milliseconds, to silence tx bursts
-;  time related debug messages (avoid delayed/missing/expired bursts debug messages on startup)
-; Defaults to 5000. Allowed interval [0..20000]
-;tx_silence_debug_interval=5000
-
-; gsm_time_sync_check: integer: Interval, in milliseconds, to check GSM time sync
-;  with upper layer
-; This parameter should be used when debugging: when sync times out a debug FAIL message
-;  will be printed
-; Set to 0 to disable it
-; A non 0 value will be clamped in interval [2000 .. 10000]
-; This parameter is applied on transceiver start
-;gsm_time_sync_check=0
-
-; print_status: integer: Print transceiver status on output
-; This parameter is applied on reload
-; New value will override old value even if not changed
-; Values:
-;   0: disable
-;   negative: forever, until changed
-;   positive: the number of times to print it
-;print_status=0
-
-; print_status_bursts: integer: Print burst counters when printing transceiver status
-; This parameter is applied on reload and is ignored if print_status is 0
-;print_status_bursts=yes
-
 
 [control]
 ; This section manages the configuration for various MBTS controls.
@@ -268,15 +202,9 @@ Radio.C0=
 ; Defaults to yes.
 ;VEA=yes
 
-; SMSCB: boolean: Add support for the Cell Broadcast service.
-; If enabled the SDDCH/4-2 of a C-V will be configured to act as a CBCH.
-; Since this leaves ony 3 SDCCHs you should add a C-VII in [gsm_advanced]
-; Defaults to no.
-;SMSCB=no
-
 ; LUR.AttachDetach: boolean: Use the attach/detach procedure.
 ; This will make initial LUR more prompt.
-; It will also cause an un-registration if the handset powers off, and really
+; It will also cause an un-regstration if the handset powers off, and really
 ;  heavy LUR loads in areas with spotty coverage.
 ; Defaults to yes.
 ;LUR.AttachDetach=yes
@@ -497,13 +425,6 @@ Radio.C0=
 ; Defaults to 14 (32 slots).
 ;RACH.TxInteger=14
 
-; RACH.AC: integer: Access Class flags.
-; This is the raw parameter sent on BCCH, see GSM 04.08 10.5.2.29 for encoding.
-; DO NOT ALTER THIS UNLESS YOU ARE A REAL OPERATOR!
-; Interval allowed: 0..65535 (16 bits, 0x0000..0xffff).
-; Defaults to 0x0400 (No emergency services access).
-;RACH.AC=0x0400
-
 ; Radio.ARFCNs: integer: The number of ARFCNs to use.
 ; The ARFCN set will be C0, C0+2, C0+4, ...
 ; Interval allowed: 1..10.
@@ -556,10 +477,14 @@ Radio.C0=
 ;Radio.RSSITarget=-50
 
 ; Radio.RxGain: integer: Receiver gain setting in dB.
-; Ideal value is dictated by the hardware
+; Ideal value is dictated by the hardware; 47 dB for RAD1, less for USRPs.
 ; Interval allowed: 0..75.
 ; Defaults to 0 (but some radios provide their own calibrated default).
 ;Radio.RxGain=0
+
+; ShowCountry: boolean: Tell the MS to show the country name based on the MCC.
+; Defaults to no.
+;ShowCountry=no
 
 ; Timer.T3103: integer: Handover timeout, in milliseconds, see GSM 04.08 11.1.2.
 ; This is the timeout for a handset to seize a channel during handover. Allowed: 2500:7500(100).
@@ -610,7 +535,7 @@ Radio.C0=
 ;Debug=1
 
 ; MS.Power.Alpha: integer: MS power control parameter, unitless, in steps of 0.1, so a parameter of 5 is an alpha value of 0.5.
-; Determines by how much the MS should turn up its power in relation with the measurement of BTS signal strength.
+; Determines by how much the MS should turn up its power in relation with the measurement of BTS signal stregth.
 ; Valid range is 0...10 for alpha values of 0.0 ... 1.0. See GSM 05.08 10.2.1.
 ; MS.Power.Alpha=10
 
@@ -626,7 +551,7 @@ Radio.C0=
 ; Valid range -75...-5
 ;MS.Power.RSSITarget=-25
 
-; MS.Power.RSSIInterval: integer: Interval around MS.Power.RSSITarget for which Gamma will not be adjusted
+; MS.Power.RSSIInterval: integer: Interval around MS.Power.RSSITarget for which Gamma will not be ajusted
 ; Interval for accepted RSSI values will be (MS.Power.RSSITarget - MS.Power.RSSIInterval,MS.Power.RSSITarget + MS.Power.RSSIInterval)
 ; Setting it to 0 will deactivate the power control loop.
 ; Valid range is 0...10
@@ -891,11 +816,6 @@ Radio.C0=
 ;    - roaming: loads script necessary for the roaming mode of operation
 ;mode=nib
 
-; autostart: boolean: Start the BTS automatically when program starts
-; If autostart is disabled it will wait for an "ybts start" command.
-; Defaults to true.
-;autostart=yes
-
 ; heartbeat_ping: integer: Interval, in milliseconds, to send heartbeat (PING)
 ;  to MBTS application. Ping is sent only if idle, e.g. it is not sent if there
 ;  are other signaling packets to be sent.
@@ -944,15 +864,6 @@ Radio.C0=
 ;  applications we may start
 ; E.g. extra_yatepeer_args=-Dm
 ;extra_yatepeer_args=
-
-; peer_abort: integer: Abort peer counter
-; Send a SIGABRT signal to peer when heartbeat receive times out or heartbeat send fails
-; This parameter should be used when debugging
-; This parameter is not applied on reload
-; Allowed interval [0 .. 100]
-; The counter is decreased each time the peer is aborted by yate
-; A SIGTERM signal will be sent to peer when this counter is 0 or the peer is terminated for other reason
-;peer_abort=0
 
 ; print_msg: boolean/string: Print sent/received messages to output if debug is at level 9.
 ; Allowed values are boolean values or string.
@@ -1076,7 +987,6 @@ Radio.C0=
 ; Default: GSM;text="Handover".
 ;reason=GSM;text="Handover"
 
-
 [roaming]
 ; This section controls parameters used by roaming.js when connecting YateBTS to a core network.
 
@@ -1109,11 +1019,6 @@ Radio.C0=
 ;  associated to each base station by the network operator.
 ; REQUIRED!
 ;gstn_location=
-
-; sos_sip: string: host:port where SIP emergency calls are sent.
-; If not set any emergency calls will be delivered to reg_sip or nodes_sip
-; Ex: sos_sip=192.168.1.215:5059
-;sos_sip=
 
 ; text_sms: boolean: If possible decode and send the SMS as text/plain SIP MESSAGE body.
 ; By default the binary type application/vnd.3gpp.sms is used.

@@ -57,46 +57,18 @@ class TransceiverManager {
 	UDPSocket mClockSocket;		
 	/// a thread to monitor the global clock socket
 	Thread mClockThread;	
-	Mutex mControlLock;			///< lock to prevent overlapping transactions
-	UDPSocket mControlSocket;		///< socket for radio control
-	std::string mInitData;			///< Init data (for debug)
 
-	bool mExitRecv;                         ///< Exiting received from lower layer
-	bool m_statistics;                      ///< Statistics are enabled (BTS started)
 
 	public:
-
-	enum ChannelCombination {
-		FILL,               ///< Channel is transmitted, but unused
-		I,                  ///< TCH/FS
-		II,                 ///< TCH/HS, idle every other slot
-		III,                ///< TCH/HS
-		IV,                 ///< FCCH+SCH+CCCH+BCCH, uplink RACH
-		V,                  ///< FCCH+SCH+CCCH+BCCH+SDCCH/4+SACCH/4, uplink RACH+SDCCH/4
-		VI,                 ///< CCCH+BCCH, uplink RACH
-		VII,                ///< SDCCH/8 + SACCH/8
-		NONE,               ///< Channel is inactive, default
-		LOOPBACK,           ///< similar go VII, used in loopback testing
-		IGPRS               ///< GPRS channel, like I but static filler frames.
-	};
-
-	// This magic flag is ORed with the TN TimeSlot in vectors passed to the transceiver
-	// to indicate the radio block is a filler frame instead of a radio frame.
-	// Must be higher than any possible TN.
-	enum TransceiverFlags {
-		SET_FILLER_FRAME = 0x10
-	};
 
 	/**
 		Construct a TransceiverManager.
 		@param numARFCNs Number of ARFCNs supported by the transceiver.
 		@param wTRXAddress IP address of the transceiver.
 		@param wBasePort The base port for the interface, as defined in README.TRX.
-		@param wLocalAddr Local address
 	*/
-	TransceiverManager(int numARFCNs, int wBasePort,
-		const char* wTRXAddress = "127.0.0.1",
-		const char* wLocalAddr = "127.0.0.1");
+	TransceiverManager(int numARFCNs,
+		const char* wTRXAddress, int wBasePort);
 
 	/**@name Accessors. */
 	//@{
@@ -104,7 +76,6 @@ class TransceiverManager {
 	//@}
 
 	bool haveClock() const { return mHaveClock; }
-	bool exiting() const { return mExitRecv; }
 
 	unsigned C0() const;
 	unsigned numARFCNs() const { return mARFCNs.size(); }
@@ -112,52 +83,8 @@ class TransceiverManager {
 	/** Block until the clock is set over the UDP link. */
 	//void waitForClockInit() const;
 
-	/**
-		Log init data
-	*/
-	void logInit();
-
 	/** Start the clock management thread and all ARFCN managers. */
 	void start();
-
-	/**
-		Send a command packet and get the response packet.
-		@param command The NULL-terminated command string to send.
-		@param response A buffer for the response packet, assumed to be char[MAX_PACKET_LENGTH].
-		@return Length of the response or -1 on failure.
-	*/
-	int sendCommandPacket(const char* command, char* response);
-
-	bool sendCommand(const char* cmd, int* iParam = 0, const char* sParam = 0,
-	    int* rspParam = 0, int arfcn = -1);
-
-	/**
-		Reset the transceiver
-		@return true on success.
-	*/
-	inline bool reset()
-	{
-		int p = numARFCNs();
-		return sendCommand("RESET",&p);
-	}
-
-	/**
-		Stop the transceiver
-		@return true on success.
-	*/
-	inline bool stop()
-	{ return sendCommand("STOP"); }
-
-	/**
-		Start/Stop statistics
-		@param on Statistics state to set
-		@return True on success.
-	*/
-	inline bool statistics(bool on)
-	{
-		m_statistics = on;
-		return sendCommand("STATISTICS",0,on ? "ON" : "OFF");
-	}
 
 	/** Clock service loop. */
 	friend void* ClockLoopAdapter(TransceiverManager*);
@@ -188,6 +115,9 @@ class ARFCNManager {
 
 	Mutex mDataSocketLock;			///< lock to prevent contentional for the socket
 	UDPSocket mDataSocket;			///< socket for data transfer
+	Mutex mControlLock;				///< lock to prevent overlapping transactions
+	UDPSocket mControlSocket;		///< socket for radio control
+
 	Thread mRxThread;				///< thread to receive data from rx
 
 	/**@name The demux table. */
@@ -198,12 +128,11 @@ class ARFCNManager {
 	//@}
 
 	unsigned mARFCN;						///< the current ARFCN
-	unsigned int mArfcnPos;						///< ARFCN index
+
 
 	public:
 
-	ARFCNManager(unsigned int wArfncPos, const char* wTRXAddress, int wBasePort,
-		const char* wLocalAddr, TransceiverManager &wTRX);
+	ARFCNManager(const char* wTRXAddress, int wBasePort, TransceiverManager &wTRX);
 
 	/** Start the uplink thread. */
 	void start();
@@ -355,6 +284,14 @@ class ARFCNManager {
 
 	/** Receiver loop. */
 	friend void* ReceiveLoopAdapter(ARFCNManager*);
+
+	/**
+		Send a command packet and get the response packet.
+		@param command The NULL-terminated command string to send.
+		@param response A buffer for the response packet, assumed to be char[MAX_PACKET_LENGTH].
+		@return Length of the response or -1 on failure.
+	*/
+	int sendCommandPacket(const char* command, char* response);
 
 	/**
 		Send a command with a parameter.

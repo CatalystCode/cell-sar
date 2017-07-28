@@ -13,27 +13,19 @@
 ; Ex: regexp=^001
 ;regexp=
 
-; Resource for the emergency calls gateway
-; If not set any emergency calls will be delivered to the outbound gateway
-; It is also possible to specify a short or international number (possibly MSISDN)
-; Ex: gw_sos=sip/sip:sos@emergency.gw
-; Ex: gw_sos=111
-; Ex: gw_sos=+10744341111
-;gw_sos=
-
 
 ; you have to put subscriber IMSI as a category and the subscriber parameters 
 ; as keys
 
 ;[001990010001014]
-; Official phone number. Should include configured country code
+; Oficial phone number. Should include configured country code
 ; Ex: msisdn=10744341111
 
 ; Whether this subscriber is allowed to use the service
 ; Allowed values: on, off
 ; Ex: active=off
 
-; Card secret. Set or generated when SIMs are written
+; Card secrety. Set or generated when SIMs are written
 ; Ex:ki=00112233445566778899aabbccddeeff
 
 ; Operator secret. 

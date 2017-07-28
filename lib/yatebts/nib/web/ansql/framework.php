@@ -194,7 +194,7 @@ class Database
 	 * Make database connection
 	 * @param $connection_index Numeric. Mark connection index in case backup connection is available
 	 * Default value is ''. Valid values '',2,3 .. (1 is excluded)
-	 * @return The connection to the database. If the connection is not possible, backup connection is tried if set, else return NULL if $exit_gracefully is set, otherwise page dies 
+	 * @return The connection to the database. If the connection is not possible, backup connection is tried if set, else page dies
 	 */
 	public static function connect($connection_index="")
 	{
@@ -204,11 +204,6 @@ class Database
 
 		if (self::$_connection && self::$_connection!==true)
 			return self::$_connection;
-                
-                if ($connection_index!='' && (!is_int($connection_index) || $connection_index<2 )) {
-                        Debug::trigger_report('critical', "Invalid connection index in Database::connect(): $connection_index");
-                        return;
-                }
 
 		$db_data = array("db_host","db_user","db_database","db_passwd","db_type");
 		for ($i=0; $i<count($db_data); $i++) {
@@ -262,42 +257,8 @@ class Database
 
 		return self::$_connection;
 	}
-        
-        /**
-         * Disconnect existing connection and connect to another database
-         * @param $connection_index Mark connection index in case backup connection is available
-	 * Default value is ''. Valid values '',2,3 .. (1 is excluded)
-         * @return The connection to new database. If the connection is not possible, backup connection is tried if set, else return NULL if $exit_gracefully is set, otherwise page dies 
-         */
-        public static function switchDatabase($connection_index='')
-        {
-                global $db_identifier;
-            
-                Database::disconnect();
-                if (!isset($_SESSION["ansql_default_db_identifier"]) && $db_identifier) {
-                        $_SESSION["ansql_default_db_identifier"] = $db_identifier;
-                }
-                
-                if ($connection_index != '') {
-                        global ${"db_identifier$connection_index"};
-                        $db_identifier = ${"db_identifier$connection_index"};
-                        if (!$db_identifier) {
-                                Debug::trigger_report ("critical", "No indentifier for connection_index=$connection_index");
-                        }
-                        Debug::xdebug("switch_database", "db_identifier='$db_identifier', default_db_identifier='".$_SESSION['ansql_default_db_identifier']."'");
-                } else {
-                        if (!$_SESSION["ansql_default_db_identifier"]) {
-                                Debug::trigger_report("critical", "No default identifier in switch_database(), $connection_index=$connection_index");
-                        }
 
-                        $db_identifier = $_SESSION["ansql_default_db_identifier"];
-                        unset($_SESSION["ansql_default_db_identifier"]);
-                        Debug::xdebug("switch_database", "db_identifier='$db_identifier'");
-                }
-                return Database::connect($connection_index);
-        }
-
-        /**
+	/**
 	 * Start transaction
 	 */
 	public static function transaction()
@@ -470,7 +431,7 @@ class Database
 				case "postgresql":
 					$oid = pg_last_oid($res);
 					$query2 = "SELECT ".$retrieve_last_id[0]." FROM ".$retrieve_last_id[1]." WHERE oid=$oid";
-					$res2 = self::queryRaw($query2);
+					$res2 = self::db_query($query2);
 					if (!$res2)
 						return false;
 					$last_id = pg_fetch_result($res2,0,0);
@@ -514,7 +475,7 @@ class Database
 					{
 						$array[$i] = array();
 						for($j=0; $j<pg_num_fields($res); $j++)
-							$array[$i][pg_field_name($res,$j)] = ($func_query_result && is_callable($func_query_result)) ? call_user_func($func_query_result, self::unescape(pg_fetch_result($res,$i,$j))) : self::unescape(pg_fetch_result($res,$i,$j));
+							$array[$i][pg_field_name($res,$j)] = ($func_query_result && is_callable($func_query_result)) ? call_user_func($func_query_result, self::unescape($value)) : self::unescape(pg_fetch_result($res,$i,$j));
 					}
 					break;
 			}
@@ -601,10 +562,6 @@ class Database
 				if ($type == "bigint(20) unsigned not null auto_increment")
 					$query.= ", primary key ($name)";
 			} else {
-				if (substr($table,0,6)=="_temp_" && ($name == 'inserted' || $name == 'deleted')) {
-					$old_enforce_basic_constrains = $enforce_basic_constrains;
-					$enforce_basic_constrains = true;
-				}
 				$query.= esc($name)." $type";
 				if (!$enforce_basic_constrains)
 					continue;
@@ -614,9 +571,6 @@ class Database
 					$value = $var->escape($var->_value);
 					$query.= " DEFAULT ".$value;
 				}
-				if (substr($table,0,6)=="_temp_" && ($name == 'inserted' || $name == 'deleted'))
-					$enforce_basic_constrains = $old_enforce_basic_constrains;
-
 			}
 		}
 
@@ -642,7 +596,7 @@ class Database
 				$query.= "ENGINE $engine";
 		}
 
-		$res = self::queryRaw($query) !== false;
+		$res = self::db_query($query) !== false;
 		if (!$res)
 			Debug::Output(_("Could not create table")." '$table'. "._("Query failed").": $query". " .Error: ".Database::get_last_db_error());
 
@@ -714,13 +668,8 @@ class Database
 					$type = "int4";
 				if ($type == "bigserial")
 					$type = "int8";
-				if ($type == "bigint(20) unsigned not null auto_increment") {
-					if ($db_type!="mysql" || strlen($var->_key)) {
-						$type = "bigint(20)";
-					} else {
-						$type .= ", ADD primary key ($name)";
-					}
-				}
+				if ($type == "bigint(20) unsigned not null auto_increment")  
+					$type = "bigint(20)";
 
 				Debug::Output('dbstruct', _("No field")." '$name' "._("in table")." '$table'".(", we'll create it"));
 
@@ -776,19 +725,8 @@ class Database
 						continue;
 					elseif (($dbtype == "bigint(20) unsigned" || $dbtype == "bigint(20)")  && $type == "bigint(20) unsigned not null auto_increment")
 						continue;
-					elseif ($dbtype!=$type) {
-						if ($db_type=='postgresql')
-							$query = "ALTER TABLE ".esc($table)." ALTER COLUMN ".esc($name)." TYPE $type";
-						else
-							$query = "ALTER TABLE ".esc($table)." CHANGE ".esc($name)." ".esc($name)." $type";
-
-						if (!self::queryRaw($query)) {
-							Debug::Output('critical', _("Could not change table field $name from $dbtype to $type for")." '$table'. "._("Query failed").": '$query'". " .Error: ".Database::get_last_db_error());
-							$error_sql_update = true;
-						}
+					elseif (($dbtype == "varchar" && substr($type,0,7)=="varchar" && $db_type=='postgresql') && $db_default==$class_default && $db_not_null===$var->_required)
 						continue;
-					}
-				
 					elseif ($orig_type=="serial" || $orig_type=="bigserial")
 						continue;
 					$db_str_not_null = ($db_not_null) ? " NOT NULL" : "";
@@ -806,22 +744,11 @@ class Database
 						continue;
 					elseif (($dbtype == "bigint(20) unsigned" || $dbtype == "bigint(20)")  && $type == "bigint(20) unsigned not null auto_increment")
 						continue;
-					elseif ($dbtype!=$type) {
-
-						if ($db_type=='postgresql')
-							$query = "ALTER TABLE ".esc($table)." ALTER COLUMN ".esc($name)." TYPE $type";
-						else
-							$query = "ALTER TABLE ".esc($table)." CHANGE ".esc($name)." ".esc($name)." $type";
-
-						if (!self::queryRaw($query)) {
-							Debug::Output('critical', _("Could not change table field $name from $dbtype to $type for")." '$table'. "._("Query failed").": '$query'". " .Error: ".Database::get_last_db_error());
-							$error_sql_update = true;
-						}
+					elseif ($dbtype == "varchar" && substr($type,0,7)=="varchar" && $db_type=='postgresql')
 						continue;
-					}
-
 
 					Debug::Output('critical', _("Field")." '".$name."' "._("in table")." "."'$table' "._("is of type")." '$dbtype' "._("but should be")." '$type'");
+
 				}
 
 				$error_sql_update = true;
@@ -860,7 +787,7 @@ class Database
 					$query = "CREATE INDEX ".esc($index_name)." ON ".esc($table)." USING btree ($index_columns)";
 					break;
 			}
-			$res = self::queryRaw($query);
+			$res = self::db_query($query);
 			if (!$res)
 			{
 				$no_error = false;
@@ -961,13 +888,6 @@ class Database
 				break;
 		}
 	}
-	
-	public static function boolValue($value)
-	{
-		if ($value==="t" || $value==="1" || $value===1)
-			return true;
-		return false;
-	}
 }
 
 function esc($col)
@@ -988,7 +908,6 @@ class Model
 	//whether a select or extendedSelect was performed on the object 
 	protected $_retrieved;
 
-	//whether to check or not which fields have been modified before making the update
 	protected $_check_col_diff;
 	protected $_modified_col = array();
 
@@ -1432,7 +1351,6 @@ class Model
 	 * @param $params Array of param_name=>param_value used for setting the variables of this object
 	 * @param $conditons Array of conditions after which to do the update. Default is NULL(update after object id)
 	 * @param $verifications Array with conditions trying to specify if this object can be modified or not
-	 * @param $check_col_diff Bool whether to check or not which fields have been modified before making the update 
 	 * @return Array, array[0] is true/false, true when inserting was succesfull, array[1] default message to could be printed to the user, array[2] is array with fields there was an error with
 	 */
 	public function edit($params, $conditions = NULL, $verifications = array(), $check_col_diff = true)
@@ -1473,11 +1391,7 @@ class Model
 		$this->_modified_col = array();
 
 		foreach($params as $param_name=>$param_value) {
-			$var = $this->variable($param_name);
-			if ($var) {
-				if($var->_type=="bool")
-					$param_value = Model::sqlBool($param_value);
-
+			if($this->variable($param_name)) {
 				if($this->{$param_name} != $param_value)
 					$this->_modified_col[$param_name] = true;
 				$this->{$param_name} = $param_value;
@@ -1566,16 +1480,6 @@ class Model
 				// gather other errors as well
 				continue;
 			}
-			if (substr($var->_type,0,7) == "varchar")
-			{
-				$res = $this->isValidVarchar($var->_type, $value);
-				if (!$res[0])
-				{
-					$error .= " "._("Field ")." '"._($var_name)."' "._("must be at most ".$res[1]." characters long but has '").$res[2]."'.";
-					$error_fields[] = $var_name;
-					continue;
-				}
-			}
 			if ($columns != "")
 			{
 				$columns .= ",";
@@ -1593,22 +1497,6 @@ class Model
 		}
 
 		return array("columns"=>$columns, "values"=>$values, "error"=>$error, "error_fields"=>$error_fields, "serials"=>$serials, "insert_log"=>$insert_log, "update_fields"=>$update_fields);
-	}
-
-	/**
-	 * Verify the allowed length set on varchar type variable
-	 */  
-	private function isValidVarchar($type, $value)
-	{
-		Debug::func_start(__METHOD__,func_get_args(),"framework");
-
-		$var_length = strlen($value);
-		$allowed_length = explode("(", $type);
-		$allowed_length = substr($allowed_length[1],0,-1);
-		$allowed_length = (int)$allowed_length;
-		if ($var_length > $allowed_length)
-			return array(false,$allowed_length,$var_length);
-		return array(true);
 	}
 
 	/**
@@ -1644,7 +1532,6 @@ class Model
 	
 	/**
 	 * Update object (!! Use this after you selected the object or else the majority of the fields will be set to null)
-	 * If you want to use it directly: set global $check_col_diff = false
 	 * @param $conditions Array of conditions for making an update
 	 * if no parameter is sent when method is called it will try to update based on the numeric id od the object, unless is was invalidated
 	 * @param $verifications Array with conditions trying to specify if this object can be modified or not
@@ -1690,17 +1577,8 @@ class Model
 				$error_fields[] = $var_name;
 				continue;
 			}
-			$value = $this->{$var_name};
-			if (substr($var->_type,0,7) == "varchar") {
-				$res = $this->isValidVarchar($var->_type,$value);
-			   	if (!$res[0]) {
-					$error .= " "._("Field ")." '"._($var_name)."' "._("must be at most ".$res[1]." characters long but has '").$res[2]."'.";
-					$error_fields[] = $var_name;
-					continue;
-				}
-			}
-			$value = $var->escape($value);
 
+			$value = $var->escape($this->{$var_name});
 			$variables .= esc($var_name)."=".$value."";
 			if ($var_name!="password")
 				$update_log .= "$var_name=".$this->{$var_name}.""; 
@@ -1708,12 +1586,10 @@ class Model
 				$update_log .= "$var_name=***";
 		}
 		$obj_name = $this->getObjectName();
-		
-		if ($error != "")
-			return array(false,_("Failed to update").' '._($obj_name).".".$error, $error_fields,0);
 		if ($variables == "")
 			return array(true, _('Nothing to update in ')._($obj_name).".",array());
-
+		if($error != "")
+			return array(false,_("Failed to update").' '._($obj_name).".".$error, $error_fields,0);
 		$table = $this->getTableName();
 		$query = "UPDATE ".esc($table)." SET $variables $where";
 		//print "query-update:$query";
@@ -1746,8 +1622,6 @@ class Model
 		$where = "";
 		$variables = "";
 		$update_log = "";
-		$error = "";
-		$error_fields = array();
 
 		if(!count($conditions)) {
 			if($this->isInvalid())
@@ -1788,15 +1662,6 @@ class Model
 			}else{
 				$variables .= esc($var_name)."=".$var->escape($value)."";
 			}
-			if (substr($var->_type,0,7) == "varchar") {
-				$res = $this->isValidVarchar($var->_type,$value);
-			   	if (!$res[0]) {
-					$error .= " "._("Field ")." '"._($var_name)."' "._("must be at most ".$res[1]." characters long but has '").$res[2]."'.";
-					$error_fields[] = $var_name;
-					continue;
-				}
-			}                 	
-
 			if ($var_name!="password")
 				$update_log .= "$var_name=$value";
 			else
@@ -1804,9 +1669,6 @@ class Model
 		}
 
 		$obj_name = $this->getObjectName();
-		if ($error != "")
-			return array(false,_("Failed to update").' '._($obj_name).".".$error, $error_fields,0);
-
 		$query = "UPDATE ".esc($this->getTableName())." SET $variables $where";
 		$res = Database::query($query);
 		if($res===false || $res[0]===false) 
@@ -1907,7 +1769,7 @@ class Model
 		$class = get_class($this);
 		if(!$id_name || !$this->variable($id_name))
 		{
-			Debug::trigger_report('critical',_("Class")." $class "._("doesn't have an id. You can't use method objectExists."));
+			Debug::trigger_report('critical',"$id_name "._("is not a defined variable inside the")." $class "._("object."));
 			exit();
 		}
 
@@ -1948,25 +1810,21 @@ class Model
 		return false;
 	}
 
-
 	/**
 	 * Recursive function that deletes the object(s) matching the condition and all the objects having foreign keys to
 	 * this one with _critical=true, the other ones having _critical=false with the associated column set to NULL
 	 * @param $conditions Array of conditions for deleting (if count=0 then we look for the id of the object) 
 	 * @param $seen Array of classes from were we deleted
 	 * @param $recursive Bool default true. Whether to delete/clean objects pointing to this one 
-	 * @param $cb_recursive String default NULL. If set and $recursive=true it will call this method recursively instead of objDelete
 	 * @return array(true/false,message) if the object(s) were deleted or not
 	 */
-	public function objDelete($conditions=array(), $seen=array(), $recursive=true, $cb_recursive=null)
+	public function objDelete($conditions=array(), $seen=array(), $recursive=true)
 	{
 		Debug::func_start(__METHOD__,func_get_args(),"framework");
 
 		$vars = self::getVariables(get_class($this));
 		if (!$vars)
 			return null;
-		if ($recursive && $cb_recursive==null)
-			$cb_recursive = "objDelete";
 
 		$orig_cond = $conditions;
 		$table = $this->getTableName();
@@ -2044,7 +1902,7 @@ class Model
 		foreach ($to_delete as $object_name=>$conditions) {
 			$obj = new $object_name;
 			for ($i=0;$i<count($conditions);$i++)
-				$obj->$cb_recursive($conditions[$i],$seen);
+				$obj->objDelete($conditions[$i],$seen);
 		}
 
 		if ($res && $res[0]) {
@@ -2485,9 +2343,9 @@ class Model
 	{
 		Debug::func_start(__METHOD__,func_get_args(),"framework");
 
-		if ($value===true || $value==='t' || $value==='1' || $value===1)
+		if (($value === true) || ($value === 't'))
 			return 't';
-		if ($value===false || $value==='f' || $value==='0' || $value===0)
+		if (($value === false) || ($value === 'f'))
 			return 'f';
 		return $defval;
 	}
@@ -2564,7 +2422,8 @@ class Model
 		//print "default_identifier=$default_identifier\n";
 		foreach ($classes as $class)
 		{
-			if (self::checkAncestors($class))
+			// calling static class methods is done using an array("class","method")		
+			if (get_parent_class($class) == "Model" || get_parent_class(get_parent_class($class)) == "Model")
 			{
 				$vars = null;
 				if (!method_exists($class,"variables"))
@@ -2592,22 +2451,6 @@ class Model
 					self::$_performers[strtolower($class)] = $performer;
 			}
 		}
-	}
-
-	/**
-	 * Check class ancestors to see if one of them is Model
-	 * @param $class String
-	 * @return Bool
-	 */
-	static function checkAncestors($class)
-	{
-		$parent = get_parent_class($class);
-
-		if ($parent=="Model")
-			return true;
-		elseif (!$parent)
-			return false;
-		return self::checkAncestors($parent);
 	}
 
 	/**
@@ -2658,10 +2501,9 @@ class Model
 
 	/**
 	 * Update the database to match all the models
-	 * @param $skip_default_objects Bool. Default false. If true, just tables will be updated, without calling defaultObject
 	 * @return True if the database was synchronized with all the models
 	 */
-	static function updateAll($skip_default_objects = false)
+	static function updateAll()
 	{
 		Debug::func_start(__METHOD__,func_get_args(),"framework");
 
@@ -2714,7 +2556,7 @@ class Model
 			return false;
 		}
 
-		if(self::$_modified && !$skip_default_objects)
+		if(self::$_modified)
 			foreach(self::$_models as $class => $vars) {
 				$object = new $class;
 
@@ -3287,7 +3129,7 @@ class Model
 	 * @param $where Clause to append to 
 	 * @return WHERE clause
 	 */
-	public function makeInnerQuery($inner_query=array(), $table = NULL, $where='')
+	protected function makeInnerQuery($inner_query=array(), $table = NULL, $where='')
 	{
 		Debug::func_start(__METHOD__,func_get_args(),"framework");
 
@@ -3367,7 +3209,6 @@ class Model
 	protected function populateObject($result)
 	{
 		Debug::func_start(__METHOD__,func_get_args(),"framework");
-		global $db_type;
 
 		if(count($result) != 1)
 		{
@@ -3379,7 +3220,7 @@ class Model
 		$allow_html  = $this->allowHTML();
 		foreach($result[0] as $var_name=>$value) {
 			$var = $this->getVariable(get_class($this),$var_name);
-			if ($db_type == "postgresql" && $var && $var->_type == "bool") {
+			if ($var && $var->_type == "bool") {
 				if ($value == "1")
 				    $value = "t";
 				elseif ($value == "0")
@@ -3399,7 +3240,6 @@ class Model
 	protected function buildArrayOfObjects($result)
 	{
 		Debug::func_start(__METHOD__,func_get_args(),"framework");
-		global $db_type;
 
 		if(!count($result))
 			return array();
@@ -3416,7 +3256,7 @@ class Model
 			$clone->_model = $this->_model;
 			foreach ($row as $var_name=>$value) {
 				$var = $clone->getVariable($class_name,$var_name);
-				if ($db_type == "postgresql" && $var && $var->_type == "bool") {
+				if ($var && $var->_type == "bool") {
 					if ($value == "1")
 					    $value = "t";
 					elseif ($value == "0")
@@ -3573,22 +3413,6 @@ class Model
 		if (isset($db_engine))
 			return $db_engine;
 		return "innodb";
-	}
-
-
-	/**
-	 * Concatenates values from @param $options so they can be used as 'options' when building an inner query
-	 * @param $options Array. Contains values that will be concatenated
-	 * @return String
-	 * Ex: array(1,2) => "'1','2'"
-	 */
-	public static function optionsInnerQuery($options)
-	{
-		if (!is_array($options) || !count($options))
-			return "";
-
-		$options = implode("','",$options);
-		return "'".$options."'";
 	}
 }
 

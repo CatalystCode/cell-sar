@@ -548,10 +548,6 @@ void GmmMobileIdentityIE::decodeIM(ByteVector &result) const
 			result.appendField((mIdData[i]>>4)&0xf,4);
 		}
 	}
-	if (isodd) {
-		result.appendField(0xf,4); // make sure the last nibble is always the same
-		result.shrinkBits(4); // but don't count it as valid data
-	}
 }
 
 // 24.008 10.5.1.4 Mobile Identity
@@ -1081,10 +1077,8 @@ void L3GmmMsgServiceAccept::gmmWriteBody(ByteVector &msg)
 {
 	msg.appendByte(0x32);
 	msg.appendByte(0x02);
-	if (mPdpContextStatus.valid()) {
-		msg.appendByte(mPdpContextStatus.mStatus[0]);
-		msg.appendByte(mPdpContextStatus.mStatus[1]);
-	}
+	msg.appendByte(mPdpContextStatus.mStatus[0]);
+	msg.appendByte(mPdpContextStatus.mStatus[1]);
 }
 
 void L3GmmMsgServiceReject::gmmWriteBody(ByteVector &msg)
@@ -1138,7 +1132,7 @@ void L3GmmMsgRAUpdateAccept::gmmWriteBody(ByteVector &msg)
 	// 10.5.7.1 PDP Context Status
 	// And I quote: "This IE shall be included by the Network".  Hmm.
 	// If you set this to zeros the MS relinquishes its PDP contexts.
-	if (mPdpContextStatusCurrent.valid()) {
+	{
 		msg.appendByte(0x32);
 		msg.appendByte(2);	// length is 2 bytes
 		msg.appendByte(mPdpContextStatusCurrent.mStatus[0]);

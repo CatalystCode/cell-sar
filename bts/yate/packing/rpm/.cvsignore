@@ -1,8 +1,0 @@
-Makefile
-YateLocal.mak
-core*
-*.o
-*.a
-*.orig
-*~
-.*.swp

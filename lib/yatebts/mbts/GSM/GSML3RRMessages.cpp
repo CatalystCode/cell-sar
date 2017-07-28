@@ -176,6 +176,25 @@ L3RRMessage* GSM::parseL3RR(const L3Frame& source)
 	return retVal;
 }
 
+
+
+/**
+This is a local function to map the GSM::ChannelType enum
+to one of the codes from GMS 04.08 10.5.2.8.
+*/
+unsigned channelNeededCode(ChannelType wType)
+{
+	switch (wType) {
+		case AnyDCCHType: return 0;
+		case SDCCHType: return 1;
+		case TCHFType: return 2;
+		case AnyTCHType: return 3;
+		default: assert(0);
+	}
+}
+
+
+
 size_t L3PagingRequestType1::l2BodyLength() const
 {
 	int sz = mMobileIDs.size();
@@ -385,7 +404,7 @@ void L3SIType4RestOctets::writeText(std::ostream& os) const
 
 L3SystemInformationType4::L3SystemInformationType4()
 	:L3RRMessageRO(),
-	mHaveCBCH(gConfig.getBool("Control.SMSCB")),
+	mHaveCBCH(gConfig.getStr("Control.SMSCB.Table").length() != 0),
 	mCBCHChannelDescription(SDCCH_4_2,0,gConfig.getNum("GSM.Identity.BSIC.BCC"),gConfig.getNum("GSM.Radio.C0"))
 { }
 
@@ -539,16 +558,12 @@ void L3ChannelRequest::text(ostream& os) const
 void L3ChannelRelease::writeBody( L3Frame &dest, size_t &wp ) const 
 {
 	mRRCause.writeV(dest, wp);
-	for (unsigned int i = 0; i < mExtraBytes.size(); i++)
-		dest.writeField(wp,mExtraBytes.getByte(i),8);
 }
 
 void L3ChannelRelease::text(ostream& os) const
 {
 	L3RRMessage::text(os);
 	os <<"cause="<< mRRCause;
-	if (mExtraBytes.size())
-		os << " extra=" << mExtraBytes.hexstr();
 }
 
 

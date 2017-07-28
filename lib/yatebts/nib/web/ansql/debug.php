@@ -46,9 +46,8 @@ $debug_notify = array(
 */
 $debug_notify = array("web"=>array("notify"));
 
-// if $enable_debug_buttons is true, then several Debug buttons are displayed at the top of the page
+// if true, then several Debug buttons are displayed at the top of the page
 // Ex: Dump $_SESSION, See $_REQUEST
-// you can also add additional buttons if you define the callbacks for them
 $debug_buttons = array(
 	"dump_session"=>'Dump $_SESSION', 
 	"dump_request"=>'Dump $_REQUEST',
@@ -61,8 +60,6 @@ if(is_file("defaults.php"))
 if(is_file("config.php"))
 	include("config.php");
 
-if (!isset($enable_debug_buttons) || $enable_debug_buttons!=true)
-	$debug_buttons = false;
 
 class Debug
 {
@@ -79,41 +76,17 @@ class Debug
 	 * @param $args Array of arguments
 	 * @param $tag String Optional. If not set $default_tag is used
 	 */
-	public static function func_start($func,$args,$tag=null,$obj_class=null,$obj_id=null)
+	public static function func_start($func,$args,$tag=null)
 	{
 		global $default_tag;
 		if (!$tag)
 			$tag = $default_tag;
 
-		if ($obj_class)
-			$mess = "Entered ".$func." for '$obj_class' id='$obj_id' (".Debug::format_args($args).")";
-		else
-			$mess = "Entered ".$func."(".Debug::format_args($args).")";
-
-		Debug::xdebug($tag,$mess);
-	}
-
-
-	/**
-	 * Calling trigger_report() will register this shutdown_function
-	 * This will then be called just when program 
-	 */
-	public static function shutdown_trigger_report()
-	{
-		global $count_triggered;
-		global $log_triggered;
-
-		if ($count_triggered==1)
-			$mess = "There was ".$count_triggered." report";
-		else
-			$mess = "There were ".$count_triggered." reports";
-		$mess .= ": $log_triggered";
-		return self::trigger_report("shutdown","$mess",true);
+		Debug::xdebug($tag,"Entered ".$func."(".Debug::format_args($args).")");
 	}
 
 	/**
 	 * Function triggers the sending of a bug report
-	 * Depending on param $shutdown it agregates the received reports and registers shutdown function shutdown_trigger_report()
 	 * Current supported methods: mail, web (dump or notify)
 	 * Ex:
 	 * $debug_notify = array(
@@ -131,41 +104,17 @@ class Debug
 	 * @param $message String Used only when triggered from code
 	 * If single parameter is provided and string contains " "(spaces) then it's assumed 
 	 * the default tag is used. Default tag is 'logic'
-	 * @param $shutdown Bool. Default false. If false, it will just register a shutdown function that sends report at the end. 
-	 * If true, we assume we are at shutdown and trigger_report is actually performed
 	 */
-	public static function trigger_report($tag,$message=null,$shutdown=false)
+	public static function trigger_report($tag,$message=null)
 	{
 		global $debug_notify;
 		global $server_email_address;
 		global $logs_in;
 		global $proj_title;
 		global $module;
-		global $count_triggered;
-		global $log_triggered;
-		global $software_version;
-		global $skip_interfaces;
 
 		if ($tag) 
 			self::xdebug($tag,$message);
-
-		if (!$shutdown) {
-			// find software_version here, not when called from registered shutdown function, because it seems exec() can't be called from there
-			if (!isset($software_version) && function_exists("get_version"))
-				$software_version = get_version();
-
-			if (!isset($count_triggered)) {
-				$count_triggered = 1;
-				$log_triggered = ($message) ? $message : $tag;
-				self::xdebug("first_trigger","----------------------");
-				register_shutdown_function(array('Debug','shutdown_trigger_report'),array());
-			} else {
-				$count_triggered++;
-				$log_triggered .= ($message) ? "; " . $message : "; ".$tag;
-				self::xdebug("trigger","----------------------");
-			}
-			return;
-		}
 
 		// save xdebug
 		$xdebug = self::get_xdebug();
@@ -175,118 +124,93 @@ class Debug
 			if (!count($notification_options))
 				continue;
 			switch ($notification_type) {
-			case "mail":
-				if (!isset($server_email_address))
-					$server_email_address = "bugreport@localhost.lan";
+				case "mail":
+					if (!isset($server_email_address))
+						$server_email_address = "bugreport@localhost.lan";
 
-				$subject = "Bug report for '".$proj_title."'";
+					$subject = "Bug report for '".$proj_title."'";
 
-				if (!isset($skip_interfaces))
-					$skip_interfaces = 'LOOPBACK|NO-CARRIER';
-				
-				$body = "Application is running on:";
-				exec("/sbin/ip addr ls", $info);
+					if (isset($_SERVER['SERVER_ADDR']) && $_SERVER['SERVER_NAME'])
+						$ip = $_SERVER['SERVER_ADDR']." (".$_SERVER['SERVER_NAME'].")";
+					else {
+						exec("ifconfig",$info);
+						$info = implode($info,"\n");
+						$pos_ipv4 = strpos($info,"inet addr:");
+						$pos_ipv6 = strpos($info,"inet6 addr: ");
+						if ($pos_ipv4!==false)
+						    $ip = substr($info,$pos_ipv4+10);
+						elseif ($pos_ipv6!==false)
+						    $ip = substr($info,$pos_ipv6);
+						else
+						    $ip = "undetected";
+						$break = strpos($ip," ");
+						$ip = substr($ip,0,$break);
+						if (isset($_SERVER["HOSTNAME"]))
+							$ip .= " (".$_SERVER["HOSTNAME"].")";
+					}
+					
+					$body = "Application is running on ".$ip."\n";
+					$body .= "Application: '$proj_title'"."\n";
 
-				$skip = true;
-				foreach ($info as $data) {
-					if (preg_match('/^[1-9]/', $data)) {
-						if (preg_match('/'.$skip_interfaces.'/', $data)) {
-							$skip = true;
-							continue;
+					if (isset($_SESSION["username"])) {
+						$user = $_SESSION["username"];
+						$reporter = getparam("name");
+						if ($reporter)
+							$user .= "($reporter)";
+					} else {
+						exec('echo "$USER"',$user);
+						$user = implode($user,"\n");
+					}
+					$body .= "User: ".$user."\n";
+
+					$description = getparam("bug_description");
+					if ($description)
+						$body .= "User description: ".$description."\n";
+
+					if ($message)
+						$body .= "Error that triggered report: ".$message."\n";
+
+					$attachment = ($logs_file = self::get_log_file()) ? array(array("file"=>$logs_file,"content_type"=>"text/plain")) : false;
+					if (!$attachment)
+						// logs are not kept in file, add xdebug to email body
+						$body .= "\n\n$xdebug";
+					$body = str_replace("\n","<br/>",$body);
+
+					for ($i=0; $i<count($notification_options); $i++) {
+						send_mail($notification_options[$i], $server_email_address, $subject, $body, $attachment,null,false);
+					}
+
+					//Move the file set in $logs_in into log.date after sending it through email 
+					if ($attachment) {
+						$dir_arr = explode("/",$attachment[0]["file"]);
+						$path = "";
+						for ($i=0; $i<count($dir_arr)-1; $i++)
+							$path .= $dir_arr[$i]."/";
+					}
+					rename($attachment[0]["file"], $path ."log.".date("Ymdhis"));
+
+					break;
+				case "web":
+					for ($i=0; $i<count($notification_options); $i++) {
+						switch ($notification_options[$i]) {
+							case "notify":
+								$_SESSION["triggered_report"] = true;
+								break;
+							case "dump":
+								print "<pre>";
+								if (!in_array("web",$logs_in))
+									// of "web" is not already in $logs_in
+									// then print directly because otherwise it won't appear on screen
+									if ($message)
+										print "Error that triggered report: ".$message."\n";
+									print $xdebug;
+								print "</pre>\n";
+								if (isset($_SESSION["main"]))
+									print "<a class='llink' href='".$_SESSION["main"]."?module=$module&method=clear_triggered_error'>Clear</a></div>";
+								break;
 						}
-					$line = explode(':',$data);
-					if (!empty($body))
-						$body .= "\n";
-						$body .= 'Interface: '.trim($line[1]). " with";
-						$skip = false;
-						continue;
 					}
-					if ($skip)
-						continue;
-					if (strpos($data, "inet6") !== false) {
-						$line = explode(' ', trim($data));
-						$body .= " IPv6: " . $line[1];
-						continue;
-					}
-					if (strpos($data, "inet") !== false) {
-						$line = explode(' ', trim($data));
-						$body .= " IPv4: " . $line[1];
-						continue;
-					}
-				}
-
-				if (isset($_SERVER["HOSTNAME"]))
-					$body .= "\nHostname: ".$_SERVER["HOSTNAME"];
-				
-				$body .= "\nApplication: '$proj_title'"."\n";
-				if (isset($software_version))
-					$body .= "Version: $software_version"."\n";
-
-				if (isset($_SESSION["username"])) {
-					$user = $_SESSION["username"];
-					$reporter = getparam("name");
-					if ($reporter)
-						$user .= "($reporter)";
-				} else {
-					exec('echo "$USER"',$user);
-					$user = implode($user,"\n");
-				}
-				$body .= "User: ".$user."\n";
-
-				$description = getparam("bug_description");
-				if ($description)
-					$body .= "User description: ".$description."\n";
-
-				if ($message)
-					$body .= "Error that triggered report: ".$message."\n";
-
-				$logs_file = self::get_log_file();
-				if ($logs_file) {
-					$dir_arr = explode("/",$logs_file);
-					$path = "";
-					for ($i=0; $i<count($dir_arr)-1; $i++)
-						$path .= $dir_arr[$i]."/";
-
-					$new_file = $path ."log.".date("YmdHis");
-					$attach_file = $path ."attach_log.".date("YmdHis");
-
-					exec("tail -n 500 $logs_file > $attach_file");
-					rename($logs_file, $new_file);
-				}
-
-				$attachment = ($logs_file) ? array(array("file"=>$attach_file,"content_type"=>"text/plain")) : false;
-				if (!$attachment)
-					// logs are not kept in file, add xdebug to email body
-					$body .= "\n\n$xdebug";
-				$body = str_replace("\n","<br/>",$body);
-
-				for ($i=0; $i<count($notification_options); $i++) {
-					send_mail($notification_options[$i], $server_email_address, $subject, $body, $attachment,null,false);
-				}
-				exec("rm -f $attach_file");
-
-				break;
-			case "web":
-				for ($i=0; $i<count($notification_options); $i++) {
-					switch ($notification_options[$i]) {
-					case "notify":
-						$_SESSION["triggered_report"] = true;
-						break;
-					case "dump":
-						print "<pre>";
-						if (!in_array("web",$logs_in))
-							// of "web" is not already in $logs_in
-							// then print directly because otherwise it won't appear on screen
-							if ($message)
-								print "Error that triggered report: ".$message."\n";
-						print $xdebug;
-						print "</pre>\n";
-						if (isset($_SESSION["main"]))
-							print "<a class='llink' href='".$_SESSION["main"]."?module=$module&method=clear_triggered_error'>Clear</a></div>";
-						break;
-					}
-				}
-				break;
+					break;
 			}
 		}
 	}
@@ -418,7 +342,7 @@ class Debug
 	public static function format_args($args)
 	{
 		$res = str_replace("\n","",var_export($args,true));
-		$res = str_replace("  "," ",$res);
+		$res = str_replace("  ","",$res);
 		$res = str_replace(",)",")",$res);
 		// exclude 'array ('
 		$res = substr($res,7);
@@ -501,15 +425,11 @@ class Debug
 			foreach ($debug_buttons as $method=>$button) {
 				switch ($method) {
 					case "dump_session":
-                                                if (is_file("pages.php"))
-                                                    $page = "pages.php";
-                                                else
-                                                    $page = (isset($_SESSION["main"])) ? $_SESSION["main"] : "main.php";
-						print "&nbsp;<a class='llink' href='$page?method=$method' target='_blank'>$button</a>";
+						print "<a class='llink' href='pages.php?method=$method' target='_blank'>$button</a>";
 						break;
 					case "dump_request":
 						$dump_request_params = true;
-						print "&nbsp;<a class='llink' onclick='show_hide(\"dumped_request\");'>$button</a>";
+						print "<a class='llink' onclick='show_hide(\"dumped_request\");'>$button</a>";
 						break;
 					default:
 						call_user_func($button);
@@ -605,12 +525,7 @@ function dump_session()
 		call_user_func($db_dump_session);
 	else {
 		print "<pre>";
-		$copy_session = $_SESSION;
-		$xdebug = $copy_session["xdebug"];
-		unset($copy_session["xdebug"]);
-		var_dump($copy_session);
-		print "xdebug: ";
-		var_dump($xdebug);
+		var_dump($_SESSION);
 		print "</pre>";
 	}
 }

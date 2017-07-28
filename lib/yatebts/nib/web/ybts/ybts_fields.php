@@ -38,8 +38,6 @@ require_once("create_radio_band_select_array.php");
  */
 function get_default_fields_ybts()
 {
-	global $private_version;
-
 	$radio_c0 = prepare_gsm_field_radio_c0();
 	$fields = array();
 	$fields["GSM"] = array(
@@ -342,7 +340,7 @@ Interval allowed: 1..5.
 Defaults to 2."
 			),
 			"Neighbors.NumToSend" => array(
-			       array("selected" => 8, 1,2,3,4,5,6,7,8,9,10),
+			       array("selected" => 8, 1,2,3,4,5,6,7,8,9,10),	
 				"display" => "select",
 				"comment" => "Maximum number of neighbors to send to handset in a neighbor list in BCCH.
 Interval allowed:1..10.
@@ -354,16 +352,6 @@ Defaults to 8."
 				"comment" => "Maximum number of repeats of the Physical Information Message during handover procedure, GSM 04.08 11.1.3.
 Interval allowed: 1..10
 Defaults to 5"
-			),
-			"RACH.AC" => array(
-				"value" => "0x0400",
-				"display" => "text",
-				"comment" => "Integer: Access Class flags.
-This is the raw parameter sent on BCCH, see GSM 04.08 10.5.2.29 for encoding.
-DO NOT ALTER THIS UNLESS YOU ARE A REAL OPERATOR!
-Interval allowed: 0..65535 (16 bits, 0x0000..0xffff).
-Defaults to 0x0400 (No emergency services access).",
-				"validity" => array("check_rach_ac")
 			),
 			"RACH.MaxRetrans" => array( 
 				array("selected" => "1", array("RACH.MaxRetrans_id"=>"0","RACH.MaxRetrans"=> "1 retransmission"),array("RACH.MaxRetrans_id"=>"1","RACH.MaxRetrans"=>"2 retransmission"),array("RACH.MaxRetrans_id"=>"2","RACH.MaxRetrans"=> "4 retransmission"),array("RACH.MaxRetrans_id"=>"3","RACH.MaxRetrans"=> "7 retransmission")),
@@ -1073,7 +1061,7 @@ Defaults to yes.",
 				"display" => "checkbox",
 				"value" => "1",
 				"comment" => "Use the attach/detach procedure. This will make initial LUR more prompt.
-It will also cause an un-registration if the handset powers off and really heavy LUR loads in areas with spotty coverage.
+It will also cause an un-regstration if the handset powers off and really heavy LUR loads in areas with spotty coverage.
 Defaults to yes."
 			),
 			"SACCHTimeout.BumpDown" => array(
@@ -1134,14 +1122,6 @@ The IP address of receiving Wireshark, if you use it for real time traces.",
 
 	$fields["YBTS"] = array(
 		"ybts" => array(
-			"mode" => array(
-				array("selected"=> "nib", "nib","roaming"),
-				"display" => "select",
-				"comment" => "BTS mode of operation. This setting will specify which Javascript script 
-to load for the operation. Possible values are:
-    - nib: loads script necessary for Network In a Box mode of operation
-    - roaming: loads script necessary for the voice roaming mode of operation"
-			),
 			"heartbeat_ping"=> array(
 				"display" => "text",
 				"value" => "30000",
@@ -1329,76 +1309,7 @@ Defaults to 720000",
 				"comment" => "Authenticate MS on MT USSD. This parameter is applied on reload. Defaults to 'no'."
 			)
 
-		),
-		"roaming" => array(
-			"expires" => array(
-				"display" => "text",
-				"value" => "3600",
-				"comment" => "Expire time for registrations."
-			),
-			"reg_sip" => array(
-				"display" => "text",
-				"comment" => "String: ip:port where SIP requests are sent.
-It is REQUIRED to set reg_sip or nodes_sip.
-Example: reg_sip=192.168.1.245:5058",
-				"validity" => array("valid_reg_sip","reg_sip")
-			),
-			"nodes_sip" => array(
-				"display" => "text",
-				"comment" => "json object: node => ip:port of each YateUCN server
-node, which is computed based on the TMSI received from the handset.
-This ensures that registrations are always sent to the same YateUCN server.".
-//It is REQUIRED to set reg_sip or nodes_sip.
-"Example: nodes_sip={\"123\":\"192.168.1.245:5058\",\"101\":\"192.168.1.176:5059\"}",
-				"validity" => array("valid_nodes_sip", "nodes_sip")
-			),
-			"nnsf_bits" => array(
-				"display" => "text",
-				"value" => "8",
-				"comment" => "Int: Number of bits to use for
-the Non Access Stratum (NAS) Node Selection Function (NNSF)."
-			),
-			"my_sip" => array(
-				"display" => "text",
-				"comment" => "string: ip:port for the local SIP listener.
-Unless otherwise configured, this is the IP of the machine
-where YateBTS is installed.
-Example: my_sip=198.168.1.168"
-			),
-			"gstn_location" => array(
-				"display" => "text",
-				"comment" => "String: unique number that identies the cell in the national database
-Associated to each base station by the network operator."
-			),
-			"text_sms" => array(
-				"display" => "checkbox",
-				"comment" => "If possible decode and send the SMS as text/plain SIP MESSAGE body.
-By default the binary type application/vnd.3gpp.sms is used."
-			)
-		),
-
-		"handover" => array(
-			"enable" => array(
-				"display" => "checkbox",
-				"value" => "1",
-				"comment" => "Globally enable handover functions.
-Default is enabled."
-			),
-			"neighbors" => array(
-				"display" => "text",
-				"comment" => "Comma separated list of neighbor SIP addresses.
-Each neighbor will be periodically queried for target handover availability.
-Example: neighbors=10.0.0.1, 10.0.0.2, 10.0.0.3:5065.
-Default is empty."
-			),
-			"reason" => array(
-				"display" => "text",
-				"value" => "GSM;text=\"Handover\"",
-				"comment" => 'Text to place in the Reason SIP header.
-An empty or boolean false value disables the Reason header.
-Default: GSM;text="Handover".'
-			)
-		),
+		)
 	);
 
 /*	$fields["Logging"] = array(
@@ -1414,50 +1325,13 @@ Defaults to NOTICE."
 	);
  */
 
-	if (isset($private_version) && $private_version===true) {
-		// add dataroam mode
-		$fields["YBTS"]["ybts"]["mode"][0][] = "dataroam";
-		$fields["YBTS"]["ybts"]["mode"]["comment"] .= "\n- dataroam: voice and data roaming modes. Available only in the private YateBTS version";
-
-		$fields["YBTS"]["gprs_roaming"] = array(
-			"local_breakout" => array(
-				"display" => "text",
-				"comment" => "boolean or regexp: Activate local IP address termination.
-If boolean enables or disables LBO for all subscribers.
-If regexp activates LBO only for matching IMSIs.
-Defaults to no",
-			),
-			"gprs_nnsf_bits" => array(
-				"display" => "text",
-				"column_name" => "NNSF bits",
-				"comment" => "Number of bits to use for SGSN
-Non Access Stratum (NAS) Node Selection Function (NNSF).
-Defaults to 0 (disabled)."
-			), 
-			"nnsf_dns" => array(
-				"display" => "text",
-				"column_name" => "NNSF DNS",
-				"comment" => "boolean or string: Use DNS for SGSN node mapping.
-Defaults to no if nnsf_bits is zero or an explicit node mapping exists.
-If a string is provided it will replace default domain mnc<NNN>.mcc<NNN>.gprs"
-			),
-			"network_map" => array(
-				"column_name" => "Explicitly map network nodes to IP addresses",
-				"display" => "textarea",
-				"comment" => "Example:
-20=10.0.0.1
-23=10.2.74.9"
-			)
-		    );
-	}
-
 	foreach($fields as $section => $subsections) {
 		foreach ($subsections as $subs => $data1) {
-			foreach ($data1 as $paramname => $data) {
+	       		foreach ($data1 as $paramname => $data) {	
 				if (isset($data["comment"])) {
 					$fields[$section][$subs][$paramname]["comment"] = str_replace(array("\t\t\t\t","\n"),array("","<br/>"), $data["comment"]);
 				}
-		}
+	       		}
 		}
 	}
 

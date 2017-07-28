@@ -15,13 +15,9 @@
 
 #include "GSMTAPDump.h"
 #include "GSMTransfer.h"
-#include "GSMConfig.h"
 #include <Sockets.h>
 #include <Globals.h>
 #include <Logger.h>
-
-
-#define MAX_DUMP_LENGTH (MAX_UDP_LENGTH + 32)
 
 UDPSocket GSMTAPSocket;
 
@@ -49,16 +45,9 @@ unsigned int buildHeader(char* buffer, unsigned int len,
 			scn = 0;
 			break;
 
-		case GSM::SDCCH_4_2:
-			if (gBTS.getCBCH()) {
-				stype = GSMTAP_CHANNEL_CBCH51;
-				scn = 2;
-				is_saach = false;
-				break;
-			}
-			// fall through
 		case GSM::SDCCH_4_0:
 		case GSM::SDCCH_4_1:
+		case GSM::SDCCH_4_2:
 		case GSM::SDCCH_4_3:
 			stype = GSMTAP_CHANNEL_SDCCH4;
 			scn = to - GSM::SDCCH_4_0;
@@ -158,17 +147,12 @@ void gWriteGSMTAP(unsigned ARFCN, unsigned TS, unsigned FN,
 	// Check if GSMTap is enabled
 	if (!socketActive()) return;
 
-	char buffer[MAX_DUMP_LENGTH];
+	char buffer[MAX_UDP_LENGTH];
 	int ofs = 0;
 	
-	if (!(ofs = buildHeader(buffer,MAX_DUMP_LENGTH,ARFCN,TS,FN,
+	if (!(ofs = buildHeader(buffer,MAX_UDP_LENGTH,ARFCN,TS,FN,
 					to,is_saach,ul_dln,wType,0)))
 		return;
-	if ((ofs + (frame.size() + 7) / 8) > MAX_DUMP_LENGTH) {
-		LOG(NOTICE) << "Built GSMTAP buffer exceeds max length=" << MAX_DUMP_LENGTH 
-			<< " header_len=" << ofs << " data_len=" << frame.size() / 8  << ", not dumping";
-		return;
-	}
 	// Add frame data
 	frame.pack((unsigned char*)&buffer[ofs]);
 	ofs += (frame.size() + 7) >> 3;
@@ -184,16 +168,12 @@ void gWriteGSMTAP(unsigned ARFCN, unsigned TS, unsigned FN,
 {
 	if (!(data && len && socketActive()))
 		return;
-	char buffer[MAX_DUMP_LENGTH];
+	char buffer[MAX_UDP_LENGTH];
 	int ofs = 0;
-	if (!(ofs = buildHeader(buffer,MAX_DUMP_LENGTH,ARFCN,TS,FN,
+	if (!(ofs = buildHeader(buffer,MAX_UDP_LENGTH,ARFCN,TS,FN,
 					to,is_saach,ul_dln,wType,defSCN)))
 		return;
-	if (ofs + len > MAX_DUMP_LENGTH) {
-		LOG(NOTICE) << "Built GSMTAP buffer exceeds max length=" << MAX_DUMP_LENGTH 
-			<< " header_len=" << ofs << " data_len=" << len << ", not dumping";
-		return;
-	}
+
 	// Add frame data
 	::memcpy(&buffer[ofs],data,len);
 	ofs += len;

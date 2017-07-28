@@ -43,7 +43,7 @@ class GmmState
 		GmmDeregistered,	// Tlli was assigned by us, but not registered yet.
 		GmmRegistrationPending,
 		GmmRegisteredNormal,		// aka "GPRS Attached"
-		GmmRegisteredSuspended
+		GmmRegisteredSuspsended
 	};
 	static const char *GmmState2Name(state);
 };
@@ -60,27 +60,17 @@ struct SgsnDownlinkMsg
 	//SgsnDownlinkPdu(SgsnDownlinkPdu&other) { *this = other; }
 };
 
-struct GprsSgsnDownlinkPdu : public SingleLinkListCompNode, public SgsnDownlinkMsg
+struct GprsSgsnDownlinkPdu : public SingleLinkListNode, public SgsnDownlinkMsg
 {
 	uint32_t mTlli;		// For gprs: the TLLI of the MS to receive the message.
 						// (In gprs NSAPI is encoded in the LLC message in the data.)
 	uint32_t mAliasTlli;// Another TLLI that the SGSN knows refers to the same MS as the above.
 	Timeval mDlTime;
-	unsigned int mSapi;
 	bool isKeepAlive() { return false; }	// Is this is a dummy message?
 	unsigned size() { return mDlData.size(); }	// Decl must exactly match SingleLinkListNode
-	GprsSgsnDownlinkPdu(ByteVector a, uint32_t wTlli, uint32_t wAliasTlli, std::string descr, unsigned int sapi = 0) :
-		SgsnDownlinkMsg(a,descr), mTlli(wTlli), mAliasTlli(wAliasTlli), mSapi(sapi)
+	GprsSgsnDownlinkPdu(ByteVector a, uint32_t wTlli, uint32_t wAliasTlli, std::string descr) :
+		SgsnDownlinkMsg(a,descr), mTlli(wTlli), mAliasTlli(wAliasTlli)
 		{}
-	int compare(const SingleLinkListCompNode* other)
-	{
-		if (!other)
-			return -1; // put valid elements before null ones
-		const GprsSgsnDownlinkPdu* pdu = static_cast<const GprsSgsnDownlinkPdu*>(other);
-		if (!pdu)
-			return -1;
-		return mSapi - pdu->mSapi;
-	}
 };
 
 struct UmtsSgsnDownlinkPdu : public SgsnDownlinkMsg
@@ -114,19 +104,15 @@ class MSUEAdapter {
 	public:
 	// The rbid is used only by UMTS.
 	void sgsnWriteLowSide(ByteVector &payload,uint32_t handle, unsigned rbid=0);
-	// return associated GmmInfo in outGmm if given pointer is valid
-	GmmState::state sgsnGetRegistrationState(uint32_t mshandle, GmmInfo** outGmm = 0);
+	GmmState::state sgsnGetRegistrationState(uint32_t mshandle);
 	void sgsnPrint(uint32_t mshandle, int options, std::ostream &os);
 	void sgsnFreePdpAll(uint32_t mshandle);
-	GmmState::state suspend();
-	GmmState::state resume();
 
 	//MSUEAdapter() {}
 	//virtual ~MSUEAdapter() {}
 	virtual std::string msid() const = 0;	// A human readable name for the MS or UE.
 	virtual void msChangeTlli(uint32_t newTlli) = 0;	// Make TLLI primary.
 	virtual void msAliasTlli(uint32_t newTlli) = 0;	// Add an alias for the TLLI.
-	virtual void page(const ByteVector& imsi, uint32_t tmsi, GSM::ChannelType chanType, bool pageForRR = true) = 0; // Page the MS
 
 #if RN_UMTS
 	// This is the old interface to GPRS/UMTS; see saWriteHighSide()
@@ -200,7 +186,6 @@ class Sgsn {
 
 	static bool handleGprsSuspensionRequest(uint32_t wTlli, const ByteVector &wRaId);
 	static void notifyGsmActivity(const char *imsi);
-	static void sendPaging(const char* imsi, uint32_t tmsi, GSM::ChannelType chanType);
 //#if RN_UMTS
 	// FIXME: make this work like gprs
 	//static void sgsnWriteLowSide(ByteVector &payload,SgsnInfo *si, unsigned rbid);	// UMTS only

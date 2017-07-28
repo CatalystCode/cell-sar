@@ -198,8 +198,7 @@ GPRSCellOptions_t::GPRSCellOptions_t() :
 	mACCESS_BURST_TYPE(0),
 	mCONTROL_ACK_TYPE(1),	// Packet Control Acknowledgement is an RLC/BLOCK, not a RACH burst.
 	mBS_CV_MAX(1),	// This is determined by the system, not the user.
-	mNW_EXT_UTBF(gConfig.getNum("GPRS.Uplink.Persist") > 0),
-	mAdvertiseEDGE(gConfig.getBool("GPRS.CellOptions.AdvertiseEDGE"))
+	mNW_EXT_UTBF(gConfig.getNum("GPRS.Uplink.Persist") > 0)
 {
 	// Sanity check some values.
 	if (RN_BOUND(mNMO,0,2) != mNMO) {
@@ -1605,7 +1604,7 @@ static void processRLCUplinkDataBlock(PDCHL1FEC *pdch, RLCRawBlock *src,TBF *res
 				<<" tbf=" <<tbf <<" bsn="<<src->mBSN <<tbf<<oss.str();
 		}
 		if (restbf && restbf != tbf) {
-			GLOG(ERR) << "Incoming block reservation for" << restbf << " does not match received "<< tbf;
+			GLOG(ERR) << "Incoming block reservation does not match "<<tbf<< LOGVAR(restbf);
 		}
 		tbf->engineRecvDataBlock(rb,pdch->TN());
 	} else {
@@ -1631,7 +1630,7 @@ static void processRLCUplinkDataBlock(PDCHL1FEC *pdch, RLCRawBlock *src,TBF *res
 static void processUplinkResourceRequest(
 	PDCHL1FEC *requestch,	// The channel the request arrived on.
 	RLCMsgPacketResourceRequest *rmsg,
-	RLCBlockReservation::type restype, const RadData& rachRd, RadData &rd)
+	RLCBlockReservation::type restype, RadData &rd)
 {
 	MSInfo *ms = rmsg->getMS(requestch,true);
 	if (!ms) {
@@ -1641,10 +1640,6 @@ static void processUplinkResourceRequest(
 		return;
 	}
 	ms->talkedUp();
-
-	bool isRach = (restype == RLCBlockReservation::ForRACH);
-	if (isRach && rachRd.mValid) // init MS with RSSI and TE from RACH
-		ms->initRadData(rachRd.mRSSI,rachRd.mTimingError);
 	if (rd.mValid) {
 		ms->setRadData(rd.mRSSI,rd.mTimingError);
 	}
@@ -1655,6 +1650,7 @@ static void processUplinkResourceRequest(
 		if (rmsg->mILevelPresent[tn]) { ms->msILevel.addPoint(rmsg->mILevelTN[tn]); }
 	}
 
+	bool isRach = (restype == RLCBlockReservation::ForRACH);
 	if (isRach) {
 		// After an MS in PacketIdle mode contacts us, we send it a single
 		// block uplink assignment, and this is its answer.
@@ -1837,7 +1833,7 @@ static void processUplinkResourceRequest(
 
 static void processResourceRequest(
 	PDCHL1FEC *pdch,RLCMsgPacketResourceRequest* rmsg,
-	RLCBlockReservation::type restype, RadData& rachRd, RadData &rd)
+	RLCBlockReservation::type restype, RadData &rd)
 {
 	int accessType = rmsg->mAccessTypePresent ? (int) rmsg->mAccessType : 0;
 	//GPRSLOG(1) << "processResourceRequest"<<LOGVAR(accessType);
@@ -1848,7 +1844,7 @@ static void processResourceRequest(
 		case 3: // Mobility Management Procedure.
 		case 1: // Page Response
 		case 2: // Cell Update
-			processUplinkResourceRequest(pdch,rmsg,restype,rachRd,rd);
+			processUplinkResourceRequest(pdch,rmsg,restype,rd);
 			break;
 	}
 }
@@ -1949,7 +1945,6 @@ static void processUplinkBlock(PDCHL1FEC *pdch, RLCRawBlock *src)
 		if (usfms) {
 			usfms->msN3101 = 0;
 			usfms->talkedUp();
-			usfms->resume();
 		}
 	}
 
@@ -1957,7 +1952,7 @@ static void processUplinkBlock(PDCHL1FEC *pdch, RLCRawBlock *src)
 		case MACPayloadType::RLCData:
 			if (restype != RLCBlockReservation::None) {
 				// This happened alot before fixing the transceiverRAD1.
-				GLOG(ERR) << "ERROR: Received reservation " << restype << " in RLC data block";
+				GLOG(ERR) << "ERROR: Received reservation in RLC data block";
 			}
 			processRLCUplinkDataBlock(pdch,src,restbf);
 			break;
@@ -1980,7 +1975,7 @@ static void processUplinkBlock(PDCHL1FEC *pdch, RLCRawBlock *src)
 				processDownlinkAckNack(pdch,(RLCMsgPacketDownlinkAckNack*)msg,src->mRD);
 				break;
 			case RLCUplinkMessage::PacketResourceRequest:
-				processResourceRequest(pdch,(RLCMsgPacketResourceRequest*) msg,restype,rd,src->mRD);
+				processResourceRequest(pdch,(RLCMsgPacketResourceRequest*) msg,restype,src->mRD);
 				break;
 			case RLCUplinkMessage::PacketUplinkDummyControlBlock:
 				processUplinkDummy(pdch,(RLCMsgPacketUplinkDummyControlBlock*)msg,src->mRD);

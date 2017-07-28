@@ -1,8 +1,0 @@
-core*
-*.h
-*.raw
-?2?
-gen
-*.orig
-*~
-.*.swp

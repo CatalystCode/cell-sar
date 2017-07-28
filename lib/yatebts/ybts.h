@@ -68,9 +68,6 @@ enum BtsPrimitive {
     SigNeighborsList    = 132,           // Update the list of neighbor cells
     SigHandoverRequest  = 133,           // Requests resources for inbound handover
     SigHandoverReject   = 134,           // Handover resources allocation failed
-    SigStop             = 135,           // Stop notification
-    SigBroadcastWrite   = 136,           // Write-replace Cell Broadcast
-    SigBroadcastKill    = 137,           // Cancel a Cell Broadcast
     SigHeartbeat        = 255            // Heartbeat
 };
 
@@ -85,15 +82,6 @@ enum BtsPagingChanType {
 enum BtsErrors {
     ErrCongestion       = 0x22,          // No circuit/channel available
     ErrInterworking     = 0x7f           // Interworking, unspecified
-};
-
-// Bts/radio stop reason
-enum BtsRadioStop {
-    BtsNormal = 0,
-    BtsRadioLost,                       // Lost communication with radio interface
-    BtsInternalError,                   // Some internal error
-    BtsRadioExiting,                    // Radio exiting notification
-    BtsRadioError,                      // Radio fatal error encountered (signalled by radio interface)
 };
 
 #define YBTS_MCC_DEFAULT "001"

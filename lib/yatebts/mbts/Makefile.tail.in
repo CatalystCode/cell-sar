@@ -49,10 +49,10 @@ uninstall:
 	@-test -d "$(DESTDIR)$(moddir)/server/bts" && rmdir "$(DESTDIR)$(moddir)/server/bts"
 
 %.o: @srcdir@/%.cpp $(INCFILES)
-	$(COMPILE) -c $(LOCALFLAGS) $<
+	$(COMPILE) -c $<
 
 %.o: @srcdir@/%.c $(INCFILES)
-	$(CCOMPILE) $(LOCALFLAGS) -c $<
+	$(CCOMPILE) -c $<
 
 Makefile: @srcdir@/Makefile.in ../../config.status
 	cd ../.. && ./config.status

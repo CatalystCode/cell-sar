@@ -41,68 +41,20 @@
 using namespace GSM;
 using namespace std;
 
-static inline void addAddr(std::string& dest, const char* ip, int port, const char* prefix = "")
-{
-    char tmp[256];
-    sprintf(tmp,"%s%s:%d",prefix,ip,port);
-    dest.append(tmp);
-}
 
-// Send terminate signal to upper layer
-// Wait for thread to be cancelled (give upper layer some time to terminate)
-// exit/abort application
-static void terminate(unsigned int info, int doExit = 1, const void* data = 0, int len = 0,
-	unsigned int waitMs = 3000)
-{
-	if (info < 256 && gSigConn.valid()) {
-		if (data && len)
-			gSigConn.send(Connection::SigStop,info,data,len);
-		else
-			gSigConn.send(Connection::SigStop,info);
-		// Make sure the upper layer reads our notification
-		if (!waitMs)
-			waitMs = 200;
-	}
-	for (waitMs += waitMs & 19; waitMs; waitMs -= 20) {
-		pthread_testcancel();
-		msleep(20);
-	}
-	if (doExit > 0)
-		exit(0);
-	else if (doExit < 0)
-		abort();
-}
-
-
-TransceiverManager::TransceiverManager(int numARFCNs, int wBasePort,
-		const char* wTRXAddress, const char* wLocalAddr)
+TransceiverManager::TransceiverManager(int numARFCNs,
+		const char* wTRXAddress, int wBasePort)
 	:mHaveClock(false),
-	mClockSocket(wBasePort+3,wLocalAddr),
-	mControlSocket(wBasePort+1,wTRXAddress,wBasePort,wLocalAddr),
-	mExitRecv(false), m_statistics(false)
+	mClockSocket(wBasePort+100)
 {
-	addAddr(mInitData,wLocalAddr,wBasePort + 1,"\r\nControl: ");
-	addAddr(mInitData,wTRXAddress,wBasePort," - ");
-	addAddr(mInitData,wLocalAddr,wBasePort + 3,"\r\nClock: ");
 	// set up the ARFCN managers
-	int p = wBasePort + 4;
-	for (int i=0; i<numARFCNs; i++, p += 2) {
-		mARFCNs.push_back(new ::ARFCNManager(i,wTRXAddress,p,wLocalAddr,*this));
-		char tmp[50];
-		sprintf(tmp,"\r\nARFCN[%d]: ",i);
-		addAddr(mInitData,wLocalAddr,p + 1,tmp);
-		addAddr(mInitData,wTRXAddress,p," - ");
+	for (int i=0; i<numARFCNs; i++) {
+		int thisBasePort = wBasePort + 1 + 2*i;
+		mARFCNs.push_back(new ::ARFCNManager(wTRXAddress,thisBasePort,*this));
 	}
 }
 
-void TransceiverManager::logInit()
-{
-	LOG(INFO) << "Initialized:" <<
-		"\r\n-----" <<
-		"\r\nARFCNS: " << mARFCNs.size() <<
-		mInitData <<
-		"\r\n-----";
-}
+
 
 void TransceiverManager::start()
 {
@@ -113,114 +65,7 @@ void TransceiverManager::start()
 }
 
 
-int TransceiverManager::sendCommandPacket(const char* command, char* response)
-{
-	if (exiting())
-		return -2;
 
-	int msgLen = 0;
-	response[0] = '\0';
-
-	int maxRetries = gConfig.getNum("TRX.MaxRetries");
-	mControlLock.lock();
-	LOG(INFO) << "command " << command;
-
-	int n = mControlSocket.write(command);
-	if (n <= 0)
-		maxRetries = 0;
-	for (int retry=0; retry<maxRetries && !exiting(); retry++) {
-		msgLen = mControlSocket.read(response,1000);
-		if (msgLen>0) {
-			response[msgLen] = '\0';
-			break;
-		}
-		LOG(NOTICE) << "TRX link timeout on attempt " << retry+1;
-	}
-
-	LOG(INFO) << "response " << response;
-	mControlLock.unlock();
-
-	if (exiting())
-		return 0;
-
-	if ((msgLen>4) && (strncmp(response,"RSP ",4)==0)) {
-		return msgLen;
-	}
-
-	LOG(WARNING) << "lost control link to transceiver";
-	return 0;
-}
-
-bool TransceiverManager::sendCommand(const char* cmd, int* iParam, const char* sParam,
-	int* rspParam, int arfcn)
-{
-	if (!cmd)
-		return false;
-	// Send command and get response.
-	char cmdBuf[MAX_UDP_LENGTH];
-	char response[MAX_UDP_LENGTH];
-	if (arfcn < 0) {
-		if (iParam)
-			sprintf(cmdBuf,"CMD %s %d", cmd, *iParam);
-		else if (sParam)
-			sprintf(cmdBuf,"CMD %s %s", cmd, sParam);
-		else
-			sprintf(cmdBuf,"CMD %s", cmd);
-	}
-	else {
-		if (iParam)
-			sprintf(cmdBuf,"CMD %d %s %d", arfcn, cmd, *iParam);
-		else if (sParam)
-			sprintf(cmdBuf,"CMD %d %s %s", arfcn, cmd, sParam);
-		else
-			sprintf(cmdBuf,"CMD %d %s", arfcn, cmd);
-	}
-	int rspLen = sendCommandPacket(cmdBuf,response);
-	int status = -1;
-	if (rspLen > 0) {
-		char cmdNameTest[15];
-		cmdNameTest[0]='\0';
-		if (!rspParam)
-			sscanf(response,"RSP %15s %d", cmdNameTest, &status);
-		else
-			sscanf(response,"RSP %15s %d %d", cmdNameTest, &status, rspParam);
-		if (strcmp(cmdNameTest,cmd) != 0)
-			status = -1;
-	}
-	if (status == 0)
-		return true;
-	if (exiting())
-		return false;
-	char* extra = 0;
-	if (rspLen > 0) {
-		// 'RSP CMD_NAME {FIRST_NUMBER} [SECOND_NUMBER] ...'
-		int offset = strlen(cmd) + 5;
-		if (offset < rspLen) {
-			extra = ::strchr(response + offset,' ');
-			if (extra && rspParam)
-				extra = ::strchr(extra + 1,' ');
-			if (extra && !*extra)
-				extra = 0;
-		}
-	}
-	if (extra) {
-		LOG(ALERT) << cmd << " failed with status " << status << " extra:" << extra;
-	}
-	else {
-		LOG(ALERT) << cmd << " failed with status " << status;
-	}
-	// Send notification for errors!
-	// Handle some fatal errors during initialize/start
-	// status > 0 means we've got error from transceiver!
-	if (extra && !m_statistics && status > 0 && ((0 == strcmp(cmd,"RESET")) ||
-		(0 == strcmp(cmd,"RXTUNE")) || (0 == strcmp(cmd,"TXTUNE")))) {
-		std::string s(extra);
-		s.append(" operation=");
-		s.append(cmd);
-		terminate(Connection::BtsRadioError,0,(const void*)s.c_str(),s.length(),0);
-	}
-	return false;
-}
 
 
 void* ClockLoopAdapter(TransceiverManager *transceiver)
@@ -256,15 +101,12 @@ void TransceiverManager::clockHandler()
 			static int foo = 0;
 			pthread_exit(&foo);
 		}
-		else {
-			mHaveClock = false;
-			terminate(Connection::BtsRadioLost,-1);
-		}
+		else
+			abort();
 	}
 
 	if (msgLen==0) {
 		LOG(ALERT) << "read error on TRX clock interface, return " << msgLen;
-		terminate(Connection::BtsInternalError);
 		return;
 	}
 
@@ -275,16 +117,6 @@ void TransceiverManager::clockHandler()
 		gBTS.clock().set(FN);
 		mHaveClock = true;
 		return;
-	}
-
-	if (strncmp(buffer,"EXITING",7)==0) {
-		LOG(NOTICE) << "TRX clock 'EXITING' indication";
-		mExitRecv = true;
-		mHaveClock = false;
-		if (buffer[7] == 32)
-			terminate(Connection::BtsRadioExiting,1,&buffer[8],msgLen - 8);
-		else
-			terminate(Connection::BtsRadioExiting);
 	}
 
 	buffer[msgLen]='\0';
@@ -305,11 +137,10 @@ unsigned TransceiverManager::C0() const
 
 
 
-::ARFCNManager::ARFCNManager(unsigned int wArfcnPos, const char* wTRXAddress, int wBasePort,
-	const char* localIP, TransceiverManager &wTransceiver)
+::ARFCNManager::ARFCNManager(const char* wTRXAddress, int wBasePort, TransceiverManager &wTransceiver)
 	:mTransceiver(wTransceiver),
-	mDataSocket(wBasePort+1,wTRXAddress,wBasePort,localIP),
-	mArfcnPos(wArfcnPos)
+	mDataSocket(wBasePort+100+1,wTRXAddress,wBasePort+1),
+	mControlSocket(wBasePort+100,wTRXAddress,wBasePort)
 {
 	// The default demux table is full of NULL pointers.
 	for (int i=0; i<8; i++) {
@@ -429,14 +260,50 @@ void* ReceiveLoopAdapter(::ARFCNManager* manager){
 	return NULL;
 }
 
+
+
+
+
+int ::ARFCNManager::sendCommandPacket(const char* command, char* response)
+{
+	int msgLen = 0;
+	response[0] = '\0';
+
+	LOG(INFO) << "command " << command;
+	int maxRetries = gConfig.getNum("TRX.MaxRetries");
+	mControlLock.lock();
+
+	for (int retry=0; retry<maxRetries; retry++) {
+		mControlSocket.write(command);
+		msgLen = mControlSocket.read(response,1000);
+		if (msgLen>0) {
+			response[msgLen] = '\0';
+			break;
+		}
+		LOG(WARNING) << "TRX link timeout on attempt " << retry+1;
+	}
+
+	mControlLock.unlock();
+	LOG(INFO) << "response " << response;
+
+	if ((msgLen>4) && (strncmp(response,"RSP ",4)==0)) {
+		return msgLen;
+	}
+
+	LOG(NOTICE) << "lost control link to transceiver";
+	return 0;
+}
+
+
+
 // TODO : lots of duplicate code in these sendCommand()s
 int ::ARFCNManager::sendCommand(const char*command, const char*param, int *responseParam)
 {
 	// Send command and get response.
 	char cmdBuf[MAX_UDP_LENGTH];
 	char response[MAX_UDP_LENGTH];
-	sprintf(cmdBuf,"CMD %u %s %s", mArfcnPos, command, param);
-	int rspLen = mTransceiver.sendCommandPacket(cmdBuf,response);
+	sprintf(cmdBuf,"CMD %s %s", command, param);
+	int rspLen = sendCommandPacket(cmdBuf,response);
 	if (rspLen<=0) return -1;
 	// Parse and check status.
 	char cmdNameTest[15];
@@ -455,8 +322,8 @@ int ::ARFCNManager::sendCommand(const char*command, int param, int *responsePara
 	// Send command and get response.
 	char cmdBuf[MAX_UDP_LENGTH];
 	char response[MAX_UDP_LENGTH];
-	sprintf(cmdBuf,"CMD %u %s %d", mArfcnPos, command, param);
-	int rspLen = mTransceiver.sendCommandPacket(cmdBuf,response);
+	sprintf(cmdBuf,"CMD %s %d", command, param);
+	int rspLen = sendCommandPacket(cmdBuf,response);
 	if (rspLen<=0) return -1;
 	// Parse and check status.
 	char cmdNameTest[15];
@@ -476,8 +343,8 @@ int ::ARFCNManager::sendCommand(const char*command, const char* param)
 	// Send command and get response.
 	char cmdBuf[MAX_UDP_LENGTH];
 	char response[MAX_UDP_LENGTH];
-	sprintf(cmdBuf,"CMD %u %s %s", mArfcnPos, command, param);
-	int rspLen = mTransceiver.sendCommandPacket(cmdBuf,response);
+	sprintf(cmdBuf,"CMD %s %s", command, param);
+	int rspLen = sendCommandPacket(cmdBuf,response);
 	if (rspLen<=0) return -1;
 	// Parse and check status.
 	char cmdNameTest[15];
@@ -495,8 +362,8 @@ int ::ARFCNManager::sendCommand(const char*command)
 	// Send command and get response.
 	char cmdBuf[MAX_UDP_LENGTH];
 	char response[MAX_UDP_LENGTH];
-	sprintf(cmdBuf,"CMD %u %s", mArfcnPos, command);
-	int rspLen = mTransceiver.sendCommandPacket(cmdBuf,response);
+	sprintf(cmdBuf,"CMD %s", command);
+	int rspLen = sendCommandPacket(cmdBuf,response);
 	if (rspLen<=0) return -1;
 	// Parse and check status.
 	char cmdNameTest[15];
@@ -507,19 +374,30 @@ int ::ARFCNManager::sendCommand(const char*command)
 	return status;
 }
 
+
+
+
 bool ::ARFCNManager::tune(int wARFCN, bool c0)
 {
 	mARFCN=wARFCN;
 	if (!c0)
 		return true;
 	// convert ARFCN number to a frequency
-	int rxFreq = uplinkFreqKHz(gBTS.band(),wARFCN);
-	int txFreq = downlinkFreqKHz(gBTS.band(),wARFCN);
-	int rsp = 0;
-	if (!mTransceiver.sendCommand("RXTUNE",&rxFreq,0,&rsp,mArfcnPos))
+	unsigned rxFreq = uplinkFreqKHz(gBTS.band(),wARFCN);
+	unsigned txFreq = downlinkFreqKHz(gBTS.band(),wARFCN);
+	// tune rx
+	int status = sendCommand("RXTUNE",rxFreq);
+	if (status!=0) {
+		LOG(ALERT) << "RXTUNE failed with status " << status;
 		return false;
-	if (!mTransceiver.sendCommand("TXTUNE",&txFreq,0,&rsp,mArfcnPos))
+	}
+	// tune tx
+	status = sendCommand("TXTUNE",txFreq);
+	if (status!=0) {
+		LOG(ALERT) << "TXTUNE failed with status " << status;
 		return false;
+	}
+	// done
 	return true;
 }
 
@@ -581,9 +459,7 @@ bool ::ARFCNManager::setPower(int dB)
 {
 	int status = sendCommand("SETPOWER",dB);
 	if (status!=0) {
-		if (!mTransceiver.exiting()) {
-			LOG(ALERT) << "SETPOWER failed with status " << status;
-		}
+		LOG(ALERT) << "SETPOWER failed with status " << status;
 		return false;
 	}
 	return true;
@@ -595,9 +471,7 @@ bool ::ARFCNManager::setTSC(unsigned TSC)
 	assert(TSC<8);
 	int status = sendCommand("SETTSC",TSC);
 	if (status!=0) {
-		if (!mTransceiver.exiting()) {
-			LOG(ALERT) << "SETTSC failed with status " << status;
-		}
+		LOG(ALERT) << "SETTSC failed with status " << status;
 		return false;
 	}
 	return true;
@@ -609,9 +483,7 @@ bool ::ARFCNManager::setBSIC(unsigned BSIC)
 	assert(BSIC < 64);
 	int status = sendCommand("SETBSIC",BSIC);
 	if (status!=0) {
-		if (!mTransceiver.exiting()) {
-			LOG(ALERT) << "SETBSIC failed with status " << status;
-		}
+		LOG(ALERT) << "SETBSIC failed with status " << status;
 		return false;
 	}
 	return true;
@@ -627,9 +499,7 @@ bool ::ARFCNManager::setSlot(unsigned TN, unsigned combination)
 	sprintf(paramBuf,"%d %d", TN, combination);
 	int status = sendCommand("SETSLOT",paramBuf);
 	if (status!=0) {
-		if (!mTransceiver.exiting()) {
-			LOG(ALERT) << "SETSLOT failed with status " << status;
-		}
+		LOG(ALERT) << "SETSLOT failed with status " << status;
 		return false;
 	}
 	return true;
@@ -639,10 +509,8 @@ bool ::ARFCNManager::setMaxDelay(unsigned km)
 {
         int status = sendCommand("SETMAXDLY",km);
         if (status!=0) {
-		if (!mTransceiver.exiting()) {
-		    LOG(ALERT) << "SETMAXDLY failed with status " << status;
-		}
-		return false;
+                LOG(ALERT) << "SETMAXDLY failed with status " << status;
+                return false;
         }
         return true;
 }
@@ -652,10 +520,8 @@ signed ::ARFCNManager::setRxGain(signed rxGain)
         signed newRxGain;
         int status = sendCommand("SETRXGAIN",rxGain,&newRxGain);
         if (status!=0) {
-		if (!mTransceiver.exiting()) {
-			LOG(ALERT) << "SETRXGAIN failed with status " << status;
-		}
-		return false;
+                LOG(ALERT) << "SETRXGAIN failed with status " << status;
+                return false;
         }
         return newRxGain;
 }
@@ -666,9 +532,7 @@ bool ::ARFCNManager::setHandover(unsigned TN)
 	assert(TN<8);
 	int status = sendCommand("HANDOVER",TN);
 	if (status!=0) {
-		if (!mTransceiver.exiting()) {
-			LOG(ALERT) << "HANDOVER failed with status " << status;
-		}
+		LOG(ALERT) << "HANDOVER failed with status " << status;
 		return false;
 	}
 	return true;
@@ -680,9 +544,7 @@ bool ::ARFCNManager::clearHandover(unsigned TN)
 	assert(TN<8);
 	int status = sendCommand("NOHANDOVER",TN);
 	if (status!=0) {
-		if (!mTransceiver.exiting()) {
-			LOG(WARNING) << "NOHANDOVER failed with status " << status;
-		}
+		LOG(WARNING) << "NOHANDOVER failed with status " << status;
 		return false;
 	}
 	return true;
@@ -694,9 +556,7 @@ signed ::ARFCNManager::setTxAtten(signed txAtten)
         signed newTxAtten;
         int status = sendCommand("SETTXATTEN",txAtten,&newTxAtten);
         if (status!=0) {
-		if (!mTransceiver.exiting()) {
-		    LOG(ALERT) << "SETTXATTEN failed with status " << status;
-		}
+                LOG(ALERT) << "SETTXATTEN failed with status " << status;
                 return false;
         }
         return newTxAtten;
@@ -707,10 +567,8 @@ signed ::ARFCNManager::setFreqOffset(signed offset)
         signed newFreqOffset;
         int status = sendCommand("SETFREQOFFSET",offset,&newFreqOffset);
         if (status!=0) {
-		if (!mTransceiver.exiting()) {
-			LOG(ALERT) << "SETFREQOFFSET failed with status " << status;
-		}
-		return false;
+                LOG(ALERT) << "SETFREQOFFSET failed with status " << status;
+                return false;
         }
         return newFreqOffset;
 }
@@ -721,10 +579,8 @@ signed ::ARFCNManager::getNoiseLevel(void)
 	signed noiselevel;
 	int status = sendCommand("NOISELEV",0,&noiselevel);
         if (status!=0) {
-		if (!mTransceiver.exiting()) {
-			LOG(ALERT) << "NOISELEV failed with status " << status;
-		}
-		return false;
+                LOG(ALERT) << "NOISELEV failed with status " << status;
+                return false;
         }
         return noiselevel;
 }
@@ -733,10 +589,8 @@ bool ::ARFCNManager::runCustom(const char* command)
 {
         int status = sendCommand("CUSTOM",command);
         if (status !=0) {
-		if (!mTransceiver.exiting()) {
-			LOG(WARNING) << "CUSTOM failed with status " << status;
-		}
-		return false;
+                LOG(WARNING) << "CUSTOM failed with status " << status;
+                return false;
         }
         return true;
 }
@@ -746,9 +600,7 @@ signed ::ARFCNManager::getFactoryCalibration(const char * param)
 	signed value;
 	int status = sendCommand("READFACTORY", param, &value);
 	if (status!=0) {
-		if (!mTransceiver.exiting()) {
-			LOG(ALERT) << "READFACTORY failed with status " << status;
-		}
+		LOG(ALERT) << "READFACTORY failed with status " << status;
 		return false;
 	}
 	return value;
@@ -756,6 +608,11 @@ signed ::ARFCNManager::getFactoryCalibration(const char * param)
 
 void ::ARFCNManager::receiveBurst(const RxBurst& inBurst)
 {
+	if (inBurst.RSSI() < gConfig.getNum("TRX.MinimumRxRSSI")) {
+		LOG(DEBUG) << "ignoring " << inBurst;
+		return;
+	}
+
 	LOG(DEBUG) << "processing " << inBurst;
 	uint32_t FN = inBurst.time().FN() % maxModulus;
 	unsigned TN = inBurst.time().TN();

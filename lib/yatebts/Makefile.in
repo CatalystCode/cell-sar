@@ -20,7 +20,7 @@ YATELIBS:= @YATE_LIB@
 MODSTRIP:= @YATE_STR@
 RPMOPT :=
 
-PROGS := ybts.yate gsmtrx.yate
+PROGS := ybts.yate
 DOCS  := README COPYING
 LIBS  :=
 OEXE  :=
@@ -50,8 +50,9 @@ shrdir := @YATE_SHR@
 
 .PHONY: all debug ddebug xdebug ndebug
 all: $(PROGS)
-	$(MAKE) -C ./transceiver all
 	$(MAKE) -C ./mbts/apps all
+	$(MAKE) -C ./mbts/Transceiver52M all
+	$(MAKE) -C ./mbts/TransceiverRAD1 all
 	$(MAKE) -C ./nib/auth all
 
 debug:
@@ -72,7 +73,6 @@ clean:
 	@for i in mbts/*; do \
 	    test ! -f "$$i/Makefile" || $(MAKE) -C "$$i" clean BUILD_TESTS=yes; \
 	done
-	$(MAKE) -C ./transceiver clean
 	$(MAKE) -C ./nib/auth clean
 
 check-topdir:
@@ -116,16 +116,18 @@ install: all
 	    install -m 0644 @srcdir@/$$i "$(DESTDIR)$(docdir)/" ; \
 	done
 	$(MAKE) -C ./mbts/apps install
+	$(MAKE) -C ./mbts/Transceiver52M install
+	$(MAKE) -C ./mbts/TransceiverRAD1 install
 	$(MAKE) -C ./nib install
 	$(MAKE) -C ./nib/auth install
 	$(MAKE) -C ./roaming install
-	$(MAKE) -C ./scripts install
 
 uninstall:
 	$(MAKE) -C ./nib/auth uninstall
 	$(MAKE) -C ./nib uninstall
 	$(MAKE) -C ./roaming uninstall
-	$(MAKE) -C ./scripts uninstall
+	$(MAKE) -C ./mbts/Transceiver52M uninstall
+	$(MAKE) -C ./mbts/TransceiverRAD1 uninstall
 	$(MAKE) -C ./mbts/apps uninstall
 	@-for i in $(PROGS) ; do \
 	    rm -f "$(DESTDIR)$(moddir)/server/$$i" ; \
@@ -176,20 +178,16 @@ revision: check-topdir
 	test -z "$$rev" || echo "$$rev" > revision.txt
 
 %.o: @srcdir@/%.cpp $(MKDEPS) $(INCFILES)
-	$(CCOMPILE) $(LOCALFLAGS) -c $<
+	$(CCOMPILE) -c $<
 
 %.o: @srcdir@/%.c $(MKDEPS) $(INCFILES)
-	$(COMPILE) $(LOCALFLAGS) -c $<
+	$(COMPILE) -c $<
 
 %.yate: @srcdir@/%.cpp $(MKDEPS) $(INCFILES)
 	$(MODCOMP) -o $@ $(LOCALFLAGS) $< $(LOCALLIBS) $(YATELIBS)
 
 ybts.yate: ybts.cpp ybts.h
 ybts.yate: LOCALLIBS = -lyateradio
-
-gsmtrx.yate: ./transceiver/libtransceiver.a
-gsmtrx.yate: LOCALFLAGS = -I./transceiver
-gsmtrx.yate: LOCALLIBS = -L./transceiver -ltransceiver -lyateradio
 
 @srcdir@/configure: @srcdir@/configure.ac
 	cd @srcdir@ && autoconf
@@ -199,9 +197,6 @@ $(MKDEPS): @srcdir@/configure
 
 Makefile: $(MKDEPS) @srcdir@/Makefile.in
 	$(MKDEPS)
-
-./transceiver/libtransceiver.a:
-	$(MAKE) -C ./transceiver
 
 .PHONY: help
 help:

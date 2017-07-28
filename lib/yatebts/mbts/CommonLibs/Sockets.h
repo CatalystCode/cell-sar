@@ -144,12 +144,11 @@ class UDPSocket : public DatagramSocket {
 public:
 
 	/** Open a USP socket with an OS-assigned port and no default destination. */
-	UDPSocket( unsigned short localPort=0, const char* localIP=0);
+	UDPSocket( unsigned short localPort=0);
 
 	/** Given a full specification, open the socket and set the dest address. */
 	UDPSocket( 	unsigned short localPort, 
-			const char * remoteIP, unsigned short remotePort,
-			const char* localIP=0);
+			const char * remoteIP, unsigned short remotePort);
 
 	/** Set the destination port. */
 	void destination( unsigned short wDestPort, const char * wDestIP );
@@ -158,7 +157,7 @@ public:
 	unsigned short port() const;
 
 	/** Open and bind the UDP socket to a local port. */
-	void open(unsigned short localPort=0, const char* localIP=0);
+	void open(unsigned short localPort=0);
 
 	/** Give the return address of the most recently received packet. */
 	const struct sockaddr_in* source() const { return (const struct sockaddr_in*)mSource; }

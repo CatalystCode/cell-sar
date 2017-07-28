@@ -78,13 +78,8 @@ static bool connDispatchRR(LogicalChannel* chan, unsigned int id, L3Frame* frame
 			{
 				L3GPRSSuspensionRequest* msg = static_cast<L3GPRSSuspensionRequest*>(parseL3RR(*frame));
 				if (msg) {
-					if (!Sgsn::handleGprsSuspensionRequest(msg->mTLLI,msg->mRaId)) {
-						LOG(NOTICE) << " not handled GPRS suspension request on connection " << id;
-					}
-					else {
-						LOG(INFO) << " handled GPRS suspension request on connection " << id
-							<< " for tlli  " << LOGVALHEX(msg->mTLLI);
-					}
+					if (!Sgsn::handleGprsSuspensionRequest(msg->mTLLI,msg->mRaId))
+						LOG(NOTICE) << "ignoring GPRS suspension request on connection " << id;
 					delete msg;
 				}
 			}

@@ -84,8 +84,6 @@ class ActionLog extends Model
 		$actionlog->log = $log;
 		$actionlog->performer_id = $performer_id;
 		$actionlog->performer = $performer;
-		if (!isset($real_performer_id))
-			$real_performer_id = $performer_id;
 		$actionlog->real_performer_id = $real_performer_id;
 		$actionlog->object = $object;
 		$actionlog->query = stripslashes($query);

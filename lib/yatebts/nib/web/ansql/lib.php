@@ -219,7 +219,7 @@ function errormess($text, $path=NULL, $return_text="Go back to application")
 	Debug::func_start(__FUNCTION__,func_get_args(),"ansql");
 	global $module;
 
-	print '<div class="notice error">'."\n";
+	print '<div class="notice">'."\n";
 	print "<font class=\"error\"> Error!!</font>"."\n";
 	print "<font style=\"font-weight:bold;\">$text</font>"."\n";
 
@@ -238,11 +238,9 @@ function errormess($text, $path=NULL, $return_text="Go back to application")
  */ 
 function link_to_main_page($path, $return_text)
 {
-	global $module;
-
 	if (isset($_SESSION["main"]))
-		$link = $_SESSION["main"];
-	else
+                $link = $_SESSION["main"];
+        else
 		$link = "main.php";
 	$link .=  "?module=".$module;
 
@@ -270,7 +268,7 @@ function notice($message, $next_cb=NULL, $no_error = true)
 	if ($no_error)
 		print '<div class="notice">'.$message.'</div>';
 	else
-		print '<div class="notice error"><font class="error">Error!! </font>'.$message.'</div>';
+		print '<div class="notice"><font class="error">Error!! </font>'.$message.'</div>';
 
 	if ($next_cb != "no")
 		call_user_func($next_cb);
@@ -418,9 +416,9 @@ function dateCheck($year,$month,$day,$hour,$end)
 	Debug::func_start(__FUNCTION__,func_get_args(),"ansql");
 	if ("$year$month$day" == "") {
 		if ($hour == "")
-			return true;
+	    		return true;
 		if (($hour<0) || ($hour>23))
-			return false;
+	    		return false;
 		$hour = sprintf(" %02u:%02u:%02u",$hour,$end,$end);
 		return gmdate("Y-m-d") . $hour;
 	}
@@ -438,48 +436,31 @@ function dateCheck($year,$month,$day,$hour,$end)
 /**
  * Builds link from the parameters from the current REQUEST
  * @param $exclude_params Array. Parameters to be excluded from built link
- * @param $additional_url_elements Array. Parameters required into the built link
  * @return String. The link from the current $_REQUEST
  */
-function build_link_request($exclude_params=array(), $additional_url_elements=array())
+function build_link_request($exclude_params=array())
 {
 	Debug::func_start(__FUNCTION__,func_get_args(),"ansql");
 	global $module, $method, $action;
 
-	$link = (isset($_SESSION["main"]) && strlen($_SESSION["main"])) ? $_SESSION["main"] : "main.php";
+	$link = $_SESSION["main"] ? $_SESSION["main"] : "main.php";
 	$link .= "?";
-	foreach ($_REQUEST as $param=>$value) {
-
-		if ($param == "page" || 
+	foreach($_REQUEST as $param=>$value) {
+		if (	$param == "page" || 
 			$param == "PHPSESSID" ||
 			($param == "action" && $action) ||
 			($param == "method" && $method) || 
 			($param == "module" && $module) ||
-			in_array($param,$exclude_params) || 
-			(!is_array($value) && !strlen($value))
+		       	in_array($param,$exclude_params) || 
+			!strlen($value)
 		)
-		continue;
-
+			continue;
 		if (substr($link,-1) != "?")
 			$link .= "&";
-
-		if (count($additional_url_elements)) {
-			foreach ($additional_url_elements as $k=>$element_name)
-				if ($element_name == $param)
-					$link .= "$param=".urlencode($value);
-		} else {
-			if (!is_array($value)) 
-				$link .= "$param=".urlencode($value);
-			else 
-				foreach ($value as $arr_val) 
-					$link .= "$param"."[]=".$arr_val;
-		}
+		$link .= "$param=".urlencode($value);
 	}
-
-	if (substr($link,-1) != "?")
-		$link .= "&";
 	if ($module)
-		$link .= "module=$module";
+		$link .= "&module=$module";
 	if ($method)
 		$link .= "&method=$method";
 	if ($action) {
@@ -495,17 +476,12 @@ function build_link_request($exclude_params=array(), $additional_url_elements=ar
  * make a reload of page with a new limit request
  * @param $nrs Array contains the number of items to be displayed
  */ 
-function items_on_page($nrs = array(20,50,100), $additional_url_elements=null)
+function items_on_page($nrs = array(20,50,100))
 {
 	Debug::func_start(__FUNCTION__,func_get_args(),"ansql");
 	global $limit;
 
-	if (!$nrs)
-		$nrs = array(20,50,100);
-
-	if ($additional_url_elements)
-		$additional_url_elements = array_merge($additional_url_elements, array("total"));
-	$link = build_link_request(array("limit"), $additional_url_elements);
+	$link = build_link_request(array("limit"));
 
 	print "<div class=\"items_on_page\">";
 	for($i=0; $i<count($nrs); $i++)
@@ -522,39 +498,58 @@ function items_on_page($nrs = array(20,50,100), $additional_url_elements=null)
 }
 
 /**
- * Builds and prints pagination links. Ex: 1 2 3 >| or |< 1 2 3 4 5. Takes into account the total number of objects and limit of items to display on page
- * @param $total Integer. Total number of entities
- * @param $additional_url_elements Array. Additional elements to add in links beside default ones(module, method, page, total)
- * Ex: array("status")
+ * Build the links for the number of pages for a total divided by the limit
  */ 
-function pages($total = NULL, $additional_url_elements=array())
+function pages($total = NULL, $params = array())
 {
 	Debug::func_start(__FUNCTION__,func_get_args(),"ansql");
 	global $limit, $page, $module, $method, $action;
 	
-	if (!$limit)
+	if(!$limit)
 		$limit = 20;
 
 	$link = $_SESSION["main"] ? $_SESSION["main"] : "main.php";
 	$link .= "?";
 	$slink = $link;
+	$found_total = false;
 	$page = 0;
-	if (isset($_REQUEST["page"]))
-		$page = $_REQUEST["page"];
-	if (isset($_REQUEST["total"]))
-		$total = $_REQUEST["total"];
-
-	if (!count($additional_url_elements))
-		$additional_url_elements = array("total");
-	elseif (!in_array("total", $additional_url_elements))
-		$additional_url_elements[] = "total";
-
-	$link = build_link_request(array("limit"), $additional_url_elements);
+	foreach($_REQUEST as $param=>$value)
+	{
+		if (($param == "action" && $action) ||
+	            ($param == "module" && $module) ||
+		    ($param == "method" && $method) ||
+		     $param == "PHPSESSID" || !strlen($value))
+			continue;
+		if ($param == "page") {
+			$page = $value;
+			continue;
+		}
+		if ($link != $slink)
+			$link .= "&";
+		$link .= "$param=".urlencode($value);
+		if ($param == "total") {
+			$total = $value;
+			$found_total = true;
+		}
+	}
 
 	if (!$total)
 		$total = 0;
 	if ($total < $limit)
 		return;
+
+	if (!$found_total)
+		$link .= "&total=$total";
+	if ($module)
+		$link .= "&module=$module";
+	if ($method)
+		$link .= "&method=$method";
+	if ($action) {
+		/* if action param is set, check that $method_$action function exists before adding it to link */
+		$function_to_call = get_default_function();
+		if (function_exists($function_to_call))
+			$link .= "&action=$action";
+	}
 
 	$pages = floor($total/$limit);
 	print '<center>';
@@ -685,6 +680,8 @@ function navbuttons($params=array(),$class = "llink")
 function check_valid_mail($mail)
 {
 	Debug::func_start(__FUNCTION__,func_get_args(),"ansql");
+	if (!$mail)
+		return true;
 
 	$pattern = '/^([_a-z0-9-]+)(\.[_a-z0-9-]+)*@([a-z0-9-]+)(\.[a-z0-9-]+)*(\.[a-z]{2,4})$/i';
 	return preg_match($pattern,$mail);
@@ -696,7 +693,7 @@ function check_valid_mail($mail)
  * @param $additional Array contains the parameters and their values to be set as input hidden 
  * @param $empty_page_param Bool. If true it will set 'method' and 'module' hidden fields to existing value if they don't appear in $additional. Defaults to false
  */ 
-function addHidden($action=NULL, $additional = array(), $empty_page_params=false, $skip_params=array())
+function addHidden($action=NULL, $additional = array(), $empty_page_params=false)
 {
 	Debug::func_start(__FUNCTION__,func_get_args(),"ansql");
 	global $method,$module;
@@ -717,8 +714,8 @@ function addHidden($action=NULL, $additional = array(), $empty_page_params=false
 
 	if (isset($_SESSION["previous_page"])) {
 		foreach ($_SESSION["previous_page"] as $param=>$value)
-			if (!isset($additional[$param]) && $param!="module" && $param!="method" && $param!="action" && !in_array($param,$skip_params))
-				print '<input type="hidden" id="'.$param.'" name="' . $param . '" value="' . $value . '">';
+			if (!isset($additional[$param]) && $param!="module" && $param!="method" && $param!="action")
+				print '<input type="hidden" name="' . $param . '" value="' . $value . '">';
 	}
 }
 
@@ -770,9 +767,6 @@ function editObject($object, $fields, $title, $submit="Submit", $compulsory_noti
 
 	$show_advanced = false;
 	$have_advanced = false;
-
-	$custom_submit = array();
-
 	//find if there are any fields marked as advanced that have a value(if so then all advanced fields should be displayed)
 	foreach($fields as $field_name=>$field_format)
 	{
@@ -787,7 +781,7 @@ function editObject($object, $fields, $title, $submit="Submit", $compulsory_noti
 			$value = NULL;
 		if(isset($field_format["value"]))
 			$value = $field_format["value"];
-		if (!$object || !is_object($object))
+		if (!$object)
 			break;
 		$variable = $object->variable($field_name);
 		if((!$variable && $value && !$hide_advanced))
@@ -797,7 +791,7 @@ function editObject($object, $fields, $title, $submit="Submit", $compulsory_noti
 		}
 		if(!$variable)
 			continue;
-		if (($value && $variable->_type!="bool" && !$hide_advanced) || ($variable->_type=="bool" && bool_value($value) && !$hide_advanced))
+		if (($value && $variable->_type != "bool" && !$hide_advanced) || ($variable->_type == "bool" && $value == "t" && !$hide_advanced))
 		{
 			$show_advanced = true;
 			break;
@@ -814,12 +808,8 @@ function editObject($object, $fields, $title, $submit="Submit", $compulsory_noti
 		}
 	}
 
-	foreach($fields as $field_name=>$field_format) {
-		if (!isset($field_format["display"]) || $field_format["display"]!="custom_submit")
-			display_pair($field_name, $field_format, $object, $form_identifier, $css, $show_advanced, $td_width);
-		else
-			$custom_submit[$field_name] = $field_format;
-	}
+	foreach($fields as $field_name=>$field_format) 
+		display_pair($field_name, $field_format, $object, $form_identifier, $css, $show_advanced, $td_width);
 	
 
 	if($have_advanced && !$compulsory_notice)
@@ -860,11 +850,6 @@ function editObject($object, $fields, $title, $submit="Submit", $compulsory_noti
 		print 'Fields marked with <font class="compulsory">*</font> are required.</td>';
 		print '</tr>';
 	}
-
-	if(count($custom_submit))
-		foreach($custom_submit as $field_name=>$field_format)
-			display_pair($field_name, $field_format, $object, $form_identifier, $css, $show_advanced, $td_width);
-
 	if($submit != "no" && $submit != "no_submit")
 	{
 		print '<tr class="'.$css.'">';
@@ -900,11 +885,8 @@ function cancel_button($css="", $name="Cancel")
 	$res = null;
 	if (isset($_SESSION["previous_page"])) {
 		$link = $_SESSION["main"]."?";
-		foreach ($_SESSION["previous_page"] as $param=>$value) {
-			if (is_array($value) || is_object ($value))
-				continue;
+		foreach ($_SESSION["previous_page"] as $param=>$value)
 			$link.= "$param=".urlencode($value)."&";
-		}
 		$res = '<input class="'.$css.'" type="button" value="'.$name.'" onClick="location.href=\''.$link.'\'"/>';
 	}
 	return $res;
@@ -925,17 +907,9 @@ function cancel_params()
 /**
  * Builds the HTML data for FORM
  */ 
-function display_pair($field_name, $field_format, $object, $form_identifier, $css, $show_advanced, $td_width, $category_id=null)
+function display_pair($field_name, $field_format, $object, $form_identifier, $css, $show_advanced, $td_width)
 {
-	global $allow_code_comment, $use_comments_docs, $method;
-
 	Debug::func_start(__FUNCTION__,func_get_args(),"ansql");
-
-	if (!isset($allow_code_comment))
-		$allow_code_comment = true;
-	if (!isset($use_comments_docs))
-		$use_comments_docs = false;
-
 	$q_mark = false;
 	if (isset($field_format["advanced"]))
 		$have_advanced = true;
@@ -943,17 +917,14 @@ function display_pair($field_name, $field_format, $object, $form_identifier, $cs
 	if (isset($field_format["triggered_by"]))
 		$needs_trigger = true;
 
-	if ($object) {
-		if (is_array($object))
-			$value = (!is_array($field_name) && isset($object[$field_name])) ? $object[$field_name] : NULL;
-		elseif (is_object($object))
-			$value = (!is_array($field_name) && isset($object->{$field_name})) ? $object->{$field_name} : NULL;
-	} else
+	if ($object)
+		$value = (!is_array($field_name) && isset($object->{$field_name})) ? $object->{$field_name} : NULL;
+	else
 		$value = NULL;
 	if (isset($field_format["value"]))
 		$value = $field_format["value"];
 
-	if (!is_array($value) && !strlen($value) && isset($field_format["cb_for_value"]) && isset($field_format["cb_for_value"]["name"]) && is_callable($field_format["cb_for_value"]["name"])) {
+	if (!strlen($value) && isset($field_format["cb_for_value"]) && isset($field_format["cb_for_value"]["name"]) && is_callable($field_format["cb_for_value"]["name"])) {
 		if (count($field_format["cb_for_value"])==2)
 			$value = call_user_func_array($field_format["cb_for_value"]["name"],$field_format["cb_for_value"]["params"]);
 		else
@@ -988,12 +959,11 @@ function display_pair($field_name, $field_format, $object, $form_identifier, $cs
 			print ' style="display:table-row;" trigger=\"true\" ';
 	}
 	print '>';
-
 	// if $var_name is an array we won't use it
 	$var_name = (isset($field_format[0])) ? $field_format[0] : $field_name;
 	$display = (isset($field_format["display"])) ? $field_format["display"] : "text";
 
-	if ($object && !is_array($object)) {
+	if ($object) {
 		$variable = (!is_array($var_name)) ? $object->variable($var_name) : NULL;
 		if ($variable) {
 			if ($variable->_type == "bool" && $display!="text")
@@ -1001,74 +971,54 @@ function display_pair($field_name, $field_format, $object, $form_identifier, $cs
 		}
 	}
 
-	if ($display=="message" || $display=="objtitle" || $display=="custom_submit" || $display=="custom_field") {
-		$custom_field_css = ($display=="custom_field") ? "custom_field" : 'double_column';
-
-		print '<td class="'.$css.' '.$custom_field_css.'" colspan="2">';
-		if ($display=="objtitle")
-			print "<div class='objtitle'>$value</div>";
-		else
-			print $value;
+	if ($display == "message") {
+		print '<td class="'.$css.' double_column" colspan="2">';
+		print $value;
 		print '</td>';
 		print '</tr>';
 		return;
 	}
 
-	if ($display=="hidden") {
-		print '<input class="'.$css.'" type="'.$display.'" name="'.$form_identifier.$field_name.'" id="'.$form_identifier.$field_name.'"';
-
-		if ($value && strpos('"',$value)!==false)
-			print ' value="'.$value.'"';
+	if ($display != "hidden") {
+		print '<td class="'.$css.' left_td ';
+		if (isset($field_format["custom_css_left"]))
+			print $field_format["custom_css_left"];
+		print '"';
+		if (isset($td_width["left"]))
+			print ' style="width:'.$td_width["left"].'"';
+		print '>';
+		if (!isset($field_format["column_name"]))
+			print ucfirst(str_replace("_","&nbsp;",$field_name));
 		else
-			print " value='".$value."'";
-		print " />";
-		return;
+			print ucfirst($field_format["column_name"]);
+		if (isset($field_format["required"]))
+			$field_format["compulsory"] = $field_format["required"];
+		if (isset($field_format["compulsory"]))
+			if($field_format["compulsory"] === true || $field_format["compulsory"] == "yes" || $field_format["compulsory"] == "t" || $field_format["compulsory"] == "true")
+				print '<font class="compulsory">*</font>';
+		print '&nbsp;</td>';
+		print '<td class="'.$css.' right_td ';
+		if (isset($field_format["custom_css_right"]))
+			print $field_format["custom_css_right"];
+		print '"';
+		if (isset($td_width["right"]))
+			print ' style="width:'.$td_width["right"].'"';
+		print '>';
 	}
-
-	print '<td class="'.$css.' left_td ';
-	if (isset($field_format["custom_css_left"]))
-		print $field_format["custom_css_left"];
-	print '"';
-	if (isset($td_width["left"]))
-		print ' style="width:'.$td_width["left"].'"';
-	print '>';
-	if (!isset($field_format["column_name"]))
-		print ucfirst(str_replace("_","&nbsp;",$field_name));
-	else
-		print ucfirst($field_format["column_name"]);
-	if (isset($field_format["required"]))
-		$field_format["compulsory"] = $field_format["required"];
-	if (isset($field_format["compulsory"]))
-		if($field_format["compulsory"]===true || $field_format["compulsory"]=="yes" || bool_value($field_format["compulsory"]) || $field_format["compulsory"]=="true")
-			print '<font class="compulsory">*</font>';
-	print '&nbsp;</td>';
-	print '<td class="'.$css.' right_td ';
-	if (isset($field_format["custom_css_right"]))
-		print $field_format["custom_css_right"];
-	print '"';
-	if (isset($td_width["right"]))
-		print ' style="width:'.$td_width["right"].'"';
-	print '>';
-
-	$field_comment = comment_field($field_format, $form_identifier, $field_name, $category_id, $display);
-
 	switch($display) {
 		case "textarea":
-			print '<textarea class="'.$css.'" id="'.$form_identifier.$field_name.'" name="'.$form_identifier.$field_name.'" cols="20" rows="5">';
+			print '<textarea class="'.$css.'" name="'.$form_identifier.$field_name.'" cols="20" rows="5">';
 			print $value;
-			print '</textarea>'.$field_comment;
+			print '</textarea>';
 			break;
 		case "select":
 		case "mul_select":
 		case "select_without_non_selected":
-
-			print '<select class="'.$css.'" id="'.$form_identifier.$field_name.'" ';
+			print '<select class="'.$css.'" name="'.$form_identifier.$field_name.'" id="'.$form_identifier.$field_name.'" ';
 			if (isset($field_format["javascript"]))
 				print $field_format["javascript"];
 			if ($display == "mul_select")
-				print ' multiple="multiple" size="5" name="'.$form_identifier.$field_name.'[]"';
-			else
-				print ' name="'.$form_identifier.$field_name.'"';
+				print ' multiple="multiple" size="5"';
 			print '>';
 			if ($display != "mul_select" && $display != "select_without_non_selected")
 				print '<option value="">Not selected</option>';
@@ -1076,24 +1026,13 @@ function display_pair($field_name, $field_format, $object, $form_identifier, $cs
 			// PREVIOUS implementation when only 0 key could be used for dropdown options
 			// $options = (is_array($var_name)) ? $var_name : array();
 
-			if ($display != "mul_select") {
-				// try gettting it from value
-				if ($value && is_array($value))
-					$options = $value;
-				elseif (is_array($var_name))
-					$options = $var_name;
-				else
-					$options = array();
-			} else {
-				// try gettting it from value
-				// !! DEFINE "selected" even if selected is not defined
-				if ($value && is_array($value) && array_key_exists("selected",$value))
-					$options = $value;
-				elseif (is_array($var_name))
-					$options = $var_name;
-				else
-					$options = array();
-			}
+			// try gettting it from value
+			if ($value && is_array($value))
+				$options = $value;
+			elseif (is_array($var_name))
+				$options = $var_name;
+			else
+				$options = array();
 
 			if (isset($field_format["selected"]))
 				$selected = $field_format["selected"];
@@ -1103,13 +1042,10 @@ function display_pair($field_name, $field_format, $object, $form_identifier, $cs
 				$selected = $options["SELECTED"];
 			else
 				$selected = '';
-
 			foreach ($options as $var=>$opt) {
 				if ($var === "selected" || $var === "SELECTED")
 					continue;
 				$css = (is_array($opt) && isset($opt["css"])) ? 'class="'.$opt["css"].'"' : "";
-
-				// $opt = array("field"=>..., "field_id"=>...) 
 				if (is_array($opt) && isset($opt[$field_name.'_id'])) {
 					$optval = $field_name.'_id';
 					$name = $field_name;
@@ -1142,8 +1078,7 @@ function display_pair($field_name, $field_format, $object, $form_identifier, $cs
 						print '<option '.$css.'>' . $opt . '</option>';
 				}
 			}
-			print '</select>'.$field_comment;
-
+			print '</select>';
 			if(isset($field_format["add_custom"]))
 				print $field_format["add_custom"];
 
@@ -1176,31 +1111,27 @@ function display_pair($field_name, $field_format, $object, $form_identifier, $cs
 					print $field_format["javascript"];
 				print '>' . $name . '&nbsp;&nbsp;';
 			}
-			print $field_comment;
 			break;
 		case "checkbox":
 		case "checkbox-readonly":
 			print '<input class="'.$css.'" type="checkbox" name="'.$form_identifier.$field_name.'" id="'.$form_identifier.$field_name.'"';
-			if (bool_value($value) || $value=="on")
+			if ($value == "t" || $value == "on" || $value=="1")
 				print " CHECKED ";
 			if (isset($field_format["javascript"]))
 				print $field_format["javascript"];
 			if ($display=="checkbox-readonly")
 				print " disabled=''";
-			print '/>'.$field_comment;
+			print '/>';
 			break;
 		case "text":
 		case "password":
 		case "file":
+		case "hidden":
 		case "text-nonedit":
-			print '<input  class="'.$css.'" type="'.($display=="text-nonedit"?"text":$display).'" name="'.$form_identifier.$field_name.'" id="'.$form_identifier.$field_name.'"';
+			print '<input class="'.$css.'" type="'.$display.'" name="'.$form_identifier.$field_name.'" id="'.$form_identifier.$field_name.'"';
 			if ($display != "file" && $display != "password") {
-				if (!is_array($value)) {
-					if ($value && strpos('"',$value)!==false)
-						print ' value="'.$value.'"';
-					else
-						print " value='".$value."'";
-				}
+				if (!is_array($value))
+					print ' value="'.$value.'"';
 				else {
 					if (isset($field_format["selected"]))
 						$selected = $field_format["selected"];
@@ -1219,12 +1150,17 @@ function display_pair($field_name, $field_format, $object, $form_identifier, $cs
 				print " readonly=''";
 			if (isset($field_format["autocomplete"]))
 				print " autocomplete=\"".$field_format["autocomplete"]."\"";
-
-			print '>'.$field_comment;
-
-			if ($display == 'file' && isset($field_format["file_example"]) && $field_format["file_example"] != "__no_example")
-				print '<br/><br/>Example: <a class="'.$css.'" href="example/'.$field_format["file_example"].'">'.$field_format["file_example"].'</a><br/><br/>';
-			if ($display == 'file' && !isset($field_format["file_example"])) 
+			if ($display != "hidden" && isset($field_format["comment"])) {
+				$q_mark = true;
+				if (is_file("images/question.jpg"))
+					print '>&nbsp;&nbsp;<img class="pointer" src="images/question.jpg" onClick="show_hide_comment(\''.$form_identifier.$field_name.'\');"/>';
+				else
+					print '&nbsp;&nbsp;<font style="cursor:pointer;" onClick="show_hide_comment(\''.$form_identifier.$field_name.'\');"> ? </font>';
+			} else
+				print '>';
+			if($display == 'file' && isset($field_format["file_example"]) && $field_format["file_example"] != "__no_example")
+				print '<br/><br/>Example: <a class="'.$css.'" href="download.php?file='.$field_format["file_example"].'">'.$field_format["file_example"].'</a><br/><br/>';
+			if($display == 'file' && !isset($field_format["file_example"])) 
 				Debug::trigger_report('critical', "For input type file a file example must be given as parameter.");
 			break;
 		case "fixed":
@@ -1232,7 +1168,6 @@ function display_pair($field_name, $field_format, $object, $form_identifier, $cs
 				print $value;
 			else
 				print "&nbsp;";
-			print $field_comment;
 			break;
 		default:
 			// make sure the function that displays the advanced field is included
@@ -1246,76 +1181,23 @@ function display_pair($field_name, $field_format, $object, $form_identifier, $cs
 			$value = call_user_func_array($display, array($value,$form_identifier.$field_name)); 
 			if ($value)
 				print $value;
-			print $field_comment;
 	}
-
-	print '</td>';
-	print '</tr>';
-}
-
-function comment_field($field_format, $form_identifier, $field_name, $category_id, $display)
-{
-	global $use_comments_docs, $allow_code_comment, $method;
-
-	$res = "";
 	if ($display != "hidden") {
 		if (isset($field_format["comment"])) {
-			if ($allow_code_comment) {
+			$comment = $field_format["comment"];
 
-				$comment = $field_format["comment"];
-
+			if (!$q_mark) {
 				if (is_file("images/question.jpg"))
-					$res .= '&nbsp;&nbsp;<img class="pointer" src="images/question.jpg" onClick="show_hide_comment(\''.$form_identifier.$field_name.'\');"/>';
+					print '&nbsp;&nbsp;<img class="pointer" src="images/question.jpg" onClick="show_hide_comment(\''.$form_identifier.$field_name.'\');"/>';
 				else
-					$res .= '&nbsp;&nbsp;<font style="cursor:pointer;" onClick="show_hide_comment(\''.$form_identifier.$field_name.'\');"> ? </font>';
-
-				$res .= '<font class="comment" style="display:none;" id="comment_'.$form_identifier.$field_name.'">'.$comment.'</font>';
+					print '&nbsp;&nbsp;<font style="cursor:pointer;" onClick="show_hide_comment(\''.$form_identifier.$field_name.'\');"> ? </font>';
 			}
+
+			print '<font class="comment" style="display:none;" id="comment_'.$form_identifier.$field_name.'">'.$comment.'</font>';
 		}
-
-		if ($use_comments_docs) {
-			if (!$category_id)
-				$category_id = str_replace(array("add_", "edit_"), "", $method);
-
-			$comment_id = build_comment_id($field_format, $form_identifier, $field_name, $category_id);
-
-			if (is_file("images/question.jpg"))
-				$res .= '&nbsp;&nbsp;<img class="pointer" src="images/question.jpg" onClick="show_docs(\''.$category_id.'\', \''.$comment_id.'\');"/>';
-			else
-				$res .= '&nbsp;&nbsp;<font style="cursor:pointer;" onClick="show_docs(\''.$category_id.'\',\''.$comment_id.'\');"> ? </font>';
-		}
+		print '</td>';
 	}
-	return $res;
-}
-
-function build_comment_id($field_format, $form_identifier, $field_name, $category_id)
-{
-	if (isset($field_format["comment_id"]))
-		return $field_format["comment_id"];
-
-	if (isset($field_format["ref_comment_id"]))
-		$field_name = $field_format["ref_comment_id"];
-
-	$pieces = explode("_", $field_name);
-
-	if (ctype_digit($pieces[count($pieces)-1])) {
-		$sign = $fld = "";
-		for ($i = 0; $i<count($pieces)-1; $i++) {
-			$fld .= $sign.$pieces[$i];
-			$sign = "_";
-		}
-		return $category_id."_".$form_identifier.$fld;
-	}
-	$last = substr($field_name, -1);
-	$penultimate = substr($field_name, -2, 1);
-	$fld = $field_name;
-	if ($penultimate=="_" && ctype_digit($last))
-		$fld = substr($field_name,0,strlen($field_name)-2);
-	elseif ((ctype_digit($penultimate) && ctype_digit($last)) ||
-			$last == "_")
-		$fld = substr($field_name,0,strlen($field_name)-1);	
-
-	return $category_id."_".$form_identifier.$fld;
+	print '</tr>';
 }
 
 /**
@@ -1499,7 +1381,7 @@ function tableOfObjects_ord($objects, $formats, $object_name, $object_actions=ar
  * @param $order_by_columns Bool/Array Adds buttons to adds links on the fields from the table header. 
  * Defaults to false
  */
-function tableOfObjects($objects, $formats, $object_name, $object_actions=array(), $general_actions=array(), $base = NULL, $insert_checkboxes = false, $css = "content", $conditional_css = array(), $object_actions_names=array(), $select_all = false, $order_by_columns=false, $add_empty_row=false)
+function tableOfObjects($objects, $formats, $object_name, $object_actions=array(), $general_actions=array(), $base = NULL, $insert_checkboxes = false, $css = "content", $conditional_css = array(), $object_actions_names=array(), $select_all = false, $order_by_columns=false)
 {
 	Debug::func_start(__FUNCTION__,func_get_args(),"paranoid");
 
@@ -1527,7 +1409,7 @@ function tableOfObjects($objects, $formats, $object_name, $object_actions=array(
 	}
 
 	$ths = "";
-	print '<table class="'.$css.'" id="'.$css.'_id" cellspacing="0" cellpadding="0">';
+	print '<table class="'.$css.'" cellspacing="0" cellpadding="0">';
 
 	$order_dir = (!getparam("order_dir") || getparam("order_dir")=="asc") ? "desc" : "asc";
 	if(count($objects)) {
@@ -1595,6 +1477,7 @@ function tableOfObjects($objects, $formats, $object_name, $object_actions=array(
 		links_general_actions($general_actions, $no_columns, $css, $base, true);
 
 	print $ths;
+
 	for($i=0; $i<count($objects); $i++) {
 		$cond_css = '';
 		foreach($conditional_css as $css_name=>$conditions) {
@@ -1619,13 +1502,10 @@ function tableOfObjects($objects, $formats, $object_name, $object_actions=array(
 			print '<input type="checkbox" name="check_'.$objects[$i]->{$id_name}.'"/>';
 			print '</td>';
 		}
-		$j=0;
 		foreach($formats as $column_name => $var_name) {
 			print '<td class="'.$css.$cond_css;
 			if($i%2 == 0)
 				print " evenrow";
-			if($j == count($formats)-1 && !count($object_actions))
-				print " end_cell";
 			print '">';
 			$use_vars = explode(",", $var_name);
 			array_walk($use_vars, 'trim_value');
@@ -1639,15 +1519,13 @@ function tableOfObjects($objects, $formats, $object_name, $object_actions=array(
 					for($var_nr=0; $var_nr<count($use_vars); $var_nr++)
 						if(array_key_exists($use_vars[$var_nr], $vars))
 							array_push($params, $objects[$i]->{$use_vars[$var_nr]});
-						else
-							array_push($params,null);
 					$column_value = call_user_func_array($function_name,$params);
 				}
 			} elseif(isset($objects[$i]->{$var_name})){
 				$column_value = $objects[$i]->{$var_name};
 				$var = $objects[$i]->variable($use_vars[0]);
 				if($var->_type == "bool") {
-					if (bool_value($column_value))
+					if($column_value == "t")
 						$column_value = $db_true;
 					else
 						$column_value = $db_false;
@@ -1658,11 +1536,10 @@ function tableOfObjects($objects, $formats, $object_name, $object_actions=array(
 			else
 				print "&nbsp;";
 			print '</td>';
-			$j++;
 		}
 		$link = '';
 		foreach($vars as $var_name => $var)
-			if ($var_name!="password" && strlen($objects[$i]->{$var_name}) < 50)
+			if (strlen($objects[$i]->{$var_name}) < 50)
 				$link .= "&$var_name=".htmlentities(urlencode($objects[$i]->{$var_name}));
 		$link_no = 0;
 		foreach($object_actions as $methd => $methd_name) {
@@ -1671,8 +1548,6 @@ function tableOfObjects($objects, $formats, $object_name, $object_actions=array(
 				print ' evenrow object_action';
 			else
 				print ' object_action';
-			if ($link_no == count($object_actions)-1)
-				print ' end_cell';
 			print '">';
 		//	if($link_no)
 		//		print '&nbsp;&nbsp;';
@@ -1681,12 +1556,6 @@ function tableOfObjects($objects, $formats, $object_name, $object_actions=array(
 			$link_no++;
 		}
 		print '</tr>';
-	}
-	if ($add_empty_row) {
-		$colspan = count($formats) + count($object_actions);
-		if ($insert_checkboxes)
-			$colspan += 1;
-		print '<tr><td class="last_row" colspan="'.$colspan.'"></td></tr>';
 	}
 	if(count($general_actions) && !in_array("__top",$general_actions))
 		links_general_actions($general_actions, $no_columns, $css, $base);
@@ -1908,10 +1777,10 @@ function trim_value(&$value)
   * @param $object_actions_names Array containg the action names for the $element_actions that are displayed in the table header
   * @param $table_id Text the id of table
   * @param $select_all Bool. If true select all checkboxes made when $insert_checkboxes=true. Defaults to false.
-  * @param $order_by_columns Bool/Array Adds buttons to add links on the fields from the table header. Defaults to false.
-  * @param $build_link_elements Array Contains the name of the elements used to build each row $element_actions.
+  * @param $order_by_columns Bool/Array Adds buttons to adds links on the fields from the table header. 
+  * Defaults to false
   */
-function table($array, $formats, $element_name, $id_name, $element_actions = array(), $general_actions = array(), $base = NULL, $insert_checkboxes = false, $css = "content", $conditional_css = array(), $object_actions_names = array(), $table_id = null, $select_all = false, $order_by_columns = false, $build_link_elements = array(), $add_empty_row=false)
+function table($array, $formats, $element_name, $id_name, $element_actions = array(), $general_actions = array(), $base = NULL, $insert_checkboxes = false, $css = "content", $conditional_css = array(), $object_actions_names = array(), $table_id = null, $select_all = false, $order_by_columns=false)
 {
 	Debug::func_start(__FUNCTION__,func_get_args(),"ansql");
 	global $module;
@@ -1973,8 +1842,7 @@ function table($array, $formats, $element_name, $id_name, $element_actions = arr
 				if (is_numeric($column_name))
 					$name = $var_name;
 			}
-			$ucss = ($no_columns == 0) ? "$css first_th" : $css;
-			print '<th class="'.$ucss.'">';
+			print '<th class="'.$css.'">';
 			$column_link = false;
 			if ($order_by_columns) {
 				if ((is_numeric($column_name) || count(explode(",",$var_name))==1) && ($order_by_columns===true || !isset($order_by_columns[$name]) || $order_by_columns[$name]==true)) {
@@ -2026,14 +1894,11 @@ function table($array, $formats, $element_name, $id_name, $element_actions = arr
 			print '<input type="checkbox" name="check_'.$array[$i][$id_name].'"/>';
 			print '</td>';
 		}
-		$j=0;
 		foreach ($formats as $column_name => $names_in_array) {
 			print '<td class="'.$css. "$cond_css";
 			if ($i%2 == 0)
 				print " evenrow";
 
-			if ($j == count($formats)-1 && !count($array))
-				print " end_cell";
 			print '">';
 			$use_vars = explode(",", $names_in_array);
 			$exploded_col = explode(":", $column_name);
@@ -2044,10 +1909,7 @@ function table($array, $formats, $element_name, $id_name, $element_actions = arr
 				if (count($use_vars)) {
 					$params = array();
 					for ($var_nr=0; $var_nr<count($use_vars); $var_nr++)
-						if (isset($array[$i][$use_vars[$var_nr]]))
-							array_push($params, $array[$i][$use_vars[$var_nr]]);
-						else
-							array_push($params, null);
+						array_push($params, $array[$i][$use_vars[$var_nr]]);
 					$column_value = call_user_func_array($function_name,$params);
 				}
 			} elseif (isset($array[$i][$names_in_array])) {
@@ -2061,26 +1923,14 @@ function table($array, $formats, $element_name, $id_name, $element_actions = arr
 		}
 		$link = '';
 		foreach ($array[$i] as $col_name => $col_value) {
-			if ($col_name=="password")
-				continue;
-			if (is_array($col_value))
-				continue;
-			if (count($build_link_elements)) {
-				foreach ($build_link_elements as $k=>$link_element_name)
-					if ($col_name == $link_element_name)
-						$link .= "&$link_element_name=".urlencode($col_value);
-			} else {
-				if (strlen($col_value)<55)
-					$link .= "&$col_name=".urlencode($col_value);
-			}
+			if (strlen($col_value)<55)
+				$link .= "&$col_name=".htmlentities(urlencode($col_value));
 		}
 		$link_no = 0;
 		foreach ($element_actions as $methd => $methd_name) {
 			print '<td class="'.$css. "$cond_css";
 			if ($i%2 == 0)
 				print ' evenrow object_action';
-			if ($link_no == count($element_actions)-1)
-				print ' end_cell';
 			print '">';
 			if ($link_no)
 				print '&nbsp;&nbsp;';
@@ -2091,7 +1941,7 @@ function table($array, $formats, $element_name, $id_name, $element_actions = arr
 				$current_link = substr($methd,8)."?".trim($link,"&");
 
 			if (substr($methd_name,0,11) != "__inactive_")
-				print '<a class="'.$css. "$cond_css".'" href="'.htmlentities($current_link).'">'.$methd_name.'</a>';
+				print '<a class="'.$css. "$cond_css".'" href="'.$current_link.'">'.$methd_name.'</a>';
 			else {
 				$methd_name = substr($methd_name,11);
 				if (substr($methd_name,0,4)=="<img") 
@@ -2105,12 +1955,6 @@ function table($array, $formats, $element_name, $id_name, $element_actions = arr
 		print '</tr>';
 	}
 
-	if ($add_empty_row) {
-		$colspan = count($formats) + count($element_actions);
-		if ($insert_checkboxes)
-			$colspan += 1; 
-		print '<tr><td class="last_row" colspan="'.$colspan.'"></td></tr>';
-	}
 	if (count($general_actions)) {
 		print '<tr>';
 		if (isset($general_actions["left"])) {
@@ -2157,9 +2001,8 @@ function table($array, $formats, $element_name, $id_name, $element_actions = arr
  * @param $value_id String the value id of the object 
  * @param $additional String added to the value id
  * @param $next String use it to change the method param 
- * @param $action_obj String. Action to acknowledge. Default: "delete" 
  */ 
-function ack_delete($object, $value = NULL, $message = NULL, $object_id = NULL, $value_id = NULL, $additional = NULL, $next = NULL, $action_obj="delete")
+function ack_delete($object, $value = NULL, $message = NULL, $object_id = NULL, $value_id = NULL, $additional = NULL, $next = NULL)
 {
 	Debug::func_start(__FUNCTION__,func_get_args(),"ansql");
 	global $module, $method;
@@ -2169,7 +2012,7 @@ function ack_delete($object, $value = NULL, $message = NULL, $object_id = NULL, 
 	if (!$value_id)
 		$value_id = getparam($object_id);
 
-	print "<div class=\"ack_delete notice\">Are you sure you want to $action_obj ".str_replace("_","&nbsp;",$object)." $value?";
+	print "<br/><br/>Are you sure you want to delete ".str_replace("_","&nbsp;",$object)." $value?";
 	if ($message) {
 		if (substr($message,0,2) != "__") {
 			if(substr($message,0,1) == ",")
@@ -2187,7 +2030,7 @@ function ack_delete($object, $value = NULL, $message = NULL, $object_id = NULL, 
 			$link .= "$param=$value&";
 	$link .= '&module=' . $module . '&method=' . $method . '&action=database&' . $object_id . '=' . $value_id . $additional;
 
-	print '<a class="llink" href="'.htmlentities($link).'">Yes</a>';
+	print '<a class="llink" href="'.$link.'">Yes</a>';
 
 	print '&nbsp;&nbsp;&nbsp;&nbsp;'; 
 
@@ -2198,7 +2041,7 @@ function ack_delete($object, $value = NULL, $message = NULL, $object_id = NULL, 
 	} else {
 		$link = $_SESSION["main"].'?module='.$module.'&method='.$next;
 	}
-	print '<a class="llink" href="'.htmlentities($link).'">No</a>';
+	print '<a class="llink" href="'.$link.'">No</a>';
 }
 
 /**
@@ -2639,7 +2482,7 @@ function get_date($key='',$_hour='00',$min='00',$sec='00')
  * @param $force_method String the new method to be added in link, default NULL
  * @return $letter the selected letter 
  */   
-function insert_letters($link = "main.php", $force_method = NULL, $letter = NULL)
+function insert_letters($link = "main.php", $force_method = NULL)
 {
 	Debug::func_start(__FUNCTION__,func_get_args(),"ansql");
 	global $module,$method;
@@ -2649,9 +2492,11 @@ function insert_letters($link = "main.php", $force_method = NULL, $letter = NULL
 	if ($force_method)
 		$method = $force_method;
 
+	$letter = getparam("letter");
+	
 	if (!$letter)
-		$letter = getparam("letter") ? getparam("letter") : 'A';
-
+		$letter = 'A';
+	
 	$letters = array("A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "X", "Y", "W", "Z");
 
 	for ($i=0; $i<count($letters); $i++) {
@@ -2974,7 +2819,7 @@ function explanations($logo, $title, $explanations, $style="explanation")
 ?>
 <div class="<?php print $style; ?>">
     <table class="fillall" cellspacing="0" cellpadding="0">
-	<tr>
+        <tr>
 	    <td class="logo_wizard" style="padding:5px;">
 <?php	if ($logo && $logo != "") {?>
 		<img src="<?php $logo; ?>" />
@@ -2982,14 +2827,14 @@ function explanations($logo, $title, $explanations, $style="explanation")
 ?>
 	    </td>
 	    <td class="title_wizard" style="padding:5px;">
-		<div class="title_wizard"><?php print $title; ?></div>
+               <div class="title_wizard"><?php print $title; ?></div>
 	    </td>';	
-	</tr>
-	<tr>
+         </tr>
+	 <tr>
 	    <td class="step_description" style="font-size:13px;padding:5px;" colspan="2">
 <?php		print $text; ?>
-	    </td>
-	</tr>
+            </td>
+        </tr>
     </table>
 </div>
 <?php
@@ -2998,7 +2843,7 @@ function explanations($logo, $title, $explanations, $style="explanation")
 /**
  * Builds the HTML dropdown
  */ 
-function build_dropdown($arr, $name, $show_not_selected = true, $disabled = "", $css = "", $javascript = "", $just_options = false, $hidden = false, $set_not_selected = null)
+function build_dropdown($arr, $name, $show_not_selected = true, $disabled = "", $css = "", $javascript = "", $just_options = false, $hidden = false)
 {
 	Debug::func_start(__FUNCTION__,func_get_args(),"ansql");
 	if (!$just_options) {
@@ -3009,12 +2854,8 @@ function build_dropdown($arr, $name, $show_not_selected = true, $disabled = "", 
 		$res .= $javascript.'>'."\n";
 	} else
 		$res = '';
-	if ($show_not_selected) {
-		$val = "";
-		if ($set_not_selected)
-			$val = $set_not_selected;
-		$res .= '<option value="'.$val.'"> - </option>'."\n";
-	}
+	if ($show_not_selected)
+		$res .= '<option value=""> - </option>'."\n";
 	$selected = (isset($arr["selected"]))? $arr["selected"] : "";
 	unset($arr["selected"]);
 	for ($i=0; $i<count($arr); $i++) {
@@ -3156,7 +2997,7 @@ function set_default_object($fields, $selected, $method, $message)
 /**
  * Sets the fields value by using getparam() to take the data set in FORM
  */ 
-function set_form_fields(&$fields, $error_fields, $field_prefix='', $use_urldecode=false)
+function set_form_fields(&$fields, $error_fields, $field_prefix='')
 {
 	Debug::func_start(__FUNCTION__,func_get_args(),"ansql");
 	if (!$error_fields)
@@ -3165,24 +3006,20 @@ function set_form_fields(&$fields, $error_fields, $field_prefix='', $use_urldeco
 	foreach ($fields as $name=>$def) {
 		if (!isset($def["display"]))
 			$def["display"] = "text";
-		if ($def["display"] == "hidden" || $def["display"]=="message" || $def["display"]=="fixed" || $def["display"]=="objtitle" || $def["display"]=="custom_field" || $def["display"]=="custom_submit")
+		if ($def["display"] == "hidden" || $def["display"]=="message" || $def["display"]=="fixed")
 			continue;
-		if (in_array(strtolower($name), $error_fields))
+		if (in_array($name, $error_fields))
 			$fields[$name]["error"] = true;
 		if (substr($name,-2) == "[]" && $def["display"] == "mul_select")
-			$val = (isset($_REQUEST[$field_prefix.substr($name,0,strlen($name)-2)])) ? $_REQUEST[$field_prefix.substr($name,0,strlen($name)-2)] : null;
+			$val = getparam($field_prefix.substr($name,0,strlen($name)-2));
 		else
-			$val = (isset($_REQUEST[$field_prefix.$name])) ? $_REQUEST[$field_prefix.$name] : null;
-
-		if ($use_urldecode)
-			$val = urldecode($val);
-
-		if ($val!==NULL) {
+			$val = getparam($field_prefix.$name);
+		if ($val) {
 			if (isset($fields[$name][0]) && is_array($fields[$name][0]))
 				$fields[$name][0]["selected"] = $val;
 			elseif ($def["display"] == "checkbox")
 				$fields[$name]["value"] = ($val == "on") ? "t" : "f";
-			else 
+			else
 				$fields[$name]["value"] = $val;
 		}
 	}
@@ -3221,17 +3058,17 @@ function set_error_fields($error, &$error_fields)
  * Handle the errors by displaing the error using errormess();
  * sets the errors in array fields and then sets the data in form fields
  */ 
-function error_handle($error, &$fields, &$error_fields, $field_prefix='', $use_urldecode=false)
+function error_handle($error, &$fields, &$error_fields, $field_prefix='')
 {
 	Debug::func_start(__FUNCTION__,func_get_args(),"ansql");
 	if ($error) {
 		errormess($error,"no");
 		set_error_fields($error, $error_fields);
-		set_form_fields($fields, $error_fields, $field_prefix, $use_urldecode);
+		set_form_fields($fields, $error_fields, $field_prefix);
 	}
 	if ($error===false) {
 		set_error_fields($error, $error_fields);
-		set_form_fields($fields, $error_fields, $field_prefix, $use_urldecode);
+		set_form_fields($fields, $error_fields, $field_prefix);
 	}
 }
 
@@ -3249,11 +3086,8 @@ function return_button($method=null, $_module=null, $align="right", $name="Retur
 		$link = $_SESSION["main"].'?module='.$_module.'&method='.$method;
 	} elseif (isset($_SESSION["previous_page"])) {
 		$link = $_SESSION["main"]."?";
-		foreach ($_SESSION["previous_page"] as $param=>$value) {
-			if (is_array($value) || is_object ($value))
-				continue;
+		foreach ($_SESSION["previous_page"] as $param=>$value)
 			$link.= "$param=".urlencode($value)."&";
-		}
 	} else
 		$link = $_SESSION["main"]. "?"."module=".$module;
 	print '<div style="float:'.$align.'"><a class="llink" href="'.$link.'">'.$name.'</a></div>';
@@ -3289,10 +3123,7 @@ function exception_to_save()
 /**
  * Saves page info, puts the parameters from $_REQUEST in array $_SESSION["previous_page"]
  * If exceptions_to_save() is true and method biggins with one of: edit,add_,delete, import, export
- * then page info is not saved.
- * 
- * !! It is really important to test the whole project again if this is added later on, not at the start of the project.
- * Information added in this SESSION field is automatically added in forms/links built in ansql, and it might override the visual fields from forms/start of links
+ * then page info is not saved
  */ 
 function save_page_info()
 {
@@ -3642,8 +3473,6 @@ function get_mp3_len($file)
 
 function arr_to_csv($file_name, $arr, $formats=null, $func="write_in_file", $title_text=null)
 {
-	global $download_option;
-
 	Debug::func_start(__FUNCTION__,func_get_args(),"ansql");
 	global $upload_path;
 
@@ -3654,7 +3483,7 @@ function arr_to_csv($file_name, $arr, $formats=null, $func="write_in_file", $tit
 	if (is_file($file)) {
 		unlink($file);
 	}
-	$fh = fopen($file, "w") or die("Can't open file for writting: ".$file);
+	$fh = fopen($file, "w") or die("Can't open file for writting.");
 
 	if ($title_text)
 		fwrite($fh,$title_text."\r\n");
@@ -3666,10 +3495,8 @@ function arr_to_csv($file_name, $arr, $formats=null, $func="write_in_file", $tit
 	fclose($fh);
 	chmod($file, 0777);
 
-	if (isset($download_option) && $download_option=="direct_file")
-		print "Content was exported. <a href=\"$upload_path/$file_name$format\">Download</a>";
-	else
-		print "Content was exported. <a href=\"download.php?file=$file_name$format\">Download</a>";
+	//print "Content was exported. <a href=\"$upload_path/$file_name$date$format\">Download</a>";
+	print "Content was exported. <a href=\"download.php?file=$file_name$format\">Download</a>";
 }
 
 function mysql_in_file($fh, $formats, $array, $sep)
@@ -3738,7 +3565,7 @@ function mysql_in_file($fh, $formats, $array, $sep)
 	}
 }
 
-function write_in_file($fh, $formats, $array, $sep, $key_val_arr=true, $col_header=true, $keep_bools=false)
+function write_in_file($fh, $formats, $array, $sep, $key_val_arr=true, $col_header=true)
 {
 	Debug::func_start(__FUNCTION__,func_get_args(),"ansql");
 	$col_nr = 0;
@@ -3767,7 +3594,6 @@ function write_in_file($fh, $formats, $array, $sep, $key_val_arr=true, $col_head
 		} 
 		fwrite($fh,"\n");
 	}
-
 	for($i=0; $i<count($array); $i++) 
 	{
 		$col_nr = 0;
@@ -3791,16 +3617,9 @@ function write_in_file($fh, $formats, $array, $sep, $key_val_arr=true, $col_head
 				}elseif(isset($array[$i][$names_in_array])){
 					$column_value = $array[$i][$names_in_array];
 				}
-
-				if (!$keep_bools) {
-					if(!strlen($column_value))
-						$column_value = "";
-					$column_value = "\"=\"\"".$column_value."\"\"\"";
-				} else {
-					if (!is_bool($column_value) && $column_value!==null)
-						$column_value = "\"=\"\"".$column_value."\"\"\"";
-					
-				}
+				if(!strlen($column_value))
+					$column_value = "";
+				$column_value = "\"=\"\"".$column_value."\"\"\"";
 				if ($col_nr)
 					$column_value =  $sep.$column_value;
 				fwrite($fh,$column_value);
@@ -3872,11 +3691,8 @@ function generateNumericToken($length)
 function display_bit_field($val)
 {
 	Debug::func_start(__FUNCTION__,func_get_args(),"ansql");
-	$bits = array("on","true","enabled","enable","yes","1");
-	if (in_array($val,$bits)) {
+	if ($val=="1" || $val == "on" || $val == "enable" || $val == "yes")
 		return "yes";
-	}
-
 	return "no";
 }
 
@@ -3917,20 +3733,13 @@ function display_field($field_name,$field_format,$form_identifier='',$css=null)
 			// PREVIOUS implementation when only 0 key could be used for dropdown options
 			// $options = (is_array($var_name)) ? $var_name : array();
 
-			if ($display != "mul_select") {
-				// try gettting it from value
-				if ($value && is_array($value))
-					$options = $value;
-				elseif (is_array($var_name))
-					$options = $var_name;
-				else
-					$options = array();
-			} else {
-				if (is_array($var_name))
-					$options = $var_name;
-				else
-					$options = array();
-			}
+			// try gettting it from value
+			if ($value && is_array($value))
+				$options = $value;
+			elseif (is_array($var_name))
+				$options = $var_name;
+			else
+				$options = array();
 
 			if (isset($field_format["selected"]))
 				$selected = $field_format["selected"];
@@ -3981,9 +3790,9 @@ function display_field($field_name,$field_format,$form_identifier='',$css=null)
 		case "checkbox":
 		case "checkbox-readonly":
 			$res .= '<input class="'.$css.'" type="checkbox" name="'.$form_identifier.$field_name.'" id="'.$form_identifier.$field_name.'"';
-			if (bool_value($value) || $value=="on")
+			if($value == "t" || $value == "on" || $value=="1")
 				$res .= " CHECKED ";
-			if (isset($field_format["javascript"]))
+			if(isset($field_format["javascript"]))
 				$res .= $field_format["javascript"];
 			if ($display=="checkbox-readonly")
 				$res .= " readonly=''";
@@ -4090,8 +3899,8 @@ function generic_tabbed_settings($options,$config,$section_to_open=array(),$show
 	if (!$form_name)
 		$form_name = $module;
 
-	print '<table class="sections '.$custom_css.'" cellspacing="0" cellpadding="0">'."\n";
-	print '<tr>'."\n";
+        print '<table class="sections '.$custom_css.'" cellspacing="0" cellpadding="0">'."\n";
+        print '<tr>'."\n";
 	$total_options = count($options);
 	$disp_show = "";
 	$disp_hide = ' style="display:none;"';
@@ -4107,7 +3916,7 @@ function generic_tabbed_settings($options,$config,$section_to_open=array(),$show
 		break;
 	}
 
-	for ($i=0; $i<$total_options; $i++) {
+        for ($i=0; $i<$total_options; $i++) {
 		$name = $options[$i];
 		$js_name = $specif_ind.$i;
 
@@ -4138,13 +3947,13 @@ function generic_tabbed_settings($options,$config,$section_to_open=array(),$show
 		}
 
 		print '</div></td>'."\n";
-		print '<td class="space_section">&nbsp;</td>'."\n";
-	}
+                print '<td class="space_section">&nbsp;</td>'."\n";
+        }
 	print '<td class="fillspace_section">&nbsp;</td>'."\n";
-	print '</tr>'."\n";
-	print '<tr>'."\n";
+        print '</tr>'."\n";
+        print '<tr>'."\n";
 	$colspan = $total_options*2+1;
-	print '<td class="section_content" colspan="'.$colspan.'">'."\n";
+        print '<td class="section_content" colspan="'.$colspan.'">'."\n";
 
 	for ($i=0; $i<$total_options; $i++) {
 		$name = $options[$i];
@@ -4278,7 +4087,7 @@ function generic_search($search_options, $custom_fields=array())
 
 	$title = array("Search by", "Value", "&nbsp;");
 	$fields = array(array(
-			build_dropdown($search_options, "col", true, "", "", 'onchange="clean_cols_search()"'),
+			build_dropdown($search_options, "col", true, "", "", 'onchange="document.getElementById(\'col_value\').value=null;"'),
 			"<input type=\"text\" value=\"".getparam("col_value")."\" name=\"col_value\" id=\"col_value\" size=\"10\"/>",
 			"<input type=\"submit\" value=\"Search\" />"
 		));
@@ -4289,7 +4098,7 @@ function generic_search($search_options, $custom_fields=array())
 	}
 
 	start_form();
-	addHidden(null,array(),false,array("col_value"));
+	addHidden();
 	formTable($fields,$title);
 	end_form();
 }
@@ -4312,417 +4121,6 @@ function get_search_conditions($custom_cols=array())
 		return array($custom_cols[$col]=>"__LIKE%$col_value%");
 
 	return array($col=>"__LIKE%$col_value%");
-}
-
-/**
- * Reads a file in reverse order and returns the last N lines 
- * as an array (N given as parameter).
- * @param $path String the path with the filename.
- * @param $line_count Integer the lines number that will be read. 
- * @param $block_size Integer the bytes that will be read.
- * @param $offset Integer the offset in bytes
- * @param $leftover String the remaining data read.
- * @param $lines Array the remaining lines from previous data read.
- * @returns Array with:
- *      - the lines readed from the end of the file, 
- *      - the value of the offset
- *      - the leftover string remained from previous reading data
- *      - the remaining lines already read
- */ 
-function get_file_last_lines($path, $line_count, $block_size = 512, $offset = null, $leftover = '', $lines = array())
-{
-	if (count($lines) >= $line_count)
-		return array(array_slice($lines, 0, $line_count), $offset, $leftover, array_slice($lines, $line_count));
-
-	$fh = fopen($path, 'r');
-	
-	if ($offset === null)
-		// go to the end of the file
-		fseek($fh, 0, SEEK_END);
-	else
-		// go to the last offset in the file
-		fseek($fh, $offset, SEEK_SET);
-
-
-	do {
-		// need to know whether we can actually go back
-		// $block_size bytes
-		$can_read = $block_size;
-		if (ftell($fh) < $block_size)
-			$can_read = ftell($fh);
-
-		// go back as many bytes as we can
-		// read them to $data and then move the file pointer
-		// back to where we were.
-		fseek($fh, -$can_read, SEEK_CUR);
-		if ($can_read == 0)
-			$data = '';
-		else
-			$data = fread($fh, $can_read);
-		$data .= $leftover;
-		fseek($fh, -$can_read, SEEK_CUR);
-		
-		// remove the last element from data
-		if (substr($data, strlen($data)-1, strlen($data)) == "\n")
-			$data = substr($data, 0, strlen($data)-1);
-
-		// split lines by \n. Then reverse them,
-		// now the last line is most likely not a complete
-		// line which is why we do not directly add it, but
-		// append it to the data read the next time.
-		$split_data = array_reverse(explode("\n", $data));
-		$new_lines = array_slice($split_data, 0, -1);
-		$lines = array_merge($lines, $new_lines);
-		$leftover = $split_data[count($split_data) - 1];
-	} while(count($lines) < $line_count && ftell($fh) != 0);
-
-
-	if (ftell($fh) == 0) {
-		$lines[] = $leftover;
-		$leftover = "";
-	}
-	
-	$offset = ftell($fh);
-	fclose($fh);
-	
-	// Usually, we will read too many lines, correct that here.
-	return array(array_slice($lines, 0, $line_count), $offset, $leftover, array_slice($lines, $line_count));
-}
-
-// Replace \n with <br/> and " " with &nbsp;
-function format_comment($text)
-{
-	$text = str_replace("\n","<br/>",$text);
-	$text = str_replace(" ","&nbsp;",$text);
-	return $text;
-}
-
-/**
- * Build net addresses dropdown from received data
- * The types of dropdown are 'select_without_non_selected' || 'select'
- * @param $net_interfaces Array The interfaces with their associated IPs
- * @param $select Bool The type of dropdown, if true 'select' otherwize 'select_without_non_selected'
- * @param $dropdown_key String The name of the dropdown from FORM
- * @param $type_ip String The type of IP: 'ipv4', 'ipv6', 'both' to be displayed in dropdown
- * @return $interfaces_ips Array The format used to display the dropdown
- */
-function build_net_addresses_dropdown($net_interfaces, $select=false, $type_ip = "both", $dropdown_key = "local")
-{
-	$interfaces_ips = "";
-
-	foreach ($net_interfaces["net_address"] as $key=>$interface) {
-		if (!$select)
-			$interfaces_ips[] = array($dropdown_key."_id"=>"__disabled", $dropdown_key=>"------".$interface["interface"]."------");
-
-		if ($type_ip == "both" || $type_ip == "ipv4") {
-			if (!isset($interface["ipv4"]))
-				continue;
-			foreach ($interface["ipv4"] as $k=>$ip) {
-				if (!$select)
-					$interfaces_ips[] = array($dropdown_key."_id"=>$ip["address"], $dropdown_key=>$ip["address"]);
-				else
-					$interfaces_ips[] = $ip["address"];
-			}
-		}
-		if ($type_ip == "both" || $type_ip == "ipv6") {
-			if (!isset($interface["ipv6"]))
-				continue;
-			foreach ($interface["ipv6"] as $k=>$ip) {
-				if (!$select)
-					$interfaces_ips[] = array($dropdown_key."_id"=>$ip["address"], $dropdown_key=>$ip["address"]);
-				else
-					$interfaces_ips[] = $ip["address"];
-			}
-		}
-	}
-	return $interfaces_ips;
-}
-
-/**
- * Change the old key with a new key in an specific array used to build 
- * a dropdown that is used to display:'select_without_non_selected'
- */   
-function change_keys_dropdown($array, $old_key, $new_key)
-{
-	$old_keys = array($old_key."_id", $old_key);
-	$new_keys = array($new_key."_id", $new_key);
-
-	for ($i=0; $i<count($array); $i++) {
-		for ($j=0; $j<2; $j++) {
-			if (isset($array[$i][$old_keys[$j]])) {
-				$array[$i][$new_keys[$j]] = $array[$i][$old_keys[$j]];
-				if (is_array($array[$i]) && isset($array[$i][$old_keys[$j]]))
-					unset($array[$i][$old_keys[$j]]);
-			}
-		}
-	}
-
-	return $array;
-}
-
-/**
- * Allow flushing buffers on request
- */
-function flush_buffers()
-{
-    @ob_end_flush();
-    @ob_flush();
-    
-    // after testing this seemed enough
-    flush();
-
-    ob_start(); 
-}
-
-/**
- * Displays node statistics. 
- * @param $query_stats Array The statistics of a product(HSS, UCN, SDR, etc)
- * @param $product_name Text The name of the product
- */ 
-function display_query_stats($query_stats, $product_name)
-{
-/*
- * {"code":0,
- *  "stats":{
- *          "engine":{"version":"5.5.1","revision":6202,"nodename":"ybtsUNCONFIG","runid":1491988359,"plugins":23,"inuse":1,"handlers":222,"hooks":4,"messages":0,
- *                     "maxqueue":2,"messagerate":2,"maxmsgrate":14,"enqueued":745014,"dequeued":745014,"dispatched":745061,"supervised":true,"runattempt":9,"lastsignal":0,
- *                     "threads":39,"workers":10,"mutexes":197,"semaphores":18,"acceptcalls":"accept","congestion":0},
- *          "uptime":{"wall":620866,"user":84312,"kernel":44640},
- *          "bladerf":{"ifaces":1},
- *          "yrtp":{"chans":0,"mirrors":0},
- *          "sip":{"routed":0,"routing":0,"total":0,"chans":0,"transactions":0},
- *          "mbts":{"state":"RadioUp"},
- *          "ybts":{"count":0}
- *          }
- * }
- *
- * {"code":0,
- *  "stats":{
- *            "engine":{"version":"5.5.1","revision":1815,"nodename":"hostedcore_test","plugins":27,"inuse":0,"handlers":354,"hooks":5,"messages":0,"supervised":true,
- *                      "runattempt":1,"lastsignal":0,"threads":24,"workers":5,"mutexes":297,"semaphores":0,"acceptcalls":"accept","congestion":0},
- *            "ucn_gmsc":{"inbound":0,"routed":0,"diverted":0,"failed":0},
- *            "ucn_pgw":{"apns":0,"sessions":0,"bearers":0,"reservations":0,"redirecting":0},
- *            "ucn_ati":{"sent":0,"recv":0,"errs":0,"fail":0},
- *            "ucn_gtt":{"local":0,"stp":0,"back":0,"fail":0}
- *          }
- * }
- *
- * {"code":0,
- *  "stats":{
- *           "engine": {"version":"5.5.1","revision":1815,"nodename":"hostedcore_test","plugins":14,"inuse":0,"handlers":180,"hooks":4,"messages":0,"supervised":true,
- *           			"runattempt":1,"lastsignal":0,"threads":22,"workers":5,"mutexes":229,"semaphores":1,"acceptcalls":"accept","congestion":0},
- *           "hss_cluster":{"nodename":"hostedcore_test","remote":0,"state":"standalone"},
- *           "hss_repair":{"clean":true,"cycles":11087,"checks":2510095,"errors":0,"fixed":0},
- *           "auc_map":{"auth2g":0,"auth3g":0,"auth4g":0,"resyncs":0,"unknowns":0,"illegals":0,"inactives":0,"reports":0},
- *           "hss_gtt":{"local":0,"imsi":0,"msisdn":0,"stp":0,"back":0,"fail":0},
- *           "auc_diam":{"auth2g":0,"auth3g":0,"auth4g":0,"resyncs":0,"unknowns":0,"illegals":0,"inactives":0}
- *           }
- * }
- *
- */ 
-	if (!isset($query_stats["stats"]))
-		return;
-
-	if ($product_name == 'hss') {
-		display_hlr($query_stats["stats"]);
-		return;
-	}
-
-	$stats = $query_stats["stats"];
-	if ($product_name == 'Yate-SDR') {
-		$stats_order = array("engine","uptime","bladerf","mbts","sip","yrtp","ybts");
-
-		foreach ($stats_order as $k=>$stat_nm) {
-			if (isset($stats[$stat_nm])) {
-				$reordered_stats[$stat_nm] = $stats[$stat_nm];
-				unset($stats[$stat_nm]);
-			}
-		}
-
-		$new_stats = array_merge($reordered_stats, $stats);
-		$stats = $new_stats;
-	}
-
-	$length = 1;
-	foreach ($stats as $stat_name=>$stat_props) {
-		if ($stat_name == "engine") 
-			continue;
-
-		if (count($stat_props)>$length)
-			$length = count($stat_props);
-	}
-
-	$display_splitted_count = 8;
-	$table_css = 'query_stats';
-	$td_css = 'container_qs';
-	$i = 0;
-	$j = 0;
-	
-	print "<table class='container_query_stats' cellspacing='0' cellpadding='0'>";
-	print "<tr>";
-	foreach ($stats as $stat_name=>$stat_props) {
-		print "<td class='$td_css'>";
-		display_stats_format(count($stat_props),$display_splitted_count,$stat_props,$stat_name,$table_css,$length);
-		print "</td>";
-		$i++;
-		if ($i==(4+$j)) {
-			print "</tr><tr><td></td>";
-			$td_css = 'container_right_modif';
-			$j=$j+3;
-		}
-	}
-	print "</tr>";
-	print "</table>";
-}
-
-function display_splitted_props($stats,$stat_name, $display)
-{
-	$i=1;
-	print "<table class='$display $stat_name' cellspacing='0' cellpadding='0'>";
-	print "<tr> <td class='prop_lev1' colspan='4'>".$stat_name." </td></tr>";
-	foreach ($stats as $prop=>$val) {
-		$val = ($val===false) ? "false" : $val;
-		$val = ($val===true) ? "true" : $val;
-		if ($i%2==1)
-			print "<tr>";
-		print "<td class='cat_prop2'>".$prop."</td>";
-		print "<td class='cat_prop2_desc'>".$val."</td>";
-		if ($i%2==0)
-			print "</tr>";
-		$i++;
-	}
-	if (count($stats)%2!=0)
-		print "<td class='cat_prop2'>&nbsp;</td><td class='cat_prop2_desc'>&nbsp;</td></tr>";
-	print "</table>";
-}
-
-/**
- * Display hss node stats
- * The order logic of each line displayed:
- *    line1: engine, match /hss/: hss_cluster, hss_repair, hss_gtt
- *    line2: uptime, match /map/: auc_map, hss_map 
- *    line3: match /diam/: diameter, auc_diam, hss_diam
- *    line4: match /sig/: sig_routers, sig_links, sig_sccp
- *    line5: the rest that don't match any of the above
- */ 
-function display_hlr($stats)
-{
-	// reorder query_stats received from api
-	$max_length = 1;
-	foreach ($stats as $prop=>$details) {
-		if (preg_match("/engine/",$prop)) {
-			$split_stats["line1"]["engine"] = $details;
-		} elseif (preg_match("/uptime/",$prop)) {
-			$split_stats["line2"]["uptime"] = $details;
-		} elseif (preg_match("/map/",$prop)) {
-			$split_stats["line2"][$prop] = $details;
-			$max_length = isset($length["line2"]) ? $length["line2"] : $max_length;
-			if (count($details)>$max_length)
-				$length["line2"] = count($details);
-		} elseif (preg_match("/diam/",$prop)) {
-			$split_stats["line3"][$prop] = $details;
-			$max_length = isset($length["line3"]) ? $length["line3"] : $max_length;
-			if (count($details)>$max_length)
-				$length["line3"] = count($details);
-		} elseif (preg_match("/sig/",$prop)) {
-			$split_stats["line4"][$prop] = $details;
-			$max_length = isset($length["line4"]) ? $length["line4"] : $max_length;
-			if (count($details)>$max_length)
-				$length["line4"] = count($details);
-		} elseif (preg_match("/hss/",$prop)) {
-			$split_stats["line1"][$prop] = $details;
-			$max_length = isset($length["line1"]) ? $length["line1"] : $max_length;
-			if (count($details)>$max_length)
-				$length["line1"] = count($details);
-		} else {
-			$split_stats["line5"][$prop] = $details;
-			$max_length = isset($length["line5"]) ? $length["line5"] : $max_length;
-			if (count($details)>$max_length)
-				$length["line5"] = count($details);
-		}
-	}
-	$display_splitted_count = 8;
-    $table_css = 'query_stats';
-    $td_css = 'container_qs';
-	print "<table class='container_query_stats' cellspacing='0' cellpadding='0'>";
-	print "<tr>";
-	foreach ($split_stats as $line=>$stats) {
-			print "<tr>";
-			if ($line!="line1" || ($line=="line2" && !array_key_exists("uptime", $split_stats[$line])))
-				print "<td class='$td_css'>&nbsp;</td>";
-			foreach ($stats as $stat_name=>$stat_props) {
-				print "<td class='$td_css'>";
-				$lgth = isset($length[$line]) ? $length[$line] : $max_length;
-				display_stats_format(count($stat_props),$display_splitted_count,$stat_props,$stat_name,$table_css,$lgth);
-				print "</td>";
-			}
-			print "</tr>";
-	}
-	print "</tr>";
-	print "</table>";
-}
-
-function display_stats_format($stats_length, $max_columns, $cat_props, $prop, $table_css,$max_length)
-{
-	if ($stats_length > $max_columns) //if a category has more than 8 proprieties splitted into 2 columns
-		display_splitted_props($cat_props, $prop, $table_css);
-	else
-		display_cat_prop($cat_props, $prop, $table_css,$max_length);
-}
-
-function display_cat_prop($stat_props,$stat_name,$display,$max_length)
-{
-	print "<table class='$display' cellspacing='0' cellpadding='0'>";
-	print "<tr> <td class='prop_lev1'>".$stat_name." </td></tr>";
-
-	foreach ($stat_props as $stat_name=>$stat_val) {
-		print "<tr>";
-		print "<td class='cat_lev2'>";
-		print $stat_name;
-		print "</td>";
-		print "<td class='prop_lev2'>";
-		if ($stat_val === true)
-			$stat_val = "true";
-		elseif ($stat_val === false)
-			$stat_val = "false";
-		print $stat_val;
-		print "</td>";
-		print "</tr>";
-	}
-		if (count($stat_props)<$max_length)
-			fill_td($max_length-count($stat_props));
-	print "</table>";
-}
-
-function fill_td($total)
-{
-	for ($i=0; $i<$total; $i++)
-		print "<tr><td class='cat_lev2'>&nbsp;</td></tr>";
-}
-
-function bool_value($value) 
-{
-	if ($value==="t" || $value==="1" || $value===1)
-		return true;
-	return false;
-}
-
-function suffix_index($index)
-{
-	switch (substr($index,-1)) {
-		case 1:
-			$suffix = "st";
-			break;
-		case 2:
-			$suffix = "nd";
-			break;
-		case 3:
-			$suffix = "rd";
-			break;
-		default:
-			$suffix = "th";
-	}
-	return $suffix;
 }
 /* vi: set ts=8 sw=4 sts=4 noet: */
 ?>

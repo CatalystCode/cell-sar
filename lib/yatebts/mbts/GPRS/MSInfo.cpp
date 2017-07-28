@@ -137,7 +137,7 @@ MSInfo::MSInfo(uint32_t tlli)
 bool MSInfo::msIsSuspended()
 {
 	SGSN::GmmState::state state = sgsnGetRegistrationState(this->msTlli);
-	return state == SGSN::GmmState::GmmRegisteredSuspended;
+	return state == SGSN::GmmState::GmmRegisteredSuspsended;
 }
 
 // Extended dynamic mode means # channels up > # channels down.
@@ -156,7 +156,7 @@ bool MSInfo::msIsRegistered()
 {
 	SGSN::GmmState::state state = sgsnGetRegistrationState(this->msTlli);
 	return state == SGSN::GmmState::GmmRegisteredNormal ||
-		       state == SGSN::GmmState::GmmRegisteredSuspended;
+		       state == SGSN::GmmState::GmmRegisteredSuspsended;
 }
 
 void MSInfo::msCountUSFGrant(bool penalize)
@@ -842,15 +842,6 @@ void SignalQuality::setRadData(float wRSSI,float wTimingError)
 	msTimingError.addPoint(wTimingError);
 	adjustPowerParams((int)wRSSI);
 	adjustTimingAdvance(wTimingError);
-}
-
-void SignalQuality::initRadData(float wRSSI,float wTimingError)
-{
-	mGamma = GetPowerGammaAdjust(wRSSI,GetPowerGamma());
-	mNextTA = mLastTA = GetTimingAdvance(wTimingError);
-	mTimer.setInvalid();
-	mTimerTA.setInvalid();
-	GPRSLOG(DEBUG,GPRS_MSG) << "initRadData TA=" << mNextTA << LOGVAR(mGamma);
 }
 
 // Determine whether we should use slow or fast channel coding for the specified direction.

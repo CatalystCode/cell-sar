@@ -95,14 +95,6 @@ $country_code_comment = "; Your Country code (where YateBTS is installed)
 ;Ex: 1 for US, 44 for UK
 ;country_code= \n";
 
-$gw_sos_comment = "; Resource for the emergency calls gateway
-; If not set any emergency calls will be delivered to the outbound gateway
-; It is also possible to specify a short or international number (possibly MSISDN)
-; Ex: gw_sos=sip/sip:sos@emergency.gw
-; Ex: gw_sos=111
-; Ex: gw_sos=+10744341111
-;gw_sos= \n";
-
 $regexp_comment = ";Subscribers are accepted by either matching the IMSI against this configured 
 ;regular expression or by setting subscribers individually
 ;Note! If a regular expression is used, 2G/3G authentication cannot be used.
@@ -114,14 +106,14 @@ $subscriber_comment = ";you have to put subscriber IMSI as a category and the su
 
 $subscriber_example =
 ";[001990010001014]
-;Official phone number. Should include configured country code
+;Oficial phone number. Should include configured country code
 ;Ex: msisdn=10744341111
 
 ;Whether this subscriber is allowed to use the service
 ;Allowed values: on, off
 ;Ex: active=off
 
-;Card secret. Set or generated when SIMs are written
+;Card secrety. Set or generated when SIMs are written
 ;Ex:ki=00112233445566778899aabbccddeeff
 
 ;Operator secret. 
@@ -155,6 +147,4 @@ $proj_title = "Yatebts NIB";
 $pysim_csv = $yate_conf_dir . "sim_data.csv";
 # type of card SIM used by PySIM. Types allowed: fakemagicsim, supersim, magicsim, grcardsim, sysmosim-gr1, sysmosim-gr1, sysmoSIM-GR2, sysmoUSIM-GR1 or try auto 
 $sim_type = "sysmoSIM-GR2";
-# yate cdr logs file
-$yate_cdr = "/var/log/yate-cdr.csv";
 ?>

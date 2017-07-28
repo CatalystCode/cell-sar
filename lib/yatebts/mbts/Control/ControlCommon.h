@@ -90,9 +90,7 @@ void DCCHDispatcher(GSM::LogicalChannel *DCCH);
 */
 void *SMSCBSender(void*);
 
-bool SMSCBwrite(unsigned id, unsigned code, unsigned gs, unsigned dcs, const std::string data);
 
-void SMSCBkill(unsigned id, unsigned code);
 
 
 
