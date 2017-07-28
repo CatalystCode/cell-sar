@@ -1,0 +1,3 @@
+# Ignore patch sandbox
+/.sandbox
+/.sandbox/*
