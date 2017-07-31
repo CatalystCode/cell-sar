@@ -29,20 +29,25 @@ fi
 echo "  Creating sandbox at ${SANDBOXPATH}"
 
 rm -rf "${SANDBOXPATH}"
-mkdir -p "${SANDBOXPATH}"
+git init "${SANDBOXPATH}"
+cp ${SCRIPTPATH}/sandbox.gitignore ${SANDBOXPATH}/.gitignore
 
 cp -R "${LIBPATH}"/* "${SANDBOXPATH}"
+
+echo "	Creating initial snapshot of sandbox..."
+git --git-dir="${SANDBOXPATH}/.git" --work-tree="${SANDBOXPATH}" add -A && git --git-dir="${SANDBOXPATH}/.git" --work-tree="${SANDBOXPATH}" commit -m "Initial snapshot"
 
 echo "Applying patches..."
 # Iterate over libraries
 shopt -s nullglob
 for libDirectory in `ls -d ${LIBPATH}/* `; do
     echo "  Applying patches to ${libDirectory}..."
+    shopt -s nullglob
     for patchFile in "${libDirectory}/*.patch"; do
-        echo "  Processing ${patchFile}...";
-        cd "${libDirectory}/"
-        # patch < ${patchFile}
-        # patch -b < ${patchFile}        
+        if [ -e "$patchFile" ]; then
+	    echo "  Processing ${patchFile}...";
+	    git --git-dir="${SANDBOXPATH}/.git" --work-tree="${SANDBOXPATH}" apply "${patchFile}"
+	fi
     done
 done
 

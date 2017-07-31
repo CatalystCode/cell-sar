@@ -26,8 +26,9 @@ echo "  *** Patch set will be named ${PATCHSET}"
 # Iterate over libraries
 for libDirectory in `ls -d ${LIBPATH}/* `; do
     moduleName=`basename ${libDirectory}`
+    mkdir -p ${PATCHPATH}/${moduleName}
     echo "  Creating patches for ${moduleName}..."
-    diff -ruN "${libDirectory}/" "${SANDBOXPATH}/${moduleName}/" > ${PATCHPATH}/${moduleName}/${PATCHSET}.patch
+    git --git-dir="${SANDBOXPATH}/.git" --work-tree="${SANDBOXPATH}" diff "${SANDBOXPATH}/${moduleName}/" > ${PATCHPATH}/${moduleName}/${PATCHSET}.patch
     if [ ! -s "${PATCHPATH}/${moduleName}/${PATCHSET}.patch" ]; then
         echo "      No patch required."
         rm "${PATCHPATH}/${moduleName}/${PATCHSET}.patch"
