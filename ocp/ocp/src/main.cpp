@@ -60,7 +60,7 @@ int main(int argc, char* argv[])
     signal(SIGINT, inthand);
 
     /* Check for first param of "testmode" to disable connecting to drone */
-    bool enableDrone = argc <= 1 || argv[1] == "testmode";
+    bool enableDrone = argc <= 1 && argv[1] != "testmode";
 
     if (enableDrone) {
         std::cout << "Starting in production mode and connecting to drone.\n";
