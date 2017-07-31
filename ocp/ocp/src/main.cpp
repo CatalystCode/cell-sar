@@ -103,7 +103,7 @@ int main(int argc, char* argv[])
 
                 /* Signal strength messages for a phone */
                 if (root["type"].asString() == "phy") {
-                    std::string message = root["IMSI"].asString() + "_" + root["data"]["UpRSSI"].asString();
+                    std::string message = root["data"]["IMSI"].asString() + "_" + root["data"]["UpRSSI"].asString();
 
                     std::cout << message << "\n";
 
