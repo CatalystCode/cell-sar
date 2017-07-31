@@ -38,3 +38,7 @@ yatebts/yate-bts.spec
 yatebts/mbts/apps/mbts
 yatebts/nib/auth/do_comp128
 yatebts/nib/auth/do_milenage
+
+# binaries 
+yatebts/mbts/TransceiverRAD1/transceiver-bladerf
+yatebts/mbts/TransceiverRAD1/transceiver-rad1
