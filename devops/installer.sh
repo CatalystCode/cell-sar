@@ -89,7 +89,7 @@ ldconfig >> "${LOGDIR}/04_yate_build.log" 2>&1
 # ---=[ YateBTS Build ]=--- #
 echo -e "${CYAN}	+ Building YateBTS...${RESTORE}"
 cd "${SANDBOXDIR}/yatebts"
-if [ -f "${SANDBOXDIR}/yatebts/configure" ]; then
+if [ -f "${SANDBOXDIR}/yatebts/config.log" ]; then
 	echo -e "${YELLOW}		! YateBTS configure script exists. Attempting to make build environment sane.${RESTORE}"
 	make clean > "${LOGDIR}/05_yatebts_build.log" 2>&1
 fi
@@ -137,7 +137,8 @@ echo -e "${GREEN}	+ sar.conf${RESTORE}"
 # ---=[ INIT SCRIPT ]=--- #
 echo -e "${CYAN}+ Creating init script...${RESTORE}"
 cp ${BASEDIR}/devops/raspberrypi/YateBTS /etc/init.d/YateBTS >> "${LOGDIR}/09_init.log" 2>&1
-update-rc.d YateBTS enable >> "${LOGDIR}/09_init.log" 2>&1
+chmod a+x /etc/init.d/YateBTS >> "${LOGDIR}/09_init.log" 2>&1
+update-rc.d YateBTS defaults >> "${LOGDIR}/09_init.log" 2>&1
 
 # ---=[ PI ENVIRONMENT ]=--- #
 echo -e "${CYAN}+ Adjusting command line settings for Pi environment...${RESTORE}"
