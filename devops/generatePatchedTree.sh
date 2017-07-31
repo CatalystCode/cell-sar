@@ -35,7 +35,7 @@ cp ${SCRIPTPATH}/sandbox.gitignore ${SANDBOXPATH}/.gitignore
 cp -R "${LIBPATH}"/* "${SANDBOXPATH}"
 
 echo "	Creating initial snapshot of sandbox..."
-git --git-dir="${SANDBOXPATH}/.git" --work-tree="${SANDBOXPATH}" add -A && git --git-dir="${SANDBOXPATH}/.git" --work-tree="${SANDBOXPATH}" commit -m "Initial snapshot"
+git --git-dir="${SANDBOXPATH}/.git" --work-tree="${SANDBOXPATH}" add -A && git --git-dir="${SANDBOXPATH}/.git" --work-tree="${SANDBOXPATH}" commit -m "Initial snapshot" > /dev/null
 
 echo "Applying patches..."
 # Iterate over libraries
