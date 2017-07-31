@@ -28,7 +28,7 @@ echo -e "${CYAN}+ Downloading packages...${RESTORE}"
 
 if [[ ! -d "${BASEDIR}" ]]; then
 	echo -e "${CYAN}	+ Cloning cell-sar from ${SAR_GIT_URL}...${RESTORE}"
-	git clone "${SAR_GIT_URL}" "${BASEDIR}" >> "${LOGFILE}" 2>&1
+	git clone --recursive "${SAR_GIT_URL}" "${BASEDIR}" >> "${LOGFILE}" 2>&1
 else
 	echo -e "${YELLOW}		! SAR git repository exists, skipping.${RESTORE}"
 fi

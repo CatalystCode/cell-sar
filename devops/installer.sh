@@ -18,6 +18,21 @@ if [[ $EUID -ne 0 ]]; then
    exit 1
 fi
 
+echo " "
+echo -e "${GREEN}███████╗███████╗ █████╗ ██████╗  ██████╗██╗  ██╗     █████╗ ███╗   ██╗██████╗ "
+echo -e "${GREEN}██╔════╝██╔════╝██╔══██╗██╔══██╗██╔════╝██║  ██║    ██╔══██╗████╗  ██║██╔══██╗"
+echo -e "${GREEN}███████╗█████╗  ███████║██████╔╝██║     ███████║    ███████║██╔██╗ ██║██║  ██║"
+echo -e "${GREEN}╚════██║██╔══╝  ██╔══██║██╔══██╗██║     ██╔══██║    ██╔══██║██║╚██╗██║██║  ██║"
+echo -e "${GREEN}███████║███████╗██║  ██║██║  ██║╚██████╗██║  ██║    ██║  ██║██║ ╚████║██████╔╝"
+echo -e "${GREEN}╚══════╝╚══════╝╚═╝  ╚═╝╚═╝  ╚═╝ ╚═════╝╚═╝  ╚═╝    ╚═╝  ╚═╝╚═╝  ╚═══╝╚═════╝ "
+echo -e "${GREEN}██████╗ ███████╗███████╗ ██████╗██╗   ██╗███████╗  ${CYAN}╔════════════════════════╗"
+echo -e "${GREEN}██╔══██╗██╔════╝██╔════╝██╔════╝██║   ██║██╔════╝  ${CYAN}║    ${LIGHTGRAY}Relative Location   ${CYAN}║"
+echo -e "${GREEN}██████╔╝█████╗  ███████╗██║     ██║   ██║█████╗    ${CYAN}║    ${LIGHTGRAY}Sensing using GSM   ${CYAN}║"
+echo -e "${GREEN}██╔══██╗██╔══╝  ╚════██║██║     ██║   ██║██╔══╝    ${CYAN}║  ${LIGHTGRAY}Turner/Gordon/Taylor  ${CYAN}║"
+echo -e "${GREEN}██║  ██║███████╗███████║╚██████╗╚██████╔╝███████╗  ${CYAN}╚════════════════════════╝"
+echo -e "${GREEN}╚═╝  ╚═╝╚══════╝╚══════╝ ╚═════╝ ╚═════╝ ╚══════╝"
+echo -e "${RESTORE} "
+
 echo -e "${CYAN}+ Creating logging environment.${RESTORE}"
 mkdir -p ${LOGDIR}
 
@@ -27,12 +42,12 @@ apt-get -y install cmake build-essential subversion autoconf libusb-1.0-0-dev > 
 
 # ---=[ GIT CONFIG ]=--- #
 echo -e "${CYAN}+ Configuring git...${RESTORE}"
-echo -e "${GREEN}	- Setting default sandbox credentials${RESTORE}"
+echo -e "${GREEN}	+ Setting default sandbox credentials${RESTORE}"
 git config --global user.email "sar@raspberrypi.local" > "${LOGDIR}/01_git_config.log" 2>&1
 git config --global user.name "SAR" >> "${LOGDIR}/01_git_config.log" 2>&1
 
 # ---=[ PREP REPOSITORY ]=--- #
-echo -e "${GREEN}	- Preparing repository (this will take a moment)${RESTORE}"
+echo -e "${GREEN}	+ Preparing repository (this will take a moment)${RESTORE}"
 ${BASEDIR}/devops/generatePatchedTree.sh > "${LOGDIR}/02_deploy_source.log" 2>&1
 
 # ---=[ BUILDS ]=--- #
@@ -73,8 +88,8 @@ ldconfig >> "${LOGDIR}/04_yate_build.log" 2>&1
 
 # ---=[ YateBTS Build ]=--- #
 echo -e "${CYAN}	+ Building YateBTS...${RESTORE}"
-cd "${SANDBOXDIR}/yate-bts"
-if [ -f "${SANDBOXDIR}/yate-bts/configure" ]; then
+cd "${SANDBOXDIR}/yatebts"
+if [ -f "${SANDBOXDIR}/yatebts/configure" ]; then
 	echo -e "${YELLOW}		! YateBTS configure script exists. Attempting to make build environment sane.${RESTORE}"
 	make clean > "${LOGDIR}/05_yatebts_build.log" 2>&1
 fi
