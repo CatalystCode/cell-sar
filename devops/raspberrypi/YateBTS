@@ -8,7 +8,7 @@
 # Description:       Search\ and\ Rescue\ BTS
 ### END INIT INFO
 
-SCRIPT="yate -vvvv"
+SCRIPT="yate -vvv"
 RUNAS=root
 
 PIDFILE=/var/run/YateBTS.pid
