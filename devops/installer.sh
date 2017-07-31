@@ -1,6 +1,6 @@
 #!/bin/bash
 BASEDIR=/root/sar
-SANDBOXDIR=${SANDBOXDIR}/.sandbox
+SANDBOXDIR=${BASEDIR}/.sandbox
 
 if [[ $EUID -ne 0 ]]; then
    echo "The Search and Rescue Installer script must be run as root."
@@ -11,9 +11,14 @@ fi
 echo "Retrieving and installing required packages from Aptitude."
 apt-get -y install cmake build-essential subversion autoconf libusb-1.0-0-dev
 
+# ---=[ GIT CONFIG ]=--- #
+echo "Pre-configuring git..."
+git config --global user.email "sar@raspberrypi.local"
+git config --global user.name "SAR"
+
 # ---=[ PREP REPOSITORY ]=--- #
 echo "Preparing repository..."
-${SANDBOXDIR}/devops/generatePatchedTree.sh
+${BASEDIR}/devops/generatePatchedTree.sh
 
 # ---=[ BUILDS ]=--- #
 echo "Starting builds..."
@@ -116,5 +121,5 @@ ln -s /usr/local/lib/yate/server/bts/transceiver-bladerf /usr/local/lib/yate/ser
 # ybts.conf -> [transceiver] -> radio_send_priority=high
 
 # ---=[ JS CONFIGURATION ]=--- #
-sed -i -- 's/\;routing=/routing=searchandrescue.js/g' /usr/local/etc/yate/javascript.conf
+#sed -i -- 's/\;routing=/routing=searchandrescue.js/g' /usr/local/etc/yate/javascript.conf
 sed -i -- 's/\;mode=nib/mode=searchandrescue/g' /boot/ybts.conf

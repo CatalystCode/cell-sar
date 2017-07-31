@@ -25,4 +25,4 @@ fi
 # ---=[ XFER CONTROL ]=---
 echo "Transferring control to installer..."
 
-${BASEDIR}/devops/install.sh > /boot/install.log
+${BASEDIR}/devops/installer.sh > /boot/install.log

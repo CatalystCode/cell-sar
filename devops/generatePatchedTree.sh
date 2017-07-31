@@ -34,6 +34,12 @@ cp ${SCRIPTPATH}/sandbox.gitignore ${SANDBOXPATH}/.gitignore
 
 cp -R "${LIBPATH}"/* "${SANDBOXPATH}"
 
+echo "  Stripping repository links from submodules..."
+for libDirectory in `ls -d ${LIBPATH}/* `; do
+    moduleName=`basename ${libDirectory}`
+    rm -rf ${SANDBOXPATH}/${moduleName}/.git
+done
+
 echo "	Creating initial snapshot of sandbox..."
 git --git-dir="${SANDBOXPATH}/.git" --work-tree="${SANDBOXPATH}" add -A && git --git-dir="${SANDBOXPATH}/.git" --work-tree="${SANDBOXPATH}" commit -m "Initial snapshot"
 
