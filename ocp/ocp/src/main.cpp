@@ -1,17 +1,9 @@
 /*! @file main.cpp
- *  @version 3.1.8
- *  @date Aug 05 2016
+ *  @date 7/30/2017
  *
  *  @brief
- *  New Linux App for DJI Onboard SDK.
- *  Provides a number of convenient abstractions/wrappers around core API calls.
- *
- *  Calls are blocking; the calling thread will sleep until the
- *  call returns. Use Core API calls or another sample if you
- *  absolutely need non-blocking calls.
- *
- *  @copyright
- *  2016 DJI. All rights reserved.
+ *  Microsoft OCP program for interfacing between detection radios
+ *  and DJI drones
  * */
 
 //System Headers
@@ -24,8 +16,8 @@
 #include <signal.h>
 #include <time.h>
 #include <mqueue.h>
-#include <fcntl.h>           /* For O_* constants */
-#include <sys/stat.h>        /* For mode constants */
+#include <fcntl.h> /* For O_* constants */
+#include <sys/stat.h> /* For mode constants */
 #include <sys/types.h>
 
 //JSONCPP Amalgamated
@@ -51,32 +43,33 @@
 
 #include "mqcommon.h"
 
-
-//Local Mission Planning Suite Headers
-//#include <MissionplanHeaders.h>
-
 using namespace std;
 using namespace DJI;
 using namespace DJI::onboardSDK;
 
-#define MAX_BUF 100
-
-#define STATUS_FILE "/tmp/sar.log"
-//#define ENABLE_DRONE
-
 volatile sig_atomic_t stop;
 
-void inthand(int signum) {
+// Handle sigint
+void inthand(int signum)
+{
     stop = 1;
 }
 
-//! Main function for the Linux sample. Lightweight. Users can call their own API calls inside the Programmatic Mode else on Line 68.
-int main(int argc, char *argv[])
+int main(int argc, char* argv[])
 {
-  signal(SIGINT, inthand);
+    signal(SIGINT, inthand);
 
-  #ifdef ENABLE_DRONE
-    //! Instantiate a serialDevice, an API object, flight and waypoint objects and a read thread.
+    /* Check for first param of "testmode" to disable connecting to drone */
+    bool enableDrone = argc <= 1 || argv[1] == "testmode";
+
+    if (enableDrone) {
+        std::cout << "Starting in production mode and connecting to drone.\n";
+    }
+    else {
+        std::cout << "TEST MODE - WILL NOT CONNECT TO DRONE.\n";
+    }
+
+    /* Connect to the DJI drone via Serial */
     LinuxSerialDevice* serialDevice = new LinuxSerialDevice(UserConfig::deviceName, UserConfig::baudRate);
     CoreAPI* api = new CoreAPI(serialDevice);
     Flight* flight = new Flight(api);
@@ -84,59 +77,68 @@ int main(int argc, char *argv[])
     Camera* camera = new Camera(api);
     LinuxThread read(api, 2);
 
-    //! Setup
-    int setupStatus = setup(serialDevice, api, &read);
-    if (setupStatus == -1)
-    {
-      std::cout << "This program will exit now. \n";
-      return 0;
+    if (enableDrone) {
+        //! Setup
+        int setupStatus = setup(serialDevice, api, &read);
+        if (setupStatus == -1) {
+            std::cout << "This program will exit now. \n";
+            return 0;
+        }
     }
-  #endif
-  //! Set broadcast Freq Defaults
-  //unsigned short broadcastAck = api->setBroadcastFreqDefaults(1);
-  //usleep(500000);
 
+    //! Set broadcast Freq Defaults later to get gps broadcasts or reduce flooding serial channel
+    //unsigned short broadcastAck = api->setBroadcastFreqDefaults(1);
+    //usleep(500000);
 
-  /* listen for messages */
-   while (!stop)
-   {
+    /* listen for messages */
+    while (!stop) {
         char* buffer = MQCommon::pop();
 
-        if (buffer != NULL)
-        {
-          std::cout << buffer << "\n";
-          try {
-              Json::Value root;
-              Json::Reader reader;
-              reader.parse(buffer, root);
+        if (buffer != NULL) {
+            std::cout << buffer << "\n";
+            try {
+                Json::Value root;
+                Json::Reader reader;
+                reader.parse(buffer, root);
 
-              if (root["type"].asString() == "phy")
-              {
-                std::string message = root["IMSI"].asString() + "_" + root["data"]["UpRSSI"].asString();
+                /* Signal strength messages for a phone */
+                if (root["type"].asString() == "phy") {
+                    std::string message = root["IMSI"].asString() + "_" + root["data"]["UpRSSI"].asString();
 
-                std::cout << message << "\n";
+                    std::cout << message << "\n";
 
-                #ifdef ENABLE_DRONE
-                api->sendToMobile((uint8_t *) message.c_str(), strlen(message.c_str()));
-                #endif
-              }
+                    if (enableDrone) {
+                        api->sendToMobile((uint8_t*)message.c_str(), strlen(message.c_str()));
+                    }
+                }
+                /* Other status messages */
+                else if (root["type"].asString() == "status") {
+
+                    // Prefix message with a !bang! to signal to the mobile device this is a status message.
+                    std::string message = "!ping"; // We can pull a message field if there is a meaningful one, later.
+
+                    std::cout << message << "\n";
+
+                    if (enableDrone) {
+                        api->sendToMobile((uint8_t*)message.c_str(), strlen(message.c_str()));
+                    }
+                }
             }
-            catch (std::exception const & ex) {
-              std::cout << ex.what() << "\n";
+            catch (std::exception const& ex) {
+                std::cout << ex.what() << "\n";
             }
         }
         usleep(500000);
     }
 
-  #ifdef ENABLE_DRONE
-  int cleanupStatus = cleanup(serialDevice, api, flight, &read);
-  if (cleanupStatus == -1)
-  {
-    std::cout << "Unable to cleanly destroy OSDK infrastructure. There may be residual objects in the system memory.\n";
-    return 0;
-  }
-  std::cout << "Program exited successfully." << std::endl;
-  #endif
+    if (enableDrone) {
+        int cleanupStatus = cleanup(serialDevice, api, flight, &read);
+        if (cleanupStatus == -1) {
+            std::cout << "Unable to cleanly destroy OSDK infrastructure. There may be residual objects in the system memory.\n";
+            return 0;
+        }
+        std::cout << "Program exited successfully." << std::endl;
+    }
 
-  return 0;
+    return 0;
 }
