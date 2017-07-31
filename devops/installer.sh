@@ -18,15 +18,15 @@ if [[ $EUID -ne 0 ]]; then
    exit 1
 fi
 
-echo -e "${BLUE}+ Creating logging environment.${RESTORE}"
+echo -e "${CYAN}+ Creating logging environment.${RESTORE}"
 mkdir -p ${LOGDIR}
 
 # ---=[ PREREQUISITES ]=--- #
-echo -e "${BLUE}+ Retrieving and installing required packages from Aptitude.${RESTORE}"
+echo -e "${CYAN}+ Retrieving and installing required packages from Aptitude.${RESTORE}"
 apt-get -y install cmake build-essential subversion autoconf libusb-1.0-0-dev > "${LOGDIR}/00_aptitude.log" 2>&1
 
 # ---=[ GIT CONFIG ]=--- #
-echo -e "${BLUE}+ Configuring git...${RESTORE}"
+echo -e "${CYAN}+ Configuring git...${RESTORE}"
 echo -e "${GREEN}	- Setting default sandbox credentials${RESTORE}"
 git config --global user.email "sar@raspberrypi.local" > "${LOGDIR}/01_git_config.log" 2>&1
 git config --global user.name "SAR" >> "${LOGDIR}/01_git_config.log" 2>&1
@@ -36,10 +36,10 @@ echo -e "${GREEN}	- Preparing repository (this will take a moment)${RESTORE}"
 ${BASEDIR}/devops/generatePatchedTree.sh > "${LOGDIR}/02_deploy_source.log" 2>&1
 
 # ---=[ BUILDS ]=--- #
-echo -e "${BLUE}+ Starting builds...${RESTORE}"
+echo -e "${CYAN}+ Starting builds...${RESTORE}"
 
 # ---=[ BladeRF Build ]=--- #
-echo -e "${BLUE}	+ Building Nuand bladeRF drivers...${RESTORE}"
+echo -e "${CYAN}	+ Building Nuand bladeRF drivers...${RESTORE}"
 cd "${SANDBOXDIR}/bladeRF"
 if [[ -d "${SANDBOXDIR}/bladeRF/build" ]]; then
 	echo -e "${YELLOW}		! bladeRF build directory exists. Attempting to make build environment sane."
@@ -57,7 +57,7 @@ echo -e "${GREEN}		+ Done building drivers. Updating ldconfig cache.${RESTORE}"
 ldconfig >> "${LOGDIR}/03_bladerf_build.log" 2>&1
 
 # ---=[ Yate Build ]=--- #
-echo -e "${BLUE}	+ Building Yate core...${RESTORE}"
+echo -e "${CYAN}	+ Building Yate core...${RESTORE}"
 cd "${SANDBOXDIR}/yate"
 if [[ -f "${SANDBOXDIR}/yate/configure" ]]; then
 	echo -e "${YELLOW}		! Yate configure script exists. Attempting to make build environment sane.${RESTORE}"
@@ -72,7 +72,7 @@ echo -e "${GREEN}		+ Done building Yate. Updating ldconfig cache."
 ldconfig >> "${LOGDIR}/04_yate_build.log" 2>&1
 
 # ---=[ YateBTS Build ]=--- #
-echo -e "${BLUE}	+ Building YateBTS...${RESTORE}"
+echo -e "${CYAN}	+ Building YateBTS...${RESTORE}"
 cd "${SANDBOXDIR}/yate-bts"
 if [ -f "${SANDBOXDIR}/yate-bts/configure" ]; then
 	echo -e "${YELLOW}		! YateBTS configure script exists. Attempting to make build environment sane.${RESTORE}"
@@ -85,17 +85,17 @@ make install >> "${LOGDIR}/05_yatebts_build.log" 2>&1
 echo -e "${GREEN}		+ Done building YateBTS. Updating ldconfig cache.${RESTORE}"
 ldconfig >> "${LOGDIR}/05_yatebts_build.log" 2>&1
 
-echo -e "${BLUE}+ Builds complete.${RESTORE}"
+echo -e "${CYAN}+ Builds complete.${RESTORE}"
 
 # ---=[ USERS/GROUPS ]=--- #
-echo -e "${BLUE}+ Creating users and groups...${RESTORE}"
+echo -e "${CYAN}+ Creating users and groups...${RESTORE}"
 useradd yate >> "${LOGDIR}/06_user_config.log" 2>&1
 usermod -a -G yate yate >> "${LOGDIR}/06_user_config.log" 2>&1
 chown yate:yate /usr/local/etc/yate/*.conf >> "${LOGDIR}/06_user_config.log" 2>&1
 chmod g+w /usr/local/etc/yate/*.conf >> "${LOGDIR}/06_user_config.log" 2>&1
 
 # ---=[ UDEV/PRIORITIES ]=--- #
-echo -e "${BLUE}+ Assigning priorities and udev rules...${RESTORE}"
+echo -e "${CYAN}+ Assigning priorities and udev rules...${RESTORE}"
 
 # Commented out because bladeRF installation handles this
 # echo "# nuand bladeRF" > /etc/udev/rules.d/90-yate.rules
@@ -106,7 +106,7 @@ echo "@yate hard nice -20" >> /etc/security/limits.conf
 echo "@yate hard rtprio 99" >> /etc/security/limits.conf
 
 # ---=[ REORG CONFIG FILES ]=--- #
-echo -e "${BLUE}+ Shifting configuration files to FAT32 partition...${RESTORE}"
+echo -e "${CYAN}+ Shifting configuration files to FAT32 partition...${RESTORE}"
 mv /usr/local/etc/yate/ybts.conf /boot/ybts.conf >> "${LOGDIR}/08_configs.log" 2>&1
 ln -s /boot/ybts.conf /usr/local/etc/yate/ybts.conf >> "${LOGDIR}/08_configs.log" 2>&1
 echo -e "${GREEN}	+ ybts.conf${RESTORE}"
@@ -120,17 +120,17 @@ ln -s /boot/sar.conf /usr/local/etc/yate/sar.conf >> "${LOGDIR}/08_configs.log" 
 echo -e "${GREEN}	+ sar.conf${RESTORE}"
 
 # ---=[ INIT SCRIPT ]=--- #
-echo -e "${BLUE}+ Creating init script...${RESTORE}"
+echo -e "${CYAN}+ Creating init script...${RESTORE}"
 cp ${BASEDIR}/devops/raspberrypi/YateBTS /etc/init.d/YateBTS >> "${LOGDIR}/09_init.log" 2>&1
 update-rc.d YateBTS enable >> "${LOGDIR}/09_init.log" 2>&1
 
 # ---=[ PI ENVIRONMENT ]=--- #
-echo -e "${BLUE}+ Adjusting command line settings for Pi environment...${RESTORE}"
+echo -e "${CYAN}+ Adjusting command line settings for Pi environment...${RESTORE}"
 cp ${BASEDIR}/devops/raspberrypi/cmdline.txt /boot/cmdline.txt
 cp ${BASEDIR}/devops/raspberrypi/config.txt /boot/config.txt
 
 # ---=[ BLADERF SYMLINK ]=--- #
-echo -e "${BLUE}+ Creating bladeRF transceiver link...${RESTORE}"
+echo -e "${CYAN}+ Creating bladeRF transceiver link...${RESTORE}"
 ln -s /usr/local/lib/yate/server/bts/transceiver-bladerf /usr/local/lib/yate/server/bts/transceiver
 
 # TODO: Automatically write the SAR bits into javascript.conf and ybts.conf

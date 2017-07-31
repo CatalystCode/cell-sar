@@ -20,20 +20,21 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 # ---=[ PREREQUISITES ]=--- #
-echo -e "${BLUE}+ Retrieving and installing required packages from Aptitude.${RESTORE}"
+echo -e "${CYAN}+ Retrieving and installing required packages from Aptitude.${RESTORE}"
 apt-get -y install git >> "${LOGFILE}" 2>&1
 
 # ---=[ ACQUIRE PACKAGES ]=--- #
-echo -e "${BLUE}+ Downloading packages...${RESTORE}"
+echo -e "${CYAN}+ Downloading packages...${RESTORE}"
 
 if [[ ! -d "${BASEDIR}" ]]; then
-	echo -e "${BLUE}	+ Cloning cell-sar from ${SAR_GIT_URL}...${RESTORE}"
+	echo -e "${CYAN}	+ Cloning cell-sar from ${SAR_GIT_URL}...${RESTORE}"
 	git clone "${SAR_GIT_URL}" "${BASEDIR}" >> "${LOGFILE}" 2>&1
 else
 	echo -e "${YELLOW}		! SAR git repository exists, skipping.${RESTORE}"
 fi
 
 # ---=[ XFER CONTROL ]=---
-echo -e "${BLUE}+ Transferring control to installer...${RESTORE}"
+echo -e "${CYAN}+ Transferring control to installer...${RESTORE}"
 
-${BASEDIR}/devops/installer.sh > /boot/install.log 2>&1
+chmod a+x ${BASEDIR}/devops/installer.sh
+${BASEDIR}/devops/installer.sh
