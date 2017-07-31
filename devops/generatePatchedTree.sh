@@ -53,6 +53,8 @@ for libDirectory in `ls -d ${LIBPATH}/* `; do
         if [ -e "$patchFile" ]; then
             echo "    Processing ${patchFile}...";
             git --git-dir="${SANDBOXPATH}/.git" --work-tree="${SANDBOXPATH}" apply "${patchFile}"
+            git --git-dir="${SANDBOXPATH}/.git" --work-tree="${SANDBOXPATH}" add -A
+            git --git-dir="${SANDBOXPATH}/.git" --work-tree="${SANDBOXPATH}" commit -m "apply ${patchFile}"
         fi
     done
 done
