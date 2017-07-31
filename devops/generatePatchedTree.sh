@@ -39,15 +39,15 @@ git --git-dir="${SANDBOXPATH}/.git" --work-tree="${SANDBOXPATH}" add -A && git -
 
 echo "Applying patches..."
 # Iterate over libraries
-shopt -s nullglob
 for libDirectory in `ls -d ${LIBPATH}/* `; do
-    echo "  Applying patches to ${libDirectory}..."
-    shopt -s nullglob
-    for patchFile in "${libDirectory}/*.patch"; do
+    moduleName=`basename ${libDirectory}`
+    echo "  Applying patches to ${SANDBOXPATH}/${moduleName}..."
+    cd ${SANDBOXPATH}
+    for patchFile in `ls ${PATCHPATH}/${moduleName}/*.patch 2>/dev/null`; do
         if [ -e "$patchFile" ]; then
-	    echo "  Processing ${patchFile}...";
-	    git --git-dir="${SANDBOXPATH}/.git" --work-tree="${SANDBOXPATH}" apply "${patchFile}"
-	fi
+            echo "    Processing ${patchFile}...";
+            git --git-dir="${SANDBOXPATH}/.git" --work-tree="${SANDBOXPATH}" apply "${patchFile}"
+        fi
     done
 done
 
