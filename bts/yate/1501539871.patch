@@ -1,0 +1,13 @@
+diff --git a/yate/modules/searchandrescue.cpp b/yate/modules/searchandrescue.cpp
+index 437b243..3c88073 100644
+--- a/yate/modules/searchandrescue.cpp
++++ b/yate/modules/searchandrescue.cpp
+@@ -134,6 +134,8 @@ void SearchAndRescue::initialize(ScriptContext *context) {
+ bool SearchAndRescue::runFunction(ObjList &stack, const ExpOperation &oper, GenObject *context) {
+    if (oper.name() == YSTRING("writeToOCP"))
+       this->write_to_ocp(stack, oper, context);
++   else if (oper.name() == YSTRING("changePLMN"))
++      this->change_plmn(stack, oper, context);
+    return true;
+ }
+ 
