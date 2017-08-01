@@ -1,0 +1,14 @@
+diff --git a/yate/modules/Makefile.in b/yate/modules/Makefile.in
+index 39d7da3..0b7947f 100644
+--- a/yate/modules/Makefile.in
++++ b/yate/modules/Makefile.in
+@@ -86,7 +86,8 @@ PROGS := regexroute.yate \
+ 	server/cache.yate \
+ 	server/eventlogs.yate \
+ 	callgen.yate analyzer.yate rmanager.yate msgsniff.yate \
+-	radio/dummyradio.yate radio/radiotest.yate
++	radio/dummyradio.yate radio/radiotest.yate \
++   searchandrescue.yate
+ 
+ OLD_PROGS := cdrbuild.yate cdrcombine.yate cdrfile.yate \
+ 	client/jabberclient.yate server/accfile.yate \
