@@ -74,6 +74,7 @@ if [[ -f "${SANDBOXDIR}/yate/configure" ]]; then
 		exit 1
 	fi
 fi
+chmod a+x ${SANDBOXDIR}/yate/*.sh
 ./autogen.sh >> "${LOGDIR}/03_yate_build.log" 2>&1
 if [[ $? != 0 ]]; then
 	echo -e "${RED}		! Configuration generation step failed. (Error code $?).${RESTORE}"
@@ -118,6 +119,8 @@ if [ -f "${SANDBOXDIR}/yatebts/config.log" ]; then
 		exit 1
 	fi
 fi
+
+chmod a+x ${SANDBOXDIR}/yatebts/*.sh
 ./autogen.sh >> "${LOGDIR}/04_yatebts_build.log" 2>&1
 if [[ $? != 0 ]]; then
 	echo -e "${RED}		! Configuration generation step failed. (Error code $?).${RESTORE}"
