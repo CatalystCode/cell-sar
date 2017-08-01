@@ -9,7 +9,7 @@
 ### END INIT INFO
 
 SCRIPT="yate -vvv"
-RUNAS=root
+RUNAS=yate
 
 PIDFILE=/var/run/YateBTS.pid
 LOGFILE=/var/log/YateBTS.log

@@ -22,6 +22,10 @@ fi
 # ---=[ PREREQUISITES ]=--- #
 echo -e "${CYAN}+ Retrieving and installing required packages from Aptitude.${RESTORE}"
 apt-get -y install git >> "${LOGFILE}" 2>&1
+if [[ $? != 0 ]]; then
+    echo -e "${RED}	! Aptitude exited with error code $?.${RESTORE}"
+	exit 1
+fi
 
 # ---=[ ACQUIRE PACKAGES ]=--- #
 echo -e "${CYAN}+ Downloading packages...${RESTORE}"
@@ -29,6 +33,9 @@ echo -e "${CYAN}+ Downloading packages...${RESTORE}"
 if [[ ! -d "${BASEDIR}" ]]; then
 	echo -e "${CYAN}	+ Cloning cell-sar from ${SAR_GIT_URL}...${RESTORE}"
 	git clone --recursive "${SAR_GIT_URL}" "${BASEDIR}" >> "${LOGFILE}" 2>&1
+	if [[ $? != 0 ]]; then
+		echo -e "${RED}		! Repository clone failed."
+	fi
 else
 	echo -e "${YELLOW}		! SAR git repository exists, skipping.${RESTORE}"
 fi
