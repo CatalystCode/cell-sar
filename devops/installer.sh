@@ -34,10 +34,9 @@ echo -e "${GREEN}██║  ██║███████╗██████�
 echo -e "${GREEN}╚═╝  ╚═╝╚══════╝╚══════╝ ╚═════╝ ╚═════╝ ╚══════╝"
 echo -e "${RESTORE} "
 
-echo "${SAR_VERSION}" >> "${LOGDIR}/sar_${SAR_VERSION}.version"
-
 echo -e "${CYAN}+ Creating logging environment.${RESTORE}"
 mkdir -p ${LOGDIR}
+echo "${SAR_VERSION}" >> "${LOGDIR}/sar_${SAR_VERSION}.version"
 
 # ---=[ PREREQUISITES ]=--- #
 echo -e "${CYAN}+ Retrieving and installing required packages from Aptitude.${RESTORE}"
