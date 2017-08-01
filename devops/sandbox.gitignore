@@ -6,8 +6,17 @@
 *.yate
 
 Makefile
+yate/run
+yate/packing/portage/yate.ebuild
+yate/yate-config.in
+yate/yate.pc
+yate/yateiss.inc
+yatebts/config.h
+yatebts/nib/auth/do_nib_comp128
+yatebts/nib/auth/do_nib_milenage
 
 # created by yate/autogen.sh
+yate/configure
 yate/config.log
 yate/config.status
 yate/autom4te.cache
@@ -25,6 +34,7 @@ yate/*.so*
 yate/libs/ysig/yate-ss7test
 
 # created by yatebts/autogen.sh
+yatebts/configure
 yatebts/autom4te.cache/
 yatebts/autom4te.cache/*
 yatebts/configure
