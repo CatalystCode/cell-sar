@@ -30,6 +30,9 @@ fi
 # ---=[ ACQUIRE PACKAGES ]=--- #
 echo -e "${CYAN}+ Downloading packages...${RESTORE}"
 
+# This is bad practice in most cases but for a headless install, is necessary.
+echo -e "Host github.com\n\tStrictHostKeyChecking no\n" >> ~/.ssh/config
+
 if [[ ! -d "${BASEDIR}" ]]; then
 	echo -e "${CYAN}	+ Cloning cell-sar from ${SAR_GIT_URL}...${RESTORE}"
 	git clone --recursive "${SAR_GIT_URL}" "${BASEDIR}" >> "${LOGFILE}" 2>&1
