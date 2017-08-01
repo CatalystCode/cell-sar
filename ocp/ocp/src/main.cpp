@@ -41,7 +41,7 @@
 #include <DJI_Version.h>
 #include <DJI_WayPoint.h>
 
-#include "mqcommon.h"
+#include <mqcommon.h>
 
 using namespace std;
 using namespace DJI;
