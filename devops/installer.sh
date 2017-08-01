@@ -192,7 +192,7 @@ echo -e "${GREEN}	+ Created init script${RESTORE}"
 
 # ---=[ PI ENVIRONMENT ]=--- #
 echo -e "${CYAN}+ Overlaying custom configuration for Pi environment...${RESTORE}"
-cp ${BASEDIR}/devops/raspberrypi/cmdline.txt /boot/cmdline.txt
+# cp ${BASEDIR}/devops/raspberrypi/cmdline.txt /boot/cmdline.txt
 cp ${BASEDIR}/devops/raspberrypi/config.txt /boot/config.txt
 
 echo " "
