@@ -1,3 +1,5 @@
 # Ignore patch sandbox
 /.sandbox
 /.sandbox/*
+
+.swp

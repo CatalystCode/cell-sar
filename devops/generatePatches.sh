@@ -33,6 +33,9 @@ for libDirectory in `ls -d ${LIBPATH}/* `; do
     if [ ! -s "${PATCHPATH}/${moduleName}/${PATCHSET}.patch" ]; then
         echo "      No patch required."
         rm "${PATCHPATH}/${moduleName}/${PATCHSET}.patch"
+    else
+        git --git-dir="${SANDBOXPATH}/.git" --work-tree="${SANDBOXPATH}" add -A
+        git --git-dir="${SANDBOXPATH}/.git" --work-tree="${SANDBOXPATH}" commit -m "applied ${PATCHPATH}/${moduleName}/${PATCHSET}.patch"
     fi
 done
 
