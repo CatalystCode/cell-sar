@@ -7,16 +7,16 @@
                 android:orientation="horizontal"
                 tools:context="com.microsoft.cellsar.MainActivity">
 
-    <!-- Widget to see first person view (FPV) -->
-    <fragment
-        class="com.google.android.gms.maps.SupportMapFragment"
-        android:id="@+id/mapView"
-        android:layout_width="match_parent"
-        android:layout_height="match_parent"/>
 
-    <dji.ui.widget.FPVWidget
+    <!-- Widget to see first person view (FPV) -->
+
+    <fragment
+        android:id="@+id/mapView"
+        class="com.google.android.gms.maps.SupportMapFragment"
         android:layout_width="match_parent"
-        android:layout_height="match_parent"/>
+        android:layout_height="match_parent"
+        />
+
 
 
     <!-- Widgets in top status bar -->
@@ -127,13 +127,21 @@
         android:layout_height="wrap_content"
         android:layout_alignParentBottom="true"
         android:orientation="horizontal"
-        android:padding="12dp">
+        android:padding="12dp"
+        android:id="@+id/linearLayout">
 
         <dji.ui.widget.dashboard.DashboardWidget
             android:id="@+id/Compass"
             android:layout_width="405dp"
             android:layout_height="91dp"
             android:layout_marginRight="12dp"/>
+
+        <dji.ui.widget.FPVWidget
+            android:id="@+id/FPVWidget"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent" />
+
+
 
     </LinearLayout>
 
@@ -144,7 +152,8 @@
         android:layout_height="wrap_content"
         android:layout_centerVertical="true"
         android:layout_marginStart="12dp"
-        android:orientation="vertical">
+        android:orientation="vertical"
+        android:id="@+id/linearLayout2">
 
         <dji.ui.widget.TakeOffWidget
             android:layout_width="40dp"

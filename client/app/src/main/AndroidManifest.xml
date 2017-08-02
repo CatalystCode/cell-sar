@@ -41,13 +41,13 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
 
-        <meta-data android:name="com.google.android.geo.API_KEY" android:value="AIzaSyDK2eC_2uFEkxmXN653wcb9voqCKyDD3gU"/>
+        <meta-data android:name="com.google.android.geo.API_KEY" android:value="<GOOGLE API KEY>"/>
 
         <!-- DJI SDK -->
         <uses-library android:name="com.android.future.usb.accessory" />
         <meta-data
             android:name="com.dji.sdk.API_KEY"
-            android:value="d06442a07f1f4716a44b338b" />
+            android:value="<DJIAPIKEY>" />
 
         <activity
             android:name="dji.sdk.sdkmanager.DJIAoaControllerActivity"
