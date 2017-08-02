@@ -152,6 +152,28 @@ if [[ $? != 0 ]]; then
 	exit 1
 fi
 
+# ---=[ OCP Build ]=--- #
+echo -e "${CYAN}	+ Building OCP...${RESTORE}"
+if [ -d "/home/yate/ocp" ]; then
+	echo -e "${YELLOW}		! OCP build already exists. Attempting to make build environment sane.${RESTORE}"
+	rm -rf "/home/yate/ocp"
+fi
+
+mkdir -p /home/yate/ocp
+cd "/home/yate/ocp"
+cmake ${BASEDIR}/ocp >> "${LOGDIR}/05_ocp_build.log" 2>&1
+if [[ $? != 0 ]]; then
+	echo -e "${RED}		! cmake failed. (Error code $?).${RESTORE}"
+	exit 1
+fi
+
+echo -e "${GREEN}		+ Build environment ready, starting build.${RESTORE}"
+make >> "${LOGDIR}/05_ocp_build.log" 2>&1
+if [[ $? != 0 ]]; then
+	echo -e "${RED}			! Build failed. (Error code $?).${RESTORE}"
+	exit 1
+fi
+
 echo -e "${CYAN}+ Builds complete.${RESTORE}"
 
 # ---=[ USERS/GROUPS ]=--- #
@@ -186,8 +208,25 @@ else
 	echo -e "${GREEN}	+ sar.conf${RESTORE}"
 fi
 
+if [[ -e "${OVERLAYDIR}/UserConfig.txt" ]]; then
+	cp "${OVERLAYDIR}/UserConfig.txt" "${CONFIGURATIONDIR}/UserConfig.txt"
+	rm /home/yate/ocp/bin/UserConfig.txt
+	ln -s "${CONFIGURATIONDIR}/UserConfig.txt" /home/yate/ocp/bin/UserConfig.txt >> "${LOGDIR}/07_configs.log" 2>&1
+	echo -e "${GREEN}	+ UserConfig.txt (from overlay)${RESTORE}"
+else
+	if [[ ! -e "/home/yate/ocp/bin/UserConfig.txt" ]]; then
+		touch /home/yate/ocp/bin/UserConfig.txt
+	fi
+	mv /home/yate/ocp/bin/UserConfig.txt "${CONFIGURATIONDIR}/UserConfig.txt" >> "${LOGDIR}/07_configs.log" 2>&1
+	ln -s "${CONFIGURATIONDIR}/UserConfig.txt" /home/yate/ocp/bin/UserConfig.txt >> "${LOGDIR}/07_configs.log" 2>&1
+	echo -e "${GREEN}	+ UserConfig.txt${RESTORE}"
+fi
+
 # ---=[ POST-INSTALL TASKS ]=--- #
 echo -e "${CYAN}+ Running system post-installation tasks...${RESTORE}"
+
+chown -R yate:yate /home/yate >> "${LOGDIR}/05_ocp_build.log" 2>&1
+echo -e "${GREEN}	+ Ensured yate user ownership of home directory.${RESTORE}"
 
 echo "# nuand bladeRF" > /etc/udev/rules.d/90-yate.rules
 echo "ATTR{idVendor}==\"1d50\", ATTR{idProduct}==\"6066\", MODE=\"660\", GROUP=\"yate\"" >> /etc/udev/rules.d/90-yate.rules
@@ -208,7 +247,12 @@ echo -e "${GREEN}	+ Changed radio transmit/receive priorities${RESTORE}"
 cp ${BASEDIR}/devops/raspberrypi/YateBTS /etc/init.d/YateBTS >> "${LOGDIR}/08_init.log" 2>&1
 chmod a+x /etc/init.d/YateBTS >> "${LOGDIR}/08_init.log" 2>&1
 update-rc.d YateBTS defaults >> "${LOGDIR}/08_init.log" 2>&1
-echo -e "${GREEN}	+ Created init script${RESTORE}"
+echo -e "${GREEN}	+ Created YateBTS init script${RESTORE}"
+
+cp ${BASEDIR}/devops/raspberrypi/SAROCP /etc/init.d/SAROCP >> "${LOGDIR}/08_init.log" 2>&1
+chmod a+x /etc/init.d/SAROCP >> "${LOGDIR}/08_init.log" 2>&1
+update-rc.d SAROCP defaults >> "${LOGDIR}/08_init.log" 2>&1
+echo -e "${GREEN}	+ Created SAROCP init script${RESTORE}"
 
 touch /var/log/YateBTS.log
 chown yate:yate /var/log/YateBTS.log
