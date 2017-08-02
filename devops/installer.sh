@@ -53,7 +53,7 @@ fi
 
 # ---=[ GIT CONFIG ]=--- #
 echo -e "${CYAN}+ Configuring git...${RESTORE}"
-if [[ $(git config --global user.email) ]]; then
+if [[ $(git config --global user.email 2>/dev/null) ]]; then
 	echo -e "${YELLOW}	! Git global credentials exist, using those instead"
 else
 	echo -e "${GREEN}	+ Setting default sandbox credentials${RESTORE}"
@@ -158,6 +158,7 @@ echo -e "${CYAN}+ Builds complete.${RESTORE}"
 echo -e "${CYAN}+ Creating users and groups...${RESTORE}"
 useradd yate >> "${LOGDIR}/05_user_config.log" 2>&1
 usermod -a -G yate yate >> "${LOGDIR}/05_user_config.log" 2>&1
+usermod -a -G dialout yate >> "${LOGDIR}/05_user_config.log" 2>&1 # for UART access
 chown yate:yate /usr/local/etc/yate/*.conf >> "${LOGDIR}/05_user_config.log" 2>&1
 chmod g+w /usr/local/etc/yate/*.conf >> "${LOGDIR}/05_user_config.log" 2>&1
 
@@ -165,6 +166,7 @@ chmod g+w /usr/local/etc/yate/*.conf >> "${LOGDIR}/05_user_config.log" 2>&1
 echo -e "${CYAN}+ Moving/linking configuration files on FAT32 partition...${RESTORE}"
 if [[ -e "${OVERLAYDIR}/ybts.conf" ]]; then
 	cp "${OVERLAYDIR}/ybts.conf" "${CONFIGURATIONDIR}/ybts.conf"
+	rm /usr/local/etc/yate/ybts.conf
 	ln -s "${CONFIGURATIONDIR}/ybts.conf" /usr/local/etc/yate/ybts.conf >> "${LOGDIR}/07_configs.log" 2>&1
 	echo -e "${GREEN}	+ ybts.conf (from overlay)${RESTORE}"
 else
@@ -175,6 +177,7 @@ fi
 
 if [[ -e "${OVERLAYDIR}/sar.conf" ]]; then
 	cp "${OVERLAYDIR}/sar.conf" "${CONFIGURATIONDIR}/sar.conf"
+	rm /usr/local/etc/yate/sar.conf
 	ln -s "${CONFIGURATIONDIR}/sar.conf" /usr/local/etc/yate/sar.conf >> "${LOGDIR}/07_configs.log" 2>&1
 	echo -e "${GREEN}	+ sar.conf (from overlay)${RESTORE}"
 else

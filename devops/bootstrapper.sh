@@ -55,9 +55,10 @@ fi
 # ---=[ ENVIRONMENT CONFIG ]=--- #
 echo -e "${CYAN}+ Configuring environment for installer.${RESTORE}"
 # This is bad practice in most cases but for a headless install, is necessary.
+mkdir -p ~/.ssh
 echo -e "Host github.com\n\tStrictHostKeyChecking no\n" >> ~/.ssh/config
 echo -e "${GREEN}	+ Disable host key checking for github.com${RESTORE}"
-dos2unix -R ${OVERLAYDIR} >> "${LOGFILE}" 2>&1
+dos2unix -R ${OVERLAYDIR}/* >> "${LOGFILE}" 2>&1
 echo -e "${GREEN}	+ Normalize line endings to UNIX-compatible for overlay${RESTORE}"
 echo -e "${CYAN}	+ Checking for skeleton files...${RESTORE}"
 if [[ -d "${OVERLAYDIR}/skel" ]]; then
@@ -81,7 +82,7 @@ echo -e "${CYAN}+ Downloading packages...${RESTORE}"
 
 if [[ ! -d "${BASEDIR}" ]]; then
 	echo -e "${CYAN}	+ Cloning cell-sar from ${SAR_GIT_URL}...${RESTORE}"
-	git clone --recursive "${SAR_GIT_URL}" "${BASEDIR}" >> "${LOGFILE}" 2>&1
+	git clone --depth=1 --recursive "${SAR_GIT_URL}" "${BASEDIR}" >> "${LOGFILE}" 2>&1
 	if [[ $? != 0 ]]; then
 		echo -e "${RED}		! Repository clone failed."
 	fi
