@@ -1,18 +1,18 @@
 package com.microsoft.cellsar;
 
-import android.Manifest;
 import android.animation.ArgbEvaluator;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.graphics.Color;
-import android.os.Build;
 import android.os.Bundle;
-import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
+import android.support.v4.app.FragmentTransaction;
 import android.util.Log;
 import android.view.View;
+import android.widget.Button;
+import android.widget.ScrollView;
 import android.widget.Toast;
 
 import com.google.android.gms.maps.CameraUpdate;
@@ -21,15 +21,12 @@ import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
-import com.google.android.gms.maps.model.Circle;
-import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Polygon;
 import com.google.android.gms.maps.model.PolygonOptions;
 
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
@@ -39,8 +36,7 @@ import dji.common.flightcontroller.LocationCoordinate3D;
 import dji.sdk.base.BaseProduct;
 import dji.sdk.flightcontroller.FlightController;
 import dji.sdk.products.Aircraft;
-
-import static android.R.attr.data;
+import dji.ui.widget.FPVWidget;
 
 /** Main activity that displays two choices to user */
 public class MainActivity extends FragmentActivity implements GoogleMap.OnMapClickListener, OnMapReadyCallback {
@@ -48,6 +44,11 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMapCli
     private double droneLocationLat = 181, droneLocationLng = 181;
     private Marker droneMarker = null;
     private FlightController mFlightController;
+    private Button mapToggle;
+    private boolean mapVisible;
+    private FPVWidget fpvWidget;
+    private ScrollView scrollMap;
+    SupportMapFragment mapFragment;
 
     protected BroadcastReceiver mReceiver = new BroadcastReceiver() {
 
@@ -61,7 +62,7 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMapCli
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
-        setContentView(R.layout.activity_default_widgets);
+        setContentView(R.layout.mainactivity);
 
         //Register BroadcastReceiver to find out when drone connection status changes
         IntentFilter filter = new IntentFilter();
@@ -70,7 +71,7 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMapCli
 
         initUI();
 
-        SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
+        mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.mapView);
         mapFragment.getMapAsync(this);
 
@@ -82,7 +83,25 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMapCli
         // Configure buttons and stuff here, e.g.
         // locate = (Button) findViewById(R.id.locate);
         // locate.setOnClickListener(this);
+/*
+        fpvWidget = (FPVWidget)findViewById(R.id.FPVWidget);
 
+        mapToggle = (Button)findViewById(R.id.buttonMapToggle);
+        mapToggle.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                if (mapVisible)
+                {
+                    scrollMap.setVisibility(View.GONE);
+                    mapVisible = false;
+                }
+                else
+                {
+                    scrollMap.setVisibility(View.VISIBLE);
+                    mapVisible = true;
+                }
+
+            }
+        }); */
     }
 
     @Override
@@ -264,14 +283,22 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMapCli
         int signalColor;
         float normalizedSignal = (float)(signal - minSignal)/(float)(maxSignal - minSignal);
 
-        if (normalizedSignal <= 0.5)
+        if (normalizedSignal <= 0.25)
         {
-            signalColor = (int)(new ArgbEvaluator().evaluate(normalizedSignal * 2, 0xff0000, 0xfcdc33)) | 0x64000000;;
+            signalColor = Color.parseColor("#64f26522");
         }
-        else
+        else if (normalizedSignal <= 0.60)
         {
-            signalColor = (int)(new ArgbEvaluator().evaluate(normalizedSignal * 2, 0xfcdc33, 0x00ff00)) | 0x64000000;;
+            signalColor = Color.parseColor("#64fcdc33");
         }
+        else if (normalizedSignal <= 0.80)
+        {
+            signalColor = Color.parseColor("#6433ad3d");
+        }
+        else {
+            signalColor = Color.parseColor("#6400ff14");
+        }
+
         return signalColor;
     }
 
