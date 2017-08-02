@@ -1,8 +1,13 @@
 #!/bin/bash
+CONFIGURATIONDIR=/boot
+LOGDIR=${CONFIGURATIONDIR}/sar_installer_log
+OVERLAYDIR=${CONFIGURATIONDIR}/sar_overlay
+
 BASEDIR=/root/sar
 SANDBOXDIR=${BASEDIR}/.sandbox
-LOGDIR=/boot/sar_installer
 SAR_VERSION=`git --git-dir="${BASEDIR}/.git" --work-tree="${BASEDIR}" rev-parse --short HEAD`
+
+#########################################################################################
 
 # Colors and Styling
 RESTORE='\033[0m'
@@ -158,13 +163,25 @@ chmod g+w /usr/local/etc/yate/*.conf >> "${LOGDIR}/05_user_config.log" 2>&1
 
 # ---=[ REORG CONFIG FILES ]=--- #
 echo -e "${CYAN}+ Moving/linking configuration files on FAT32 partition...${RESTORE}"
-mv /usr/local/etc/yate/ybts.conf /boot/ybts.conf >> "${LOGDIR}/07_configs.log" 2>&1
-ln -s /boot/ybts.conf /usr/local/etc/yate/ybts.conf >> "${LOGDIR}/07_configs.log" 2>&1
-echo -e "${GREEN}	+ ybts.conf${RESTORE}"
+if [[ -e "${OVERLAYDIR}/ybts.conf" ]]; then
+	cp "${OVERLAYDIR}/ybts.conf" "${CONFIGURATIONDIR}/ybts.conf"
+	ln -s "${CONFIGURATIONDIR}/ybts.conf" /usr/local/etc/yate/ybts.conf >> "${LOGDIR}/07_configs.log" 2>&1
+	echo -e "${GREEN}	+ ybts.conf (from overlay)${RESTORE}"
+else
+	mv /usr/local/etc/yate/ybts.conf "${CONFIGURATIONDIR}/ybts.conf" >> "${LOGDIR}/07_configs.log" 2>&1
+	ln -s "${CONFIGURATIONDIR}/ybts.conf" /usr/local/etc/yate/ybts.conf >> "${LOGDIR}/07_configs.log" 2>&1
+	echo -e "${GREEN}	+ ybts.conf${RESTORE}"
+fi
 
-mv /usr/local/etc/yate/sar.conf /boot/sar.conf >> "${LOGDIR}/07_configs.log" 2>&1
-ln -s /boot/sar.conf /usr/local/etc/yate/sar.conf >> "${LOGDIR}/07_configs.log" 2>&1
-echo -e "${GREEN}	+ sar.conf${RESTORE}"
+if [[ -e "${OVERLAYDIR}/sar.conf" ]]; then
+	cp "${OVERLAYDIR}/sar.conf" "${CONFIGURATIONDIR}/sar.conf"
+	ln -s "${CONFIGURATIONDIR}/sar.conf" /usr/local/etc/yate/sar.conf >> "${LOGDIR}/07_configs.log" 2>&1
+	echo -e "${GREEN}	+ sar.conf (from overlay)${RESTORE}"
+else
+	mv /usr/local/etc/yate/sar.conf "${CONFIGURATIONDIR}/sar.conf" >> "${LOGDIR}/07_configs.log" 2>&1
+	ln -s "${CONFIGURATIONDIR}/sar.conf" /usr/local/etc/yate/sar.conf >> "${LOGDIR}/07_configs.log" 2>&1
+	echo -e "${GREEN}	+ sar.conf${RESTORE}"
+fi
 
 # ---=[ POST-INSTALL TASKS ]=--- #
 echo -e "${CYAN}+ Running system post-installation tasks...${RESTORE}"
@@ -190,10 +207,24 @@ chmod a+x /etc/init.d/YateBTS >> "${LOGDIR}/08_init.log" 2>&1
 update-rc.d YateBTS defaults >> "${LOGDIR}/08_init.log" 2>&1
 echo -e "${GREEN}	+ Created init script${RESTORE}"
 
+touch /var/log/YateBTS.log
+chown yate:yate /var/log/YateBTS.log
+echo -e "${GREEN}	+ Created log file${RESTORE}"
+
 # ---=[ PI ENVIRONMENT ]=--- #
 echo -e "${CYAN}+ Overlaying custom configuration for Pi environment...${RESTORE}"
 # cp ${BASEDIR}/devops/raspberrypi/cmdline.txt /boot/cmdline.txt
 cp ${BASEDIR}/devops/raspberrypi/config.txt /boot/config.txt
+
+# ---=[ POST-INSTALL SCRIPT ]=--- #
+echo "${CYAN}+ Checking for post-install actions...${RESTORE}"
+if [[ -f "/boot/postinstall.sh" ]]; then
+	echo "${GREEN}	+ Running post-install script."
+	chmod a+x /boot/postinstall.sh
+	/boot/postinstall.sh > "${LOGDIR}/99_postinstall.log"
+else
+	echo "${GREEN}	+ No post-install script found."
+fi
 
 echo " "
 echo -e "${GREEN}-- Done! --${RESTORE}"
