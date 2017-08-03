@@ -265,10 +265,10 @@ cp ${BASEDIR}/devops/raspberrypi/config.txt /boot/config.txt
 
 # ---=[ POST-INSTALL SCRIPT ]=--- #
 echo "${CYAN}+ Checking for post-install actions...${RESTORE}"
-if [[ -f "/boot/postinstall.sh" ]]; then
+if [[ -f "${OVERLAYDIR}/postinstall.sh" ]]; then
 	echo "${GREEN}	+ Running post-install script."
-	chmod a+x /boot/postinstall.sh
-	/boot/postinstall.sh > "${LOGDIR}/99_postinstall.log"
+	chmod a+x ${OVERLAYDIR}/postinstall.sh
+	${OVERLAYDIR}/postinstall.sh > "${LOGDIR}/99_postinstall.log"
 else
 	echo "${GREEN}	+ No post-install script found."
 fi
