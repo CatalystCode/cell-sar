@@ -44,6 +44,13 @@ if [[ $EUID -ne 0 ]]; then
    exit 1
 fi
 
+# ---=[ FORK CHECK ]=--- #
+# Note: this is to get around PiBakery's use of whiptail on the console, so we can see our progress
+if [ "$1" != "--nofork" ]; then
+	openvt -s -w -- $(readlink -f $0) --nofork
+	exit 0
+fi
+
 # ---=[ PREREQUISITES ]=--- #
 echo -e "${CYAN}+ Retrieving and installing required packages from Aptitude.${RESTORE}"
 apt-get -y install git dos2unix >> "${LOGFILE}" 2>&1
