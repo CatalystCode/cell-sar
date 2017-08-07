@@ -20,6 +20,7 @@
 #include <sys/stat.h> /* For mode constants */
 #include <sys/types.h>
 
+
 //JSONCPP Amalgamated
 #include <json.h>
 
@@ -41,7 +42,7 @@
 #include <DJI_Version.h>
 #include <DJI_WayPoint.h>
 
-#include <mqcommon.h>
+#include "mqcommon.h"
 
 using namespace std;
 using namespace DJI;
@@ -49,52 +50,46 @@ using namespace DJI::onboardSDK;
 
 volatile sig_atomic_t stop;
 
+
 // Handle sigint
-void inthand(int signum)
+void int_hand(int signum)
 {
     stop = 1;
 }
 
-int main(int argc, char* argv[])
+bool dji_connect(LinuxSerialDevice* serialDevice, CoreAPI* api, LinuxThread* read)
 {
-    signal(SIGINT, inthand);
-
-    /* Check for first param of "testmode" to disable connecting to drone */
-    bool enableDrone = argc <= 1 && argv[1] != "testmode";
-
-    if (enableDrone) {
-        std::cout << "Starting in production mode and connecting to drone.\n";
-    }
-    else {
-        std::cout << "TEST MODE - WILL NOT CONNECT TO DRONE.\n";
+    int setupStatus = setup(serialDevice, api, read);
+    if (setupStatus == -1) {
+        std::cout << "Failed to connect to drone.  Will retry later.\n";
+        return false;
     }
 
-    /* Connect to the DJI drone via Serial */
-    LinuxSerialDevice* serialDevice = new LinuxSerialDevice(UserConfig::deviceName, UserConfig::baudRate);
-    CoreAPI* api = new CoreAPI(serialDevice);
-    Flight* flight = new Flight(api);
-    WayPoint* waypointObj = new WayPoint(api);
-    Camera* camera = new Camera(api);
-    LinuxThread read(api, 2);
+    std::cout << "Connected to drone.  Setting broadcast freq to zero.\n";
+    api->setBroadcastFreqToZero();
 
-    if (enableDrone) {
-        //! Setup
-        int setupStatus = setup(serialDevice, api, &read);
-        if (setupStatus == -1) {
-            std::cout << "This program will exit now. \n";
-            return 0;
-        }
-    }
+    std::cout << "Broadcast freq configured.\n";
+    return true;
+}
 
-    //! Set broadcast Freq Defaults later to get gps broadcasts or reduce flooding serial channel
-    //unsigned short broadcastAck = api->setBroadcastFreqDefaults(1);
-    //usleep(500000);
+void poll_messages(LinuxSerialDevice* serialDevice, CoreAPI* api, LinuxThread* read)
+{
+  bool droneConnected = false;
+  int iterationsUntilAttempt = 10;
 
-    /* listen for messages */
-    while (!stop) {
+  droneConnected = dji_connect(serialDevice, api, read);
+
+  while (!stop) {
         char* buffer = MQCommon::pop();
 
         if (buffer != NULL) {
+            // attempt drone connection
+            if (!droneConnected && iterationsUntilAttempt <= 0)
+            {
+              droneConnected = dji_connect(serialDevice, api, read);
+              iterationsUntilAttempt = 10;
+            }
+
             std::cout << buffer << "\n";
             try {
                 Json::Value root;
@@ -103,11 +98,11 @@ int main(int argc, char* argv[])
 
                 /* Signal strength messages for a phone */
                 if (root["type"].asString() == "phy") {
-                    std::string message = root["data"]["IMSI"].asString() + "_" + root["data"]["UpRSSI"].asString();
+                    std::string message = root["IMSI"].asString() + "_" + root["data"]["UpRSSI"].asString();
 
                     std::cout << message << "\n";
 
-                    if (enableDrone) {
+                    if (droneConnected) {
                         api->sendToMobile((uint8_t*)message.c_str(), strlen(message.c_str()));
                     }
                 }
@@ -119,7 +114,7 @@ int main(int argc, char* argv[])
 
                     std::cout << message << "\n";
 
-                    if (enableDrone) {
+                    if (droneConnected) {
                         api->sendToMobile((uint8_t*)message.c_str(), strlen(message.c_str()));
                     }
                 }
@@ -128,17 +123,36 @@ int main(int argc, char* argv[])
                 std::cout << ex.what() << "\n";
             }
         }
-        usleep(500000);
+        usleep(500000); // Half a second
+        if (!droneConnected) iterationsUntilAttempt--;
     }
 
-    if (enableDrone) {
-        int cleanupStatus = cleanup(serialDevice, api, flight, &read);
-        if (cleanupStatus == -1) {
-            std::cout << "Unable to cleanly destroy OSDK infrastructure. There may be residual objects in the system memory.\n";
-            return 0;
-        }
-        std::cout << "Program exited successfully." << std::endl;
+}
+
+int main(int argc, char* argv[])
+{
+    signal(SIGINT, int_hand);
+
+    std::cout << "OCP starting up on serial port " << UserConfig::deviceName << " at " << UserConfig::baudRate << " baud.\n";
+
+    /* initialize serial port and listener threads */
+    LinuxSerialDevice* serialDevice = new LinuxSerialDevice(UserConfig::deviceName, UserConfig::baudRate);
+    CoreAPI* api = new CoreAPI(serialDevice);
+    Flight* flight = new Flight(api);
+    WayPoint* waypointObj = new WayPoint(api);
+    Camera* camera = new Camera(api);
+    LinuxThread read(api, 2);
+
+    /* listen for messages (blocking) */
+    poll_messages(serialDevice, api, &read);
+
+    /* cleanup resources */
+    int cleanupStatus = cleanup(serialDevice, api, flight, &read);
+    if (cleanupStatus == -1) {
+        std::cout << "Unable to cleanly destroy OSDK infrastructure. There may be residual objects in the system memory.\n";
+        return 0;
     }
 
+    std::cout << "Program exited successfully." << std::endl;
     return 0;
 }
