@@ -21,27 +21,53 @@ void inthand(int signum) {
   stop = 1;
 }
 
+void makePhyMessage(char **buffer);
+void makeStatusMessage(char **buffer);
+
 int main(int argc, char **argv)
 {
     /* Register for sigint */
     signal(SIGINT, inthand);
 
-    while (!stop)
-    {
-       /* send the message */
+    for (int i = 0; !stop; i = (i + 1) % 5) {
        char *buffer;
-       int upRSSI = -44;
-
-       asprintf (&buffer, "{\"IMSI\": \"310150123456789\", \"type\": \"phy\", \"timestamp\""
-        ": \"1499879446\", \"data\": {\"UpRSSI\": %i, \"TxPwr\": 33, \"DnRSSIdBm\": -82, \"time\": %u}}", upRSSI, (unsigned)time(NULL));
+       if (i == 4)
+          makeStatusMessage(&buffer);
+       else
+          makePhyMessage(&buffer);
+       std::cout << buffer << std::endl;
 
        MQCommon::push(buffer);
-
        std::cout << "simulator sent " << strlen(buffer) << " bytes\n";
+       std::cout << "----------" << std::endl;
 
-       /* wait */
-       sleep(3);
+       sleep(2);
+       free(buffer);
     }
 
     return 0;
 }
+
+void makePhyMessage(char **buffer) {
+   const char *phyTemplate = "{\"type\": \"phy\", \"time\": 1502129624628, \"data\": {"
+      "\"IMSI\": \"111222333444555\", \"TMSI\": \"007b0001\", \"UpRSSI\": %i, \"DnRSSIdBm\": -82, \"time\": %u"
+      "}}\n";
+
+   int upRSSI = -44;
+
+   asprintf(buffer, phyTemplate, upRSSI, (unsigned)time(NULL));
+}
+
+void makeStatusMessage(char **buffer) {
+   const char *imsi = "111222333444555";
+   const char *tmsi = "007b0001";
+   const char *msisdn = "17242177";
+   unsigned int pendingSMSs = 3;
+
+   const char *statusTemplate = "{\"type\": \"status\", \"time\": 1502129624628, \"data\": {"
+      "\"subscribers\": [{\"imsi\": %s, \"tmsi\": %s, \"msisdn\": %s}], \"pendingSMSs\": %d"
+      "}}\n";
+
+   asprintf(buffer, statusTemplate, imsi, tmsi, msisdn, pendingSMSs);
+}
+

@@ -90,7 +90,10 @@ void poll_messages(LinuxSerialDevice* serialDevice, CoreAPI* api, LinuxThread* r
               iterationsUntilAttempt = 10;
             }
 
+            std::cout << "----------" << std::endl;
             std::cout << buffer << "\n";
+            std::cout << "----------" << std::endl;
+
             try {
                 Json::Value root;
                 Json::Reader reader;
@@ -98,7 +101,7 @@ void poll_messages(LinuxSerialDevice* serialDevice, CoreAPI* api, LinuxThread* r
 
                 /* Signal strength messages for a phone */
                 if (root["type"].asString() == "phy") {
-                    std::string message = root["IMSI"].asString() + "_" + root["data"]["UpRSSI"].asString();
+                    std::string message = root["data"]["IMSI"].asString() + "_" + root["data"]["UpRSSI"].asString();
 
                     std::cout << message << "\n";
 

@@ -1,0 +1,77 @@
+diff --git a/yatebts/sar/Makefile.in b/yatebts/sar/Makefile.in
+index 0ad6beb..05bb626 100644
+--- a/yatebts/sar/Makefile.in
++++ b/yatebts/sar/Makefile.in
+@@ -4,7 +4,7 @@
+ # override DESTDIR at install time to prefix the install directory
+ DESTDIR :=
+ 
+-SCRIPTS := sar_config.js \
++SCRIPTS := javascript.js sar_config.js \
+ 	subscribers.js sms.js utils.js \
+ 	sar_lib.js \
+ 	searchandrescue.js
+diff --git a/yatebts/sar/javascript.js b/yatebts/sar/javascript.js
+new file mode 100644
+index 0000000..8d07920
+--- /dev/null
++++ b/yatebts/sar/javascript.js
+@@ -0,0 +1,29 @@
++/** javascript.js: manual implementations of common javascript methods that 
++  * are not natively available in yate's implementation.
++  * 
++  * Cellular Search and Rescue - Cellular Sensor BTS
++  *   Copyright (C) 2017 Microsoft
++  * 
++  * This file is part of cell-sar/the Yate-BTS Project http://www.yatebts.com
++  * 
++  * cell-sar is free software: you can redistribute it and/or modify
++  * it under the terms of the GNU General Public License as published by
++  * the Free Software Foundation, either version 2 of the License, or
++  * (at your option) any later version.
++  * 
++  * cell-sar is distributed in the hope that it will be useful,
++  * but WITHOUT ANY WARRANTY; without even the implied warranty of
++  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
++  * GNU General Public License for more details.
++  * 
++  * You should have received a copy of the GNU General Public License
++  * along with cell-sar.  If not, see <http://www.gnu.org/licenses/>.
++  */
++
++Array.prototype.map = function(mapper) {
++   var result = [];
++   for (var i = 0; i < this.length; ++i) {
++      result.push(mapper(this[i]));
++   }
++   return result;
++};
+diff --git a/yatebts/sar/sar_lib.js b/yatebts/sar/sar_lib.js
+index 4405f02..2e1ff92 100644
+--- a/yatebts/sar/sar_lib.js
++++ b/yatebts/sar/sar_lib.js
+@@ -22,6 +22,7 @@
+   * along with cell-sar.  If not, see <http://www.gnu.org/licenses/>.
+   */
+ 
++#require "javascript.js"
+ #require "sar_config.js"
+ #require "subscribers.js"
+ #require "sms.js"
+@@ -201,7 +202,15 @@ function onSMS(msg) {
+ }
+ 
+ function heartbeat() {
+-   writeToOCP(null, 'status');   
++   var subs = activeSubscribers.map(function(sub) { 
++      return {'imsi': sub.imsi, 'tmsi': sub.tmsi, 'msisdn': sub.msisdn};
++   });
++
++   var info = {
++      'subscribers': subs,
++      'pendingSMSs': pendingSMSs.length
++   };
++   writeToOCP(info, 'status');   
+ }
+ 
+ function onIntervalMaster() {

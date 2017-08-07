@@ -53,7 +53,7 @@ char* MQCommon::pop()
 
     if (bytes_read >= 0)
     {
-    	return &MQCommon::buffer[0];
+    	return MQCommon::buffer;
     }
 
     return NULL;
