@@ -26,6 +26,18 @@ else
     echo "      Patches are at ${PATCHPATH}"
 fi
 
+# check if sanbox exsists with changes (we don't want to accidentally overwrite them)
+if [ -d "${SANDBOXPATH}/.git" ]; then
+   diffcount=`git --git-dir="${SANDBOXPATH}/.git" --work-tree="${SANDBOXPATH}" diff | wc -c`
+   if [ $diffcount -ne 0 ]; then 
+      echo ""
+      echo "ABORT: uncommited changed detected in ${SANDBOXPATH}."
+      echo "  either commit those changes with generatePatches.sh,"
+      echo "  or delete the sandbox directory listed above and try again."
+      exit 1;
+   fi 
+fi
+
 echo "  Creating sandbox at ${SANDBOXPATH}"
 
 rm -rf "${SANDBOXPATH}"
