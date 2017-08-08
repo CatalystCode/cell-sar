@@ -83,9 +83,11 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMapCli
         // Configure buttons and stuff here, e.g.
         // locate = (Button) findViewById(R.id.locate);
         // locate.setOnClickListener(this);
-/*
-        fpvWidget = (FPVWidget)findViewById(R.id.FPVWidget);
 
+        fpvWidget = (FPVWidget)findViewById(R.id.FPVWidget);
+        fpvWidget.bringToFront();
+
+/*
         mapToggle = (Button)findViewById(R.id.buttonMapToggle);
         mapToggle.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
@@ -146,12 +148,13 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMapCli
             gMap = googleMap;
             setUpMap();
             cameraUpdate(new LatLng(47.639566, -122.129070));
+
         }
     }
 
     private void setUpMap() {
         gMap.setOnMapClickListener(this);// add the listener for click for amap object
-        gMap.setMapType(GoogleMap.MAP_TYPE_HYBRID);
+        gMap.setMapType(GoogleMap.MAP_TYPE_NORMAL);
     }
 
     private void cameraUpdate(LatLng pos){
