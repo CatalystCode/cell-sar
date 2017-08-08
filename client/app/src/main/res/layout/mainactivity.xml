@@ -128,7 +128,8 @@
         android:layout_alignParentBottom="true"
         android:orientation="horizontal"
         android:padding="12dp"
-        android:id="@+id/linearLayout">
+        android:id="@+id/linearLayout"
+        >
 
         <dji.ui.widget.dashboard.DashboardWidget
             android:id="@+id/Compass"
