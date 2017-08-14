@@ -9,10 +9,12 @@ import android.graphics.Color;
 import android.os.Bundle;
 import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.FragmentTransaction;
+import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ScrollView;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.android.gms.maps.CameraUpdate;
@@ -44,9 +46,9 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMapCli
     private double droneLocationLat = 181, droneLocationLng = 181;
     private Marker droneMarker = null;
     private FlightController mFlightController;
-    private Button mapToggle;
-    private boolean mapVisible;
+    private Button logToggle;
     private FPVWidget fpvWidget;
+    private TextView txtLog;
     private ScrollView scrollMap;
     SupportMapFragment mapFragment;
 
@@ -87,23 +89,24 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMapCli
         fpvWidget = (FPVWidget)findViewById(R.id.FPVWidget);
         fpvWidget.bringToFront();
 
-/*
-        mapToggle = (Button)findViewById(R.id.buttonMapToggle);
-        mapToggle.setOnClickListener(new View.OnClickListener() {
+
+        logToggle = (Button)findViewById(R.id.btnLog);
+        txtLog  = (TextView)findViewById(R.id.txtLog);
+        txtLog.setMovementMethod(new ScrollingMovementMethod());
+
+        logToggle.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                if (mapVisible)
+                if (txtLog.getVisibility() == View.VISIBLE)
                 {
-                    scrollMap.setVisibility(View.GONE);
-                    mapVisible = false;
+                    txtLog.setVisibility(View.INVISIBLE);
                 }
                 else
                 {
-                    scrollMap.setVisibility(View.VISIBLE);
-                    mapVisible = true;
+                    txtLog.setVisibility(View.VISIBLE);
                 }
 
             }
-        }); */
+        });
     }
 
     @Override
@@ -138,6 +141,15 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMapCli
             @Override
             public void run() {
                 Toast.makeText(MainActivity.this, string, Toast.LENGTH_SHORT).show();
+            }
+        });
+    }
+
+    private void writeToConsole(final String string){
+        MainActivity.this.runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                txtLog.append(string + "\n");
             }
         });
     }
@@ -205,7 +217,7 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMapCli
                         if (msg.startsWith("!"))
                         {
                             // STATUS message
-                            setResultToToast(msg);
+                            writeToConsole(msg.substring(1));
                         }
                         else {
                             // IR message

@@ -137,13 +137,6 @@
             android:layout_height="91dp"
             android:layout_marginRight="12dp"/>
 
-        <dji.ui.widget.FPVWidget
-            android:id="@+id/FPVWidget"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent" />
-
-
-
     </LinearLayout>
 
 
@@ -155,6 +148,12 @@
         android:layout_marginStart="12dp"
         android:orientation="vertical"
         android:id="@+id/linearLayout2">
+
+        <Button
+            android:id="@+id/btnLog"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="L" />
 
         <dji.ui.widget.TakeOffWidget
             android:layout_width="40dp"
@@ -203,5 +202,31 @@
         android:layout_height="wrap_content"
         android:layout_below="@id/signal"
         android:visibility="gone"/>
+
+
+    <TextView
+        android:id="@+id/txtLog"
+        android:text=""
+        android:maxLines="7"
+        android:scrollbars="vertical"
+        android:paddingLeft="2dp"
+        android:paddingTop="2dp"
+        android:background="@color/black_transparent"
+        android:textColor="@color/white_medium_transparent"
+        android:layout_width="200dp"
+        android:layout_height="120dp"
+        android:layout_alignParentLeft="true"
+        android:layout_alignParentBottom="true"
+        android:layout_marginLeft="20dp"
+        android:layout_marginBottom="20dp"/>
+
+    <dji.ui.widget.FPVWidget
+        android:id="@+id/FPVWidget"
+        android:layout_width="200dp"
+        android:layout_height="120dp"
+        android:layout_alignParentRight="true"
+        android:layout_alignParentBottom="true"
+        android:layout_marginRight="20dp"
+        android:layout_marginBottom="20dp"/>
 
 </RelativeLayout>

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android" xmlns:tools="http://schemas.android.com/tools"
-          package="com.microsoft.cellsar" >
+    package="com.microsoft.cellsar" >
 
     <!-- DJI SDK need these permissions -->
     <uses-permission android:name="android.permission.VIBRATE" />
@@ -41,13 +41,13 @@
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
 
-        <meta-data android:name="com.google.android.geo.API_KEY" android:value="<GOOGLE API KEY>"/>
+        <meta-data android:name="com.google.android.geo.API_KEY" android:value="AIzaSyDK2eC_2uFEkxmXN653wcb9voqCKyDD3gU"/>
 
         <!-- DJI SDK -->
         <uses-library android:name="com.android.future.usb.accessory" />
         <meta-data
             android:name="com.dji.sdk.API_KEY"
-            android:value="<DJIAPIKEY>" />
+            android:value="d06442a07f1f4716a44b338b" />
 
         <activity
             android:name="dji.sdk.sdkmanager.DJIAoaControllerActivity"
@@ -64,8 +64,8 @@
         <service android:name="dji.sdk.sdkmanager.DJIGlobalService"></service>
 
         <activity android:name="com.microsoft.cellsar.ConnectionActivity"
-                  android:screenOrientation="portrait"
-                  android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen" >
+            android:screenOrientation="portrait"
+            android:theme="@android:style/Theme.Black.NoTitleBar.Fullscreen" >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
 
