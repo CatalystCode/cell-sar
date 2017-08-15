@@ -249,7 +249,7 @@ echo -e "${CYAN}+ Overlaying custom configuration for Pi environment...${RESTORE
 cp ${BASEDIR}/devops/raspberrypi/config.txt /boot/config.txt
 
 # ---=[ POST-INSTALL SCRIPT ]=--- #
-echo "${CYAN}+ Checking for post-install actions...${RESTORE}"
+echo -e "${CYAN}+ Checking for post-install actions...${RESTORE}"
 if [[ -f "${OVERLAYDIR}/postinstall.sh" ]]; then
 	echo -e "${GREEN}	+ Running post-install script."
 	chmod a+x ${OVERLAYDIR}/postinstall.sh

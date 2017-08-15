@@ -128,7 +128,6 @@ fi
 headerOut "Cleaning up..."
 ((OUTPUT_DEPTH++))
 
-((OUTPUT_DEPTH++))
 chroot "${WORKING_DIR}" /bin/bash -c "sync;sync"
 normalOut "Requested virtual block device synchronization."
 
