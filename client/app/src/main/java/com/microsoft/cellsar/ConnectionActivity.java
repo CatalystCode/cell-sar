@@ -24,6 +24,7 @@ public class ConnectionActivity extends Activity implements View.OnClickListener
     private TextView mTextConnectionStatus;
     private TextView mTextProduct;
     private Button mBtnOpen;
+    private Button mMapNoDrone;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -93,6 +94,10 @@ public class ConnectionActivity extends Activity implements View.OnClickListener
         mBtnOpen.setOnClickListener(this);
         mBtnOpen.setEnabled(false);
 
+        mMapNoDrone = (Button) findViewById(R.id.btn_mapnodrone);
+        mMapNoDrone.setOnClickListener(this);
+        // mMapNoDrone.setVisibility(View.INVISIBLE);
+
     }
 
     protected BroadcastReceiver mReceiver = new BroadcastReceiver() {
@@ -132,7 +137,8 @@ public class ConnectionActivity extends Activity implements View.OnClickListener
     public void onClick(View v) {
         switch (v.getId()) {
 
-            case R.id.btn_open: {
+            case R.id.btn_open:
+            case R.id.btn_mapnodrone:{
                 Intent intent = new Intent(this, MainActivity.class);
                 startActivity(intent);
                 break;
@@ -141,5 +147,4 @@ public class ConnectionActivity extends Activity implements View.OnClickListener
                 break;
         }
     }
-
 }
