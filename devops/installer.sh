@@ -1,14 +1,9 @@
 #!/bin/bash
-
-echo "WARNING!!! installer.sh has not been modified to account for removing the patching strategy. ABORTING"
-exit 1
-
 CONFIGURATIONDIR=/boot
 LOGDIR=${CONFIGURATIONDIR}/sar_installer_log
 OVERLAYDIR=${CONFIGURATIONDIR}/sar_overlay
 
 BASEDIR=/root/sar
-SANDBOXDIR=${BASEDIR}/.sandbox
 SAR_VERSION=`git --git-dir="${BASEDIR}/.git" --work-tree="${BASEDIR}" rev-parse --short HEAD`
 
 #########################################################################################
@@ -55,27 +50,13 @@ if [[ $? != 0 ]]; then
 	exit 1
 fi
 
-# ---=[ GIT CONFIG ]=--- #
-echo -e "${CYAN}+ Configuring git...${RESTORE}"
-if [[ $(git config --global user.email 2>/dev/null) ]]; then
-	echo -e "${YELLOW}	! Git global credentials exist, using those instead"
-else
-	echo -e "${GREEN}	+ Setting default sandbox credentials${RESTORE}"
-	git config --global user.email "sar@raspberrypi.local" > "${LOGDIR}/01_git_config.log" 2>&1
-	git config --global user.name "SAR" >> "${LOGDIR}/01_git_config.log" 2>&1
-fi
-
-# ---=[ PREP REPOSITORY ]=--- #
-echo -e "${GREEN}	+ Preparing repository (this will take a moment)${RESTORE}"
-${BASEDIR}/devops/generatePatchedTree.sh > "${LOGDIR}/02_deploy_source.log" 2>&1
-
 # ---=[ BUILDS ]=--- #
 echo -e "${CYAN}+ Starting builds...${RESTORE}"
 
 # ---=[ Yate Build ]=--- #
 echo -e "${CYAN}	+ Building Yate core...${RESTORE}"
-cd "${SANDBOXDIR}/yate"
-if [[ -f "${SANDBOXDIR}/yate/configure" ]]; then
+cd "${BASEDIR}/bts/yate"
+if [[ -f "${BASEDIR}/bts/yate/configure" ]]; then
 	echo -e "${YELLOW}		! Yate configure script exists. Attempting to make build environment sane.${RESTORE}"
 	make clean > "${LOGDIR}/03_yate_build.log" 2>&1
 	if [[ $? != 0 ]]; then
@@ -83,7 +64,7 @@ if [[ -f "${SANDBOXDIR}/yate/configure" ]]; then
 		exit 1
 	fi
 fi
-chmod a+x ${SANDBOXDIR}/yate/*.sh
+chmod a+x ${BASEDIR}/bts/yate/*.sh
 ./autogen.sh >> "${LOGDIR}/03_yate_build.log" 2>&1
 if [[ $? != 0 ]]; then
 	echo -e "${RED}		! Configuration generation step failed. (Error code $?).${RESTORE}"
@@ -119,8 +100,8 @@ fi
 
 # ---=[ YateBTS Build ]=--- #
 echo -e "${CYAN}	+ Building YateBTS...${RESTORE}"
-cd "${SANDBOXDIR}/yatebts"
-if [ -f "${SANDBOXDIR}/yatebts/config.log" ]; then
+cd "${BASEDIR}/bts/yatebts"
+if [ -f "${BASEDIR}/bts/yatebts/config.log" ]; then
 	echo -e "${YELLOW}		! YateBTS configure script exists. Attempting to make build environment sane.${RESTORE}"
 	make clean > "${LOGDIR}/04_yatebts_build.log" 2>&1
 	if [[ $? != 0 ]]; then
@@ -129,7 +110,7 @@ if [ -f "${SANDBOXDIR}/yatebts/config.log" ]; then
 	fi
 fi
 
-chmod a+x ${SANDBOXDIR}/yatebts/*.sh
+chmod a+x ${BASEDIR}/bts/yatebts/*.sh
 ./autogen.sh >> "${LOGDIR}/04_yatebts_build.log" 2>&1
 if [[ $? != 0 ]]; then
 	echo -e "${RED}		! Configuration generation step failed. (Error code $?).${RESTORE}"
