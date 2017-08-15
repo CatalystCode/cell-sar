@@ -35,6 +35,8 @@
 #include <stdio.h>
 #include <syslog.h>
 
+#include <regex>
+
 using namespace TelEngine;
 namespace { // anonymous
 
@@ -211,6 +213,71 @@ static inline const String& index2str(int index, const String* array)
 	if (i == index)
 	    return *array;
     return String::empty();
+}
+
+static const std::string parse_phyinfo_value(const std::string &raw_phyinfo, const std::regex &ptrn) {
+   std::smatch match;
+
+   if (std::regex_match(raw_phyinfo, match, ptrn) && match.size() >= 2)
+      return match[1].str();
+
+   return std::string("");
+}
+
+static const std::regex UpRSSI_ptrn = std::regex(".*UpRSSI=(\\-?\\d+(\\.\\d+)?).*");
+static const std::regex TxPwr_ptrn = std::regex(".*TxPwr=(\\-?\\d+(\\.\\d+)?).*");
+static const std::regex DnRSSIdBm_ptrn = std::regex(".*DnRSSIdBm=(\\-?\\d+(\\.\\d+)?).*");
+static const std::regex time_ptrn = std::regex(".*time=(\\-?\\d+(\\.\\d+)?).*");
+static const std::regex TA_ptrn = std::regex(".*TA=(\\-?\\d+(\\.\\d+)?).*");
+static const std::regex TE_ptrn = std::regex(".*TE=(\\-?\\d+(\\.\\d+)?).*");
+
+static void send_phyinfo_message(const char *imsi, const char *tmsi, 
+      const char *data, const unsigned int len) {   
+
+   // ex: TA=0 TE=2.000 UpRSSI=-46 TxPwr=33 DnRSSIdBm=-111 time=1498692346.983
+   std::string raw_info(data, len);
+
+   // parse out the parameters
+   std::string IMSI = imsi ? std::string(imsi) : std::string("");
+   std::string TMSI = tmsi ? std::string(tmsi) : std::string("");
+   std::string UpRSSI = parse_phyinfo_value(raw_info, UpRSSI_ptrn);
+   std::string TxPwr = parse_phyinfo_value(raw_info, TxPwr_ptrn);
+   std::string DnRSSIdBm = parse_phyinfo_value(raw_info, DnRSSIdBm_ptrn);
+   std::string time = parse_phyinfo_value(raw_info, time_ptrn);
+   std::string TA = parse_phyinfo_value(raw_info, TA_ptrn);
+   std::string TE = parse_phyinfo_value(raw_info, TE_ptrn);
+
+   // build the message
+   Message *m = new Message("phyinfo");
+   m->addParam("IMSI", IMSI.c_str());
+   m->addParam("TMSI", TMSI.c_str());
+   m->addParam("UpRSSI", UpRSSI.c_str());
+   m->addParam("TxPwr", TxPwr.c_str());
+   m->addParam("DnRSSIdBm", DnRSSIdBm.c_str());
+   m->addParam("time", time.c_str());
+   m->addParam("TA", TA.c_str());
+   m->addParam("TE", TE.c_str());
+
+   // and dispatch it
+   Engine::dispatch(m);
+   m->destruct();
+}
+
+static Message *make_engine_status_message(const char *type, const bool dispatch=false) {
+   Message *m = new Message("ybts.status");
+   m->addParam("type", type);
+
+   if (dispatch) {
+      Engine::dispatch(m);
+      m->destruct();
+      return nullptr;
+   }
+   return m;
+}
+
+static void dispatch_engine_status_message(Message *m) {
+   Engine::dispatch(m);
+   m->destruct();
 }
 
 class YBTSConnIdHolder
@@ -668,10 +735,7 @@ public:
 	    Lock lck(this);
 	    msg.addParam("phy_info",m_phyInfo,false);
 	}
-    inline void setPhyInfo(const String& info) {
-	    Lock lck(this);
-	    m_phyInfo = info;
-	}
+    void setPhyInfo(const String& info); 
     inline const String& extraRelease() const
 	{ return m_extraRelease; }
     inline void extraRelease(const char* hexa)
@@ -3656,6 +3720,16 @@ XmlElement* YBTSLAI::build() const
 //
 // YBTSConn
 //
+
+void YBTSConn::setPhyInfo(const String& info) {
+   Lock lck(this);
+   m_phyInfo = info;
+
+   const char *imsi = ue() ? ue()->imsi().c_str() : 0;
+   const char *tmsi = ue() ? ue()->tmsi().c_str() : 0;
+   send_phyinfo_message(imsi, tmsi, info.c_str(), info.length());
+}
+
 YBTSConn::YBTSConn(YBTSSignalling* owner, uint16_t connId)
     : Mutex(false,"YBTSConn"),
     YBTSConnIdHolder(connId),
@@ -4189,8 +4263,13 @@ int YBTSSignalling::checkTimers(const Time& time)
     if (m_state == Closing || m_state == Idle)
 	return Ok;
     if (m_timeout && m_timeout <= time) {
-	Alarm(this,"system",DebugWarn,"Timeout while waiting for %s [%p]",
-	    (m_state != WaitHandshake  ? "heartbeat" : "handshake"),this);
+	const char *type = m_state != WaitHandshake ? "heartbeat" : "handshake";
+	Alarm(this,"system",DebugWarn,"Timeout while waiting for %s [%p]", type ,this);
+
+        Message *m = make_engine_status_message("timeout");
+        m->addParam("for", type);
+        dispatch_engine_status_message(m);
+
 	changeState(Closing,true);
 	return Error;
     }
@@ -5124,10 +5203,17 @@ int YBTSSignalling::handleStopNotification(YBTSMessage& msg)
 	    appendChildText(s,msg.xml(),YSTRING("reason"));
 	appendChildText(s,msg.xml(),YSTRING("operation"));
     }
+
     if (restart)
 	Debug(this,DebugNote,"Peer stop notification '%s'%s [%p]",notif.c_str(),s.safe(),this);
     else
 	Alarm(this,"system",DebugWarn,"Peer fatal stop notification '%s'%s [%p]",notif.c_str(),s.safe(),this);
+
+    Message *m = make_engine_status_message("stopnotification");
+    m->addParam("restarting", restart ? "true" : "false");
+    m->addParam("reason", notif.c_str());
+    dispatch_engine_status_message(m);
+
     return restart ? Error : FatalError;
 }
 

@@ -13,7 +13,7 @@ CXX := @CXX@ -Wall
 SED := sed
 DEFS :=
 INCLUDES := -I@top_srcdir@
-CCFLAGS:= -O2 @YATE_DEF@
+CCFLAGS:= -O2 -std=c++11 @YATE_DEF@
 CFLAGS := $(subst -fno-check-new,,$(CCFLAGS))
 LDFLAGS:= @YATE_LNK@
 YATELIBS:= @YATE_LIB@
@@ -52,7 +52,6 @@ shrdir := @YATE_SHR@
 all: $(PROGS)
 	$(MAKE) -C ./transceiver all
 	$(MAKE) -C ./mbts/apps all
-	$(MAKE) -C ./nib/auth all
 
 debug:
 	$(MAKE) all DEBUG=-g3 MODSTRIP=
@@ -73,7 +72,6 @@ clean:
 	    test ! -f "$$i/Makefile" || $(MAKE) -C "$$i" clean BUILD_TESTS=yes; \
 	done
 	$(MAKE) -C ./transceiver clean
-	$(MAKE) -C ./nib/auth clean
 
 check-topdir:
 	@test -f configure || (echo "Must make this target in the top source directory"; exit 1)
@@ -116,14 +114,11 @@ install: all
 	    install -m 0644 @srcdir@/$$i "$(DESTDIR)$(docdir)/" ; \
 	done
 	$(MAKE) -C ./mbts/apps install
-	$(MAKE) -C ./nib install
-	$(MAKE) -C ./nib/auth install
 	$(MAKE) -C ./roaming install
 	$(MAKE) -C ./scripts install
+	$(MAKE) -C ./sar install
 
 uninstall:
-	$(MAKE) -C ./nib/auth uninstall
-	$(MAKE) -C ./nib uninstall
 	$(MAKE) -C ./roaming uninstall
 	$(MAKE) -C ./scripts uninstall
 	$(MAKE) -C ./mbts/apps uninstall

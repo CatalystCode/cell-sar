@@ -59,22 +59,18 @@ JUSTSIG := server/ysigchan.yate server/analog.yate \
 
 SUBDIRS :=
 MKDEPS  := ../config.status
-PROGS := cdrbuild.yate cdrcombine.yate cdrfile.yate regexroute.yate \
-	tonegen.yate tonedetect.yate wavefile.yate \
-	extmodule.yate conference.yate moh.yate pbx.yate \
-	dumbchan.yate callfork.yate mux.yate \
+PROGS := regexroute.yate \
+	tonegen.yate tonedetect.yate \
+	extmodule.yate moh.yate pbx.yate \
+	callfork.yate mux.yate \
 	yrtpchan.yate ystunchan.yate \
-	ysipchan.yate \
-	yiaxchan.yate \
-	yjinglechan.yate jabber/jabberserver.yate jabber/jbfeatures.yate \
+	jabber/jabberserver.yate jabber/jbfeatures.yate \
 	ysockschan.yate filetransfer.yate fileinfo.yate \
-	gvoice.yate \
 	javascript.yate \
 	server/pbxassist.yate server/dbpbx.yate server/lateroute.yate \
 	server/park.yate server/queues.yate server/queuesnotify.yate \
-	server/regfile.yate server/accfile.yate server/register.yate \
+	server/regfile.yate server/register.yate \
 	server/callcounters.yate server/cpuload.yate server/ccongestion.yate \
-	server/dbwave.yate \
 	server/yradius.yate \
 	server/ysnmpagent.yate \
 	server/monitoring.yate \
@@ -89,20 +85,27 @@ PROGS := cdrbuild.yate cdrcombine.yate cdrfile.yate regexroute.yate \
 	server/analogdetect.yate \
 	server/cache.yate \
 	server/eventlogs.yate \
-	client/jabberclient.yate \
 	callgen.yate analyzer.yate rmanager.yate msgsniff.yate \
-	radio/dummyradio.yate radio/radiotest.yate
+	radio/dummyradio.yate radio/radiotest.yate \
+   searchandrescue.yate
+
+OLD_PROGS := cdrbuild.yate cdrcombine.yate cdrfile.yate \
+	client/jabberclient.yate server/accfile.yate \
+	server/dbwave.yate dumbchan.yate conference.yate \
+	gvoice.yate wavefile.yate \
+	ysipchan.yate yjinglechan.yate \
+	yiaxchan.yate
 
 LIBS :=
 DIRS := client server jabber qt4 sip sig radio
 
-ifneq ($(HAVE_PGSQL),no)
-PROGS := $(PROGS) server/pgsqldb.yate
-endif
+# ifneq ($(HAVE_PGSQL),no)
+# jPROGS := $(PROGS) server/pgsqldb.yate
+# endif
 
-ifneq ($(HAVE_MYSQL),no)
-PROGS := $(PROGS) server/mysqldb.yate
-endif
+# ifneq ($(HAVE_MYSQL),no)
+# PROGS := $(PROGS) server/mysqldb.yate
+# endif
 
 ifneq ($(HAVE_SQLITE),no)
 PROGS := $(PROGS) server/sqlitedb.yate
@@ -276,6 +279,9 @@ qt4/%.o: @srcdir@/qt4/%.cpp $(MKDEPS) $(INCFILES)
 %.o: @srcdir@/%.cpp $(MKDEPS) $(INCFILES)
 	$(COMPILE) -c $<
 
+mqcommon.o: mqcommon.cpp $(MKDEPS) $(INCFILES)
+	$(COMPILE) -c $< -lrt
+
 do-all do-strip do-clean do-install do-uninstall:
 	$(if $(SUBDIRS),\
 	@target=`echo $@ | $(SED) -e 's/^do-//'`; \
@@ -313,6 +319,9 @@ sip/%.yate: @srcdir@/sip/%.cpp $(MKDEPS) $(INCFILES)
 
 %.yate: @srcdir@/%.cpp $(MKDEPS) $(INCFILES)
 	$(MODCOMP) -o $@ $(LOCALFLAGS) $(EXTERNFLAGS) $< $(LOCALLIBS) $(YATELIBS) $(EXTERNLIBS)
+
+searchandrescue.yate: searchandrescue.cpp mqcommon.o $(MKDEPS) $(INCFILES)
+	$(MODCOMP) mqcommon.o -o $@ $(LOCALFLAGS) $(EXTERNFLAGS) $< $(LOCALLIBS) $(YATELIBS) $(EXTERNLIBS) -lrt
 
 # Take special care of the modules that depend on optional libs
 
@@ -416,6 +425,9 @@ qt4/updater.yate: EXTERNLIBS = $(QT4_LIB_NET)
 javascript.yate: ../libyatescript.so ../libs/ypbx/libyatepbx.a
 javascript.yate: LOCALFLAGS = -I@top_srcdir@/libs/yscript -I@top_srcdir@/libs/ypbx
 javascript.yate: LOCALLIBS = -lyatescript -L../libs/ypbx -lyatepbx
+
+searchandrescue.yate: LOCALFLAGS = -I../libs/yscript
+searchandrescue.yate: LOCALLIBS = -lyatescript
 
 zlibcompress.yate: EXTERNFLAGS = $(ZLIB_INC)
 zlibcompress.yate: EXTERNLIBS = $(ZLIB_LIB)
