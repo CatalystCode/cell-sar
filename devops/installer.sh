@@ -1,4 +1,8 @@
 #!/bin/bash
+
+echo "WARNING!!! installer.sh has not been modified to account for removing the patching strategy. ABORTING"
+exit 1
+
 CONFIGURATIONDIR=/boot
 LOGDIR=${CONFIGURATIONDIR}/sar_installer_log
 OVERLAYDIR=${CONFIGURATIONDIR}/sar_overlay
