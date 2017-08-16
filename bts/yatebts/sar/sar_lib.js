@@ -63,6 +63,7 @@ function initializeSAR() {
 
    // install message handlers and callbacks
    Engine.debug(Engine.DebugInfo, "Installing SAR Listeners");
+   Message.install(onAuth, "auth", 80);
    Message.install(onHandsetRegister, "user.register", 80, 'driver', 'ybts');
    Message.install(onHandsetUnregister, "user.unregister", 80);
    Message.install(onPhyinfo, "phyinfo", 80);
@@ -139,6 +140,21 @@ function onYBTSStatus(msg) {
    writeToOCP(data, "ybts");
 }
 
+function onAuth(msg) {
+
+	// Auth always succeeds -- this is the weakness in GSM that makes this strategy viable!
+	// ----------
+	// Due to GSM not authenticating bidirectionally, we can provide dummy cryptographic values
+	// to the remote headset and always respond positively to their challenge, rendering any
+	// additional phone-oriented security measures useless.
+	// ----------
+	// - ALT 05/19/2017
+
+   Engine.debug(Engine.DebugInfo, "Authentication successful");
+
+	return true;
+}
+
 function onHandsetRegister(msg) {
    
    // Make sure the subscriber gets registered properly
@@ -159,23 +175,17 @@ function onHandsetRegister(msg) {
    msg.msisdn = subscriber.msisdn;
 
    // greet the user on first register
-   if (ret === REGISTERED) {
-      var next_try = Date.now() / 1000 + 2;
-      var options = {'tries': 3, 'next_try': next_try};
+   if (ret === REGISTERED || ret === DUPLICATE) { // TODO remove duplicate when multiple handset authentication is working
+      sendHelloSMS(subscriber);
       if (config.testing) {
-         var msgText = "Hello " + subscriber.imsi + " (" + subscriber.tmsi + "), Your phone # is : '" 
+         var msgText = subscriber.imsi + "(" + subscriber.tmsi + "), Your phone # is : '" 
             + subscriber.msisdn + "'";
-         sendSMSFromDrone(subscriber, msgText, options);
-      } else {
-         sendSMSFromDrone(subscriber, helloText, options);
+         sendSMSMessage(subscriber.imsi, msgText);
       }
    }
 
-   // ===================================================================================== //
-   // No need to authenticate! This is the weakness in GSM that makes this strategy viable! //
-   // ===================================================================================== //
-
    if (onPhoneDetected) onPhoneDetected(subscriber);
+
    return true;
 }
 

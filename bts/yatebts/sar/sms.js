@@ -23,166 +23,153 @@
 #require "sar_config.js"
 #require "utils.js"
 
-var pendingSMSs = [];            // a queue of SMS messages that need to be handled
-var silentSMSCount = {};         // IMSI-># of silent SMSs sent
+var pendingSMSs = [];
+var silentSMSCount = {};      // key: IMSI, value: # of silent SMSs sent
 
-function sendSMSFromDrone(to, text, options) {
-   var now = Date.now() / 1000;
+function sendHelloSMS(subscriber) {
+   var try_time = Date.now() / 1000 + 5; // 5s delay before sending to allow the call to settle
 
+   var imsi = subscriber.imsi;
+   var msisdn = subscriber.msisdn;
    var sms = {
       'imsi': droneRootImsi,
       'msisdn': droneRootMsisdn,
       'smsc': droneRootMsisdn,
-      'dest': to.msisdn,
-      'dest_imsi': to.imsi,
-      'msg': text,
-      'tries': 0,
-      'next_try': now,
-      'maxpdd': '5000'
+      'dest': msisdn,
+      'dest_imsi': imsi,
+      'next_try': try_time,
+      'tries': 3,
+      'msg': helloText
    };
 
-   if (options) {
-      if (options.tries && options.tries > 0)
-         sms['tries'] = options.tries;
-      if (options.next_try)
-         sms['next_try'] = options.next_try;
-      if (options.maxpdd && options.maxpdd > 0)
-         sms['maxpdd'] = options.maxpdd;
-   }
-
-   pendingSMSs.push(sms);
-}
-
-// sends a message to the yate engine to actually send the SMS
-function dispatchSMS(sms) {
-
-   Engine.debug(Engine.DebugInfo, "Sending SMS from " + sms.imsi + " to " 
-      + sms.dest_imsi + " '" + sms.msg + "'");
-   
-   // make sure the destination handset is valid
-   var to = getSubscriber(sms.dest_imsi);
-   if (!to) {
-      Engine.debug(Engine.DebugInfo, "Failed: unknown dest_imsi " + sms.dest_imsi);
-      return false;
-   }
-   if (!to.location) {
-      Engine.debug(Engine.DebugInfo, "Did not deliver sms because destination is offline.");
-      return false;
-   }
-
-   // build the yate messaage
-   var m = new Message("msg.execute");
-   m.caller = sms.smsc;
-   m.called = sms.dest;
-   m['sms.caller'] = sms.msisdn;
-   if (sms.msisdn.substr(0, 1) === '+') {
-      m['sms.caller.nature'] = 'international';
-      m['sms.caller'] = sms.msisdn.substr(1);
-   }
-   m.text = sms.msg;
-   m.callto = to.location;
-   m.oimsi = sms.dest_imsi;
-   m.otmsi = to.tmsi;
-   m.maxpdd = sms.maxpdd;
-
-   // dispatch and report the result
-   var result = m.enqueue();
-   if (result)
-      Engine.debug(Engine.DebugInfo, "Successfully dispatched SMS");
-   else 
-      Engine.debug(Engine.DebugInfo, "Failed to dispatch SMS");
-   return result;
-}
-
-// try to send the next SMS in the pendingSMSs queue.
-function sendNextSMS() {
-   var now = Date.now() / 1000;
-   var sms;
-
-   // check if we have any SMSs to send
-   for (var i = 0; !sms && i < pendingSMSs.length; ++i) {
-      if (pendingSMSs[i].next_try <= now) {
-         sms = pendingSMSs[i];
-         pendingSMSs.splice(i, 1);
-      }
-   }
-
-   // nothing to send
-   if (!sms) return;
-
-   // try to send, if it fails, try again later
-   if (dispatchSMS(sms)) {
-      if (onSendSMS) onSendSMS(sms);
-   } else if (sms.tries) {
-      sms.tries -= 1;
-      sms.next_try = now + 2;
-      pendingSMSs.push(sms);
+   if (!sendSMS(sms)) {
+      Engine.debug(Engine.DebugInfo, "Failed to send HelloSMS to IMSI: " + subscriber.imsi);
    }
 }
 
-function sendSilentSMSs() {
-   for (var i = 0; i < activeSubscribers.length; ++i) {
-      var subscriber = activeSubscribers[i];
-      if (!silentSMSCount[subscriber.imsi])
-         silentSMSCount[subscriber.imsi] = 0;
+function sendSilentSMS(imsi) {
+    var subscriber = getSubscriber(imsi);
+    if (!subscriber) return false;
+    
+    Engine.debug(Engine.DebugInfo, "Sending SilentSMS to IMSI " + imsi);
 
-      var sms;
-      if (config.loud_sms)
-         sms = buildLoudSMS(subscriber);
-      else 
-         sms = buildSilentSMS(subscriber);
+    var number = subscriber["msisdn"];
+    var numberLen = number.length;
+    var numberLenHex = numberLen.toString(16);
+    if (numberLenHex.length < 2)
+        numberLenHex = "0"+numberLenHex;
 
-      if (!dispatchSMS(sms))
-         Engine.debug(Engine.DebugInfo, "Failed to dispatch SilentSMS to IMSI " + subscriber.imsi);
+    // This message is very particular and exploits the "SilentSMS" Class0 'bug' that exists in the SMS signalling protocol
+    // 00|01|00|0c|91|214365870921|00|C0|1e|005300650061007200630068002000260020005200650073006300750065
+    //     ^     ^               ^     ^  ^                                     `- Message (this is "Search & Rescue")
+    //     |     `- Num length   |     |  `- Message length
+    //     |                     |     `- Class0 SMS
+    // No delivery receipt      Target phone number, pair-swapped
 
-      silentSMSCount[subscriber.imsi] += 1;
-   }
+    var pduMessage = "000100" + numberLenHex + "91" + generatePduNumber(number) +
+      "00C01e005300650061007200630068002000260020005200650073006300750065";
+
+    var m = new Message("msg.execute");
+    m.caller = droneRootImsi;
+    m["sms.caller"] = droneRootMsisdn;
+    m["rpdu"] = pduMessage;
+    m.callto = subscriber["location"];
+    m.oimsi = imsi;
+    m.otmsi = subscriber["tmsi"];
+
+    m.enqueue();
+    return true;
 }
 
-function buildSilentSMS(subscriber) {
-   var number = subscriber["msisdn"];
-   var numberLen = number.length;
-   var numberLenHex = numberLen.toString(16);
-   if (numberLenHex.length < 2)
-     numberLenHex = "0"+numberLenHex;
-
-   // This message is very particular and exploits the "SilentSMS" Class0 'bug' that exists in the SMS signalling protocol
-   // 00|01|00|0c|91|214365870921|00|C0|1e|005300650061007200630068002000260020005200650073006300750065
-   //     ^     ^               ^     ^  ^                                     `- Message (this is "Search & Rescue")
-   //     |     `- Num length   |     |  `- Message length
-   //     |                     |     `- Class0 SMS
-   // No delivery receipt      Target phone number, pair-swapped
-
-   var pduMessage = "000100" + numberLenHex + "91" + generatePduNumber(number) +
-   "00C01e005300650061007200630068002000260020005200650073006300750065";
-
-   var sms = {
-      'smsc': droneRootImsi,
-      'msisdn': droneRootMsisdn,
-      'rpdu': pduMessage,
-      'dest_imsi': subscriber.imsi
-   };
-   return sms;
-}
-
-function buildLoudSMS(subscriber) {
-
-   var text = "Silent SMS #" + silentSMSCount[subscriber.imsi] + ".";
-   var phy = subscriber.lastPhyinfo;
-   if (phy)
-      text += " Last Phyinfo: {TA: " + phy.TA + ", TE: " + phy.TE
-         + ", UpRSSI: " + phy.UpRSSI + ", TxPwr: " + phy.TxPwr
-         + ", DnRSSIdBm: " + phy.DnRSSIdBm + "}";
-
+function sendSMSMessage(imsi, messageText)
+{
+   var subscriber = getSubscriber(imsi);
    var sms = {
       'imsi': droneRootImsi,
       'msisdn': droneRootMsisdn,
       'smsc': droneRootMsisdn,
       'dest': subscriber.msisdn,
       'dest_imsi': subscriber.imsi,
-      'msg': text
+      'msg': messageText
    };
-   return sms;
+
+   if (!sendSMS(sms)) {
+      Engine.debug(Engine.DebugInfo, "Failed to SMS message to IMSI: " + subscriber["imsi"] + ", message was '" + messageText + "'");
+   }
+}
+
+function sendSMS(sms) {
+   // Assume all devices are always online, so we never end up pushing undeliverable messages to the end of the queue
+   // May want to change this later, but for now it's a sane approach.
+
+   Engine.debug(Engine.DebugInfo, "Sending SMS to IMSI: " + sms.dest_imsi + " '" + sms.msg + "'");
+
+   var destSubscriber = getSubscriber(sms.dest_imsi);
+   if (!destSubscriber) {
+      Engine.debug(Engine.DebugInfo, "Did not deliver sms. Unknown dest_imsi: " + sms.dest_imsi);
+      return false;
+   }
+   if (!destSubscriber.location) {
+      Engine.debug(Engine.DebugInfo, "Did not deliver sms because destination is offline.");
+      return false;
+   }
+
+   var m = new Message("msg.execute");
+   m.caller = sms.smsc;
+   m.called = sms.dest;
+   m["sms.caller"] = sms.msisdn;
+   if (sms.msisdn.substr(0, 1) === "+") {
+      m["sms.caller.nature"] = "international";
+      m["sms.caller"] = sms.msisdn.substr(1);
+   }
+   m.text = sms.msg;
+   m.callto = destSubscriber["location"];
+   m.oimsi = sms.dest_imsi;
+   m.otmsi = destSubscriber["tmsi"];
+   m.maxpdd = "5000";
+   
+   return m.enqueue();
+}
+
+function trySendingLater(sms) {
+   var now = Date.now() / 1000;
+   var later = now + 3; // 3 seconds later
+   
+   sms.next_try = later;
+   if (sms.tries)
+      sms.tries -= 1;
+
+   if (sms.tries) {
+      pendingSMSs.push(sms);
+      return true;
+   }
+
+   return false;
+}
+
+function sendSilentSMSs() {
+   for (var i = 0; i < activeSubscribers.length; i++) {
+      var subscriber = activeSubscribers[i];
+      if (!silentSMSCount[subscriber.imsi]) 
+         silentSMSCount[subscriber.imsi] = 0;
+
+      if (config.loud_sms) {
+         var text = "Silent SMS #" + silentSMSCount[subscriber.imsi]  + ". ";
+         if (subscriber.lastPhyinfo) {
+            var phy = subscriber.lastPhyinfo;
+            text += "Last Phyinfo: {TA: " + phy.TA + ", TE: " + phy.TE 
+               + ", UpRSSI: " + phy.UpRSSI + ", TxPwr: " + phy.TxPwr 
+               + ", DnRSSIdBm: " + phy.DnRSSIdBm + ", time: " + phy.time + "}";
+         }
+
+         sendSMSMessage(subscriber.imsi, text);
+
+      } else if (!sendSilentSMS(subscriber["imsi"])) {
+         Engine.debug(Engine.DebugInfo, "Failed to dispatch StealthSMS to IMSI: " + subscriber["imsi"]);
+      }
+
+      silentSMSCount[subscriber.imsi] += 1;
+   }
 }
 
 function onRouteSMS(msg) {
@@ -193,3 +180,31 @@ function onRouteSMS(msg) {
    return true;
 }
 
+function sendNextSMS() {
+   var now = Date.now()/1000;
+   var sms;
+
+   // check if we have any SMSs to send
+   for (var i=0; i<pendingSMSs.length; i++) {
+      if (pendingSMSs[i].next_try <= now) {
+         sms = pendingSMSs[i];
+         pendingSMSs.splice(i,1);
+         break;
+      }
+   }
+
+   // if there is one, attempt to send it
+   if (sms) {
+      var sms_sent = sendSMS(sms);
+      if (sms_sent) {
+         Engine.debug(Engine.DebugInfo, "Successfully sent SMS to IMSI " + sms.dest_imsi);
+         if (onSendSMS) onSendSMS(sms);
+      } else {
+         if (trySendingLater(sms))
+            Engine.debug(Engine.DebugInfo, "Failed to send SMS to IMSI: " + sms.dest_imsi + " - " + sms.msg);
+         else
+            Engine.debug(Engine.DebugInfo, "Gave up trying to send SMS to IMSI " + sms.dest_imsi + ". Message was '" 
+               + sms.msg + "'");
+      }
+   }
+}
