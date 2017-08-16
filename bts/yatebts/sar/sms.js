@@ -56,9 +56,6 @@ function sendSMSFromDrone(to, text, options) {
 // sends a message to the yate engine to actually send the SMS
 function dispatchSMS(sms) {
 
-   Engine.debug(Engine.DebugInfo, "Sending SMS from " + sms.imsi + " to " 
-      + sms.dest_imsi + " '" + sms.msg + "'");
-   
    // make sure the destination handset is valid
    var to = getSubscriber(sms.dest_imsi);
    if (!to) {
@@ -86,12 +83,7 @@ function dispatchSMS(sms) {
    m.maxpdd = sms.maxpdd;
 
    // dispatch and report the result
-   var result = m.enqueue();
-   if (result)
-      Engine.debug(Engine.DebugInfo, "Successfully dispatched SMS");
-   else 
-      Engine.debug(Engine.DebugInfo, "Failed to dispatch SMS");
-   return result;
+   return m.enqueue();
 }
 
 // try to send the next SMS in the pendingSMSs queue.
@@ -113,10 +105,15 @@ function sendNextSMS() {
    // try to send, if it fails, try again later
    if (dispatchSMS(sms)) {
       if (onSendSMS) onSendSMS(sms);
-   } else if (sms.tries) {
-      sms.tries -= 1;
-      sms.next_try = now + 2;
-      pendingSMSs.push(sms);
+   } else {
+      Engine.debug(Engine.DebugInfo, "Failed to dispatch SMS to IMSI " + subscriber.imsi);
+
+      if (sms.tries) {
+         Engine.debug(Engine.DebugInfo, "  Trying again...");
+         sms.tries -= 1;
+         sms.next_try = now + 2;
+         pendingSMSs.push(sms);
+      }
    }
 }
 
