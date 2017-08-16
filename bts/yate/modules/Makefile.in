@@ -60,8 +60,7 @@ JUSTSIG := server/ysigchan.yate server/analog.yate \
 SUBDIRS :=
 MKDEPS  := ../config.status
 PROGS := regexroute.yate \
-	tonegen.yate tonedetect.yate \
-	extmodule.yate moh.yate pbx.yate \
+	extmodule.yate pbx.yate \
 	callfork.yate mux.yate \
 	yrtpchan.yate ystunchan.yate \
 	jabber/jabberserver.yate jabber/jbfeatures.yate \
@@ -94,7 +93,8 @@ OLD_PROGS := cdrbuild.yate cdrcombine.yate cdrfile.yate \
 	server/dbwave.yate dumbchan.yate conference.yate \
 	gvoice.yate wavefile.yate \
 	ysipchan.yate yjinglechan.yate \
-	yiaxchan.yate
+	tonegen.yate tonedetect.yate \
+	yiaxchan.yate moh.yate 
 
 LIBS :=
 DIRS := client server jabber qt4 sip sig radio
