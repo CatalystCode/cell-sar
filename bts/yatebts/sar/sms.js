@@ -68,7 +68,7 @@ function smsToString(sms) {
    else 
       result += " \"" + sms.text + "\"";
    return result;
-};
+}
 
 function dispatchSMS(sms) {
    if (!sms.to || !sms.to.location) return false;
@@ -97,8 +97,29 @@ function dispatchSMS(sms) {
    }
 
 
-   return m.dispatch(true);
-};
+   var result = m.dispatch(true);
+   if (!result) notifySMSFailed(sms, m);
+   return result;
+}
+
+function notifySMSFailed(sms, msg) {
+   var m = new Message("sms.failed");
+
+   m.error = msg.error;
+   m.reason = msg.reason;
+   m.maxpdd = sms.maxpdd;
+
+   m.silent = sms.silent;
+   m.to_imsi = sms.to.imsi;
+   if (sms.silent) {
+      m.silentSMSCount = silentSMSCount[sms.to.imsi];
+   } else {
+      m.from_imsi = sms.from.imsi;
+      m.text = sms.text;
+   }
+
+   m.enqueue();
+}
 
 function buildSilentSMS(subscriber) {
    var number = subscriber["msisdn"];
@@ -179,7 +200,8 @@ function sendSilentSMSs() {
          sms = buildSilentSMS(subscriber);
 
       if (!dispatchSMS(sms))
-         Engine.debug(Engine.DebugInfo, "Failed to dispatch SilentSMS to IMSI " + subscriber.imsi);
+         Engine.debug(Engine.DebugInfo, "Failed to dispatch SilentSMS to IMSI " 
+            + subscriber.imsi);
 
       silentSMSCount[subscriber.imsi] += 1;
    }

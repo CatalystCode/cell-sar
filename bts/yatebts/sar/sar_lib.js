@@ -68,6 +68,7 @@ function initializeSAR() {
    Message.install(onPhyinfo, "phyinfo", 80);
    Message.install(onRouteSMS, "call.route", 80, 'route_type', 'msg'); // onRouteSMS in sms.js
    Message.install(onSMS, "msg.execute", 80, "callto", droneRootImsi);
+   Message.install(onSMSFailed, "sms.failed", 100);
    Message.install(onEngineStatus, "engine.status", 75);
    Message.install(onYBTSStatus, "ybts.status", 75);
 
@@ -275,6 +276,24 @@ function onSMS(msg) {
    if (onSMSDetected) onSMSDetected({'imsi': from.imsi, 'dest_imsi': to.imsi, 'msg': msg.text});
 
    return true;
+}
+
+function onSMSFailed(msg) {
+   var data = {
+      'to_imsi': msg.to_imsi,
+      'error': msg.error,
+      'reason': msg.reason,
+      'silent': msg.silent
+   };
+
+   if (msg.silent) {
+      data.silentSMSCount = msg.silentSMSCount;
+   } else {
+      data.from_imsi = msg.from_imsi;
+      data.text = msg.text;
+   }
+
+   writeToOCP(data, "sms_failed");
 }
 
 function heartbeat() {
