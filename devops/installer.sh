@@ -234,10 +234,8 @@ chmod a+x /etc/init.d/YateBTS >> "${LOGDIR}/08_init.log" 2>&1
 update-rc.d YateBTS defaults >> "${LOGDIR}/08_init.log" 2>&1
 echo -e "${GREEN}	+ Created YateBTS init script${RESTORE}"
 
-cp ${BASEDIR}/devops/raspberrypi/SAROCP /etc/init.d/SAROCP >> "${LOGDIR}/08_init.log" 2>&1
-chmod a+x /etc/init.d/SAROCP >> "${LOGDIR}/08_init.log" 2>&1
-update-rc.d SAROCP defaults >> "${LOGDIR}/08_init.log" 2>&1
-echo -e "${GREEN}	+ Created SAROCP init script${RESTORE}"
+cp ${BASEDIR}/devops/raspberrypi/ocp.service /etc/systemd/system/ocp.service >> "${LOGDIR}/08_init.log" 2>&1
+echo -e "${GREEN}  + Created ocp.service for systemd${RESTORE}"
 
 touch /var/log/YateBTS.log
 chown yate:yate /var/log/YateBTS.log
