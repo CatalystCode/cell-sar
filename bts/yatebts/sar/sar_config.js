@@ -34,7 +34,7 @@ var intervals = {
    'phyinfoPolling': 1000,
    'subscriberExpire': 60000,
    'onInterval': 10000,
-   'sendSMS': 100
+   'sendSMS': 500
 };
 
 var helloText = "phone detected";  // sent to a phone when they join the network

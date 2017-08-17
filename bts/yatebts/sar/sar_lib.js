@@ -162,12 +162,15 @@ function onHandsetRegister(msg) {
    if (ret === REGISTERED) {
       var next_try = Date.now() / 1000 + 2;
       var options = {'tries': 3, 'next_try': next_try};
+
       if (config.testing) {
          var msgText = "Hello " + subscriber.imsi + " (" + subscriber.tmsi + "), Your phone # is : '" 
             + subscriber.msisdn + "'";
-         sendSMSFromDrone(subscriber, msgText, options);
+         var detailedHello = newSMS(subscriber, null, msgText, options);
+         pendingSMSs.push(detailedHello);
       } else {
-         sendSMSFromDrone(subscriber, helloText, options);
+         var hello = newSMS(subscriber, null, helloText, options);
+         pendingSMSs.push(hello);
       }
    }
 
@@ -263,16 +266,8 @@ function onSMS(msg) {
 
    // build and send the sms
    var next_try = Date.now() / 1000;
-   var sms = {
-      'imsi': from.imsi,
-      'msisdn': from.msisdn,
-      'smsc': msg.called,
-      'dest': dest,
-      'dest_imsi': to.imsi,
-      'next_try': next_try,
-      'tries': 3,
-      'msg': msg.text
-   };
+   var options = {'tries': 3, 'next_try': next_try};
+   var sms = newSMS(to, from, msg.text, options);
    pendingSMSs.push(sms);
 
    // finished!

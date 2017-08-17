@@ -26,65 +26,114 @@
 var pendingSMSs = [];            // a queue of SMS messages that need to be handled
 var silentSMSCount = {};         // IMSI-># of silent SMSs sent
 
-function sendSMSFromDrone(to, text, options) {
-   var now = Date.now() / 1000;
+function newSMS(to, from, text, options, silent) {
+   var sms = {};
+   sms.to = to;
+   if (from)
+      sms.from = from;
+   else {
+      sms.from = {
+         'imsi': droneRootImsi,
+         'msisdn': droneRootMsisdn
+      };
+   }
+   sms.text = text;
 
-   var sms = {
-      'imsi': droneRootImsi,
-      'msisdn': droneRootMsisdn,
-      'smsc': droneRootMsisdn,
-      'dest': to.msisdn,
-      'dest_imsi': to.imsi,
-      'msg': text,
-      'tries': 0,
-      'next_try': now,
-      'maxpdd': '5000'
-   };
+   sms.tries = 0;
+   sms.next_try = Date.now() / 1000;
+   sms.maxpdd = 5000;
+
+   sms.silent = false;
+   if (silent)
+      sms.silent = true;
 
    if (options) {
       if (options.tries && options.tries > 0)
-         sms['tries'] = options.tries;
+         sms.tries = options.tries;
       if (options.next_try)
-         sms['next_try'] = options.next_try;
+         sms.next_try = options.next_try;
       if (options.maxpdd && options.maxpdd > 0)
-         sms['maxpdd'] = options.maxpdd;
+         sms.maxpdd = options.maxpdd;
+      if (options.rpdu)
+         sms.rpdu = options.rpdu;
    }
 
-   pendingSMSs.push(sms);
+   return sms;
 }
 
-// sends a message to the yate engine to actually send the SMS
+function smsToString(sms) {
+   var result = "SMS from '" + sms.from.imsi + "' to '" + sms.to.imsi + "'";
+   if (sms.silent)
+      result += " (silent)";
+   else 
+      result += " \"" + sms.text + "\"";
+   return result;
+};
+
 function dispatchSMS(sms) {
+   if (!sms.to || !sms.to.location) return false;
 
-   // make sure the destination handset is valid
-   var to = getSubscriber(sms.dest_imsi);
-   if (!to) {
-      Engine.debug(Engine.DebugInfo, "Failed: unknown dest_imsi " + sms.dest_imsi);
-      return false;
-   }
-   if (!to.location) {
-      Engine.debug(Engine.DebugInfo, "Did not deliver sms because destination is offline.");
-      return false;
-   }
-
-   // build the yate messaage
    var m = new Message("msg.execute");
-   m.caller = sms.smsc;
-   m.called = sms.dest;
-   m['sms.caller'] = sms.msisdn;
-   if (sms.msisdn.substr(0, 1) === '+') {
-      m['sms.caller.nature'] = 'international';
-      m['sms.caller'] = sms.msisdn.substr(1);
-   }
-   m.text = sms.msg;
-   m.callto = to.location;
-   m.oimsi = sms.dest_imsi;
-   m.otmsi = to.tmsi;
-   m.maxpdd = sms.maxpdd;
 
-   // dispatch and report the result
-   return m.enqueue();
-}
+   // for both loud and silent SMSs
+   m['caller'] = droneRootMsisdn;
+   m['sms.caller'] = sms.from.msisdn;
+   m['callto'] = sms.to.location;
+   m['oimsi'] = sms.to.imsi;
+   m['otmsi'] = sms.to.tmsi;
+   
+   if (sms.silent) {
+      // only for silent SMSs
+      m['rpdu'] = sms.rpdu;
+   } else {
+      // only for loud SMSs
+      if (sms.from.msisdn.substr(0, 1) === '+') {
+         m['sms.caller.nature'] = 'international';
+         m['sms.caller'] = sms.from.msisdn.substr(1);
+      }
+      m['called'] = sms.to.msisdn;
+      m['text'] = sms.text;
+      m['maxpdd'] = sms.maxpdd;
+   }
+
+
+   return m.dispatch(true);
+};
+
+function buildSilentSMS(subscriber) {
+   var number = subscriber["msisdn"];
+   var numberLen = number.length;
+   var numberLenHex = numberLen.toString(16);
+   if (numberLenHex.length < 2)
+     numberLenHex = "0"+numberLenHex;
+
+   // This message is very particular and exploits the "SilentSMS" Class0 'bug' that exists in the SMS signalling protocol
+   // 00|01|00|0c|91|214365870921|00|C0|1e|005300650061007200630068002000260020005200650073006300750065
+   //     ^     ^               ^     ^  ^                                     `- Message (this is "Search & Rescue")
+   //     |     `- Num length   |     |  `- Message length
+   //     |                     |     `- Class0 SMS
+   // No delivery receipt      Target phone number, pair-swapped
+
+   var pduMessage = "000100" + numberLenHex + "91" + generatePduNumber(number) +
+   "00C01e005300650061007200630068002000260020005200650073006300750065";
+
+   var options = {'rpdu': pduMessage};
+   var sms = newSMS(subscriber, null, null, options, true);
+   return sms;
+};
+
+function buildLoudSMS(subscriber) {
+
+   var text = "Silent SMS #" + silentSMSCount[subscriber.imsi] + ".";
+   var phy = subscriber.lastPhyinfo;
+   if (phy)
+      text += " Last Phyinfo: {TA: " + phy.TA + ", TE: " + phy.TE
+         + ", UpRSSI: " + phy.UpRSSI + ", TxPwr: " + phy.TxPwr
+         + ", DnRSSIdBm: " + phy.DnRSSIdBm + "}";
+
+   var sms = newSMS(subscriber, null, text);
+   return sms;
+};
 
 // try to send the next SMS in the pendingSMSs queue.
 function sendNextSMS() {
@@ -134,52 +183,6 @@ function sendSilentSMSs() {
 
       silentSMSCount[subscriber.imsi] += 1;
    }
-}
-
-function buildSilentSMS(subscriber) {
-   var number = subscriber["msisdn"];
-   var numberLen = number.length;
-   var numberLenHex = numberLen.toString(16);
-   if (numberLenHex.length < 2)
-     numberLenHex = "0"+numberLenHex;
-
-   // This message is very particular and exploits the "SilentSMS" Class0 'bug' that exists in the SMS signalling protocol
-   // 00|01|00|0c|91|214365870921|00|C0|1e|005300650061007200630068002000260020005200650073006300750065
-   //     ^     ^               ^     ^  ^                                     `- Message (this is "Search & Rescue")
-   //     |     `- Num length   |     |  `- Message length
-   //     |                     |     `- Class0 SMS
-   // No delivery receipt      Target phone number, pair-swapped
-
-   var pduMessage = "000100" + numberLenHex + "91" + generatePduNumber(number) +
-   "00C01e005300650061007200630068002000260020005200650073006300750065";
-
-   var sms = {
-      'smsc': droneRootImsi,
-      'msisdn': droneRootMsisdn,
-      'rpdu': pduMessage,
-      'dest_imsi': subscriber.imsi
-   };
-   return sms;
-}
-
-function buildLoudSMS(subscriber) {
-
-   var text = "Silent SMS #" + silentSMSCount[subscriber.imsi] + ".";
-   var phy = subscriber.lastPhyinfo;
-   if (phy)
-      text += " Last Phyinfo: {TA: " + phy.TA + ", TE: " + phy.TE
-         + ", UpRSSI: " + phy.UpRSSI + ", TxPwr: " + phy.TxPwr
-         + ", DnRSSIdBm: " + phy.DnRSSIdBm + "}";
-
-   var sms = {
-      'imsi': droneRootImsi,
-      'msisdn': droneRootMsisdn,
-      'smsc': droneRootMsisdn,
-      'dest': subscriber.msisdn,
-      'dest_imsi': subscriber.imsi,
-      'msg': text
-   };
-   return sms;
 }
 
 function onRouteSMS(msg) {
