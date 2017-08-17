@@ -38,6 +38,8 @@ helloText=phone detected
 ; allowed=false
 ; forbidden=true
 
+; --------------------------==[ DEVELOPER SETTINGS ]==-------------------------- ;
+
 [intervals]
 ; Configure time intervals (in milliseconds) for specific actions. 
 ; For best performance, choose intervals with a large (>1000) greatest common divisor 
@@ -52,10 +54,11 @@ helloText=phone detected
 ;phyinfoPolling=1000
 
 ; How often cell subscriptions are checked for expiration.
-;subscriberExpire=5000
+;subscriberExpire=60000
 
 ; How often an SMS is sent
-;sendSMS=1000
+;sendSMS=500
 
 ; How often the onInterval function in searchandrescue.js is called
 ;onInterval=10000
+
