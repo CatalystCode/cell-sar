@@ -63,7 +63,6 @@ function initializeSAR() {
 
    // install message handlers and callbacks
    Engine.debug(Engine.DebugInfo, "Installing SAR Listeners");
-   Message.install(onAuth, "auth", 80);
    Message.install(onHandsetRegister, "user.register", 80, 'driver', 'ybts');
    Message.install(onHandsetUnregister, "user.unregister", 80);
    Message.install(onPhyinfo, "phyinfo", 80);
@@ -140,21 +139,6 @@ function onYBTSStatus(msg) {
    writeToOCP(data, "ybts");
 }
 
-function onAuth(msg) {
-
-	// Auth always succeeds -- this is the weakness in GSM that makes this strategy viable!
-	// ----------
-	// Due to GSM not authenticating bidirectionally, we can provide dummy cryptographic values
-	// to the remote headset and always respond positively to their challenge, rendering any
-	// additional phone-oriented security measures useless.
-	// ----------
-	// - ALT 05/19/2017
-
-   Engine.debug(Engine.DebugInfo, "Authentication successful");
-
-	return true;
-}
-
 function onHandsetRegister(msg) {
    
    // Make sure the subscriber gets registered properly
@@ -175,17 +159,26 @@ function onHandsetRegister(msg) {
    msg.msisdn = subscriber.msisdn;
 
    // greet the user on first register
-   if (ret === REGISTERED || ret === DUPLICATE) { // TODO remove duplicate when multiple handset authentication is working
-      sendHelloSMS(subscriber);
+   if (ret === REGISTERED) {
+      var next_try = Date.now() / 1000 + 2;
+      var options = {'tries': 3, 'next_try': next_try};
+
       if (config.testing) {
-         var msgText = subscriber.imsi + "(" + subscriber.tmsi + "), Your phone # is : '" 
+         var msgText = "Hello " + subscriber.imsi + " (" + subscriber.tmsi + "), Your phone # is : '" 
             + subscriber.msisdn + "'";
-         sendSMSMessage(subscriber.imsi, msgText);
+         var detailedHello = newSMS(subscriber, null, msgText, options);
+         pendingSMSs.push(detailedHello);
+      } else {
+         var hello = newSMS(subscriber, null, helloText, options);
+         pendingSMSs.push(hello);
       }
    }
 
-   if (onPhoneDetected) onPhoneDetected(subscriber);
+   // ===================================================================================== //
+   // No need to authenticate! This is the weakness in GSM that makes this strategy viable! //
+   // ===================================================================================== //
 
+   if (onPhoneDetected) onPhoneDetected(subscriber);
    return true;
 }
 
@@ -273,16 +266,8 @@ function onSMS(msg) {
 
    // build and send the sms
    var next_try = Date.now() / 1000;
-   var sms = {
-      'imsi': from.imsi,
-      'msisdn': from.msisdn,
-      'smsc': msg.called,
-      'dest': dest,
-      'dest_imsi': to.imsi,
-      'next_try': next_try,
-      'tries': 3,
-      'msg': msg.text
-   };
+   var options = {'tries': 3, 'next_try': next_try};
+   var sms = newSMS(to, from, msg.text, options);
    pendingSMSs.push(sms);
 
    // finished!
