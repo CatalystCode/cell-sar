@@ -42,7 +42,7 @@
 #include <DJI_Version.h>
 #include <DJI_WayPoint.h>
 
-#include "mqcommon.h"
+#include "sarqueue.h"
 
 using namespace std;
 using namespace DJI;
@@ -79,8 +79,11 @@ void poll_messages(LinuxSerialDevice* serialDevice, CoreAPI* api, LinuxThread* r
 
   droneConnected = dji_connect(serialDevice, api, read);
 
+  MQCommon::init(OCP);
+
   while (!stop) {
-        char* buffer = MQCommon::pop();
+        char* buffer;
+        unsigned int buflen = MQCommon::pop(&buffer);
 
         if (buffer != NULL) {
             // attempt drone connection

@@ -34,7 +34,7 @@
 #include <yatengine.h>
 #include <yatescript.h>
 
-#include "mqcommon.h"
+#include "sarqueue.h"
 
 using namespace TelEngine;
 
@@ -55,11 +55,11 @@ public:
 
 protected:
 
-   // bool runNative(ObjList &stack, const ExpOperation &oper, GenObject *context);
-
-   bool runFunction(ObjList &stack, const ExpOperation &oper, GenObject *context);
+   bool runNative(ObjList &stack, const ExpOperation &oper, GenObject *context);
 
    void write_to_ocp(ObjList &stack, const ExpOperation &oper, GenObject *context);
+
+   void read_from_ocp(ObjList &stack, const ExpOperation &oper, GenObject *context);
 
    void change_plmn(ObjList &stack, const ExpOperation &oper, GenObject *context);
 
@@ -96,8 +96,8 @@ const char *SearchAndRescue::OUT_FILE = "/tmp/sar.log";
 
 SearchAndRescue::SearchAndRescue(Mutex *mtx) : JsObject("SearchAndRescue", mtx, true) {
    Debug(DebugAll, "SearchAndRescue::SearchAndRescue(%p) [%p]", mtx, this);
-   params().addParam(new ExpFunction("writePhyinfo"));
-   params().addParam(new ExpFunction("writeSms"));
+   params().addParam(new ExpFunction("writeToOCP"));
+   params().addParam(new ExpFunction("readFromOCP"));
 }
 
 SearchAndRescue::~SearchAndRescue() {
@@ -131,9 +131,11 @@ void SearchAndRescue::initialize(ScriptContext *context) {
       Debug(DebugInfo, "A SearchAndRescue already exists, nothing to do");
 }
 
-bool SearchAndRescue::runFunction(ObjList &stack, const ExpOperation &oper, GenObject *context) {
+bool SearchAndRescue::runNative(ObjList &stack, const ExpOperation &oper, GenObject *context) {
    if (oper.name() == YSTRING("writeToOCP"))
       this->write_to_ocp(stack, oper, context);
+   else if (oper.name() == YSTRING("readFromOCP"))
+      this->read_from_ocp(stack, oper, context);
    return true;
 }
 
@@ -161,7 +163,33 @@ void SearchAndRescue::write_to_ocp(ObjList &stack, const ExpOperation &oper, Gen
    // write to the log file
    std::ofstream sar_log;
    sar_log.open(SearchAndRescue::OUT_FILE, std::ios_base::app);
-   sar_log << message.c_str() << std::endl;
+   sar_log << "[WRITE]> " << message.c_str() << std::endl << std::endl;
+   sar_log.close();
+}
+
+void SearchAndRescue::read_from_ocp(ObjList &stack, const ExpOperation &oper, GenObject *context) {
+   ObjList args;
+   int argc = extractArgs(stack, oper, context, args);
+   String tmp;
+
+   // read from the POSIX queue
+   char *buffer;
+   unsigned int buflen = MQCommon::pop(&buffer);
+   if (buffer == NULL) {
+      // nothing in the queue
+      ExpEvaluator::pushOne(stack, new ExpOperation(tmp));
+      return;
+   }
+
+   std::string message(buffer, buflen);
+   tmp << message.c_str();
+   
+   ExpEvaluator::pushOne(stack, new ExpOperation(tmp));
+
+   // write to the log file
+   std::ofstream sar_log;
+   sar_log.open(SearchAndRescue::OUT_FILE, std::ios_base::app);
+   sar_log << "[READ ]> " << message << std::endl << std::endl;
    sar_log.close();
 }
 

@@ -80,6 +80,7 @@ function initializeSAR() {
    installPeriodicAction(expireSubscribers, intervals.subscriberExpire, 'expireSubscribers');
    if (config.poll_phyinfo) installPeriodicAction(sendSilentSMSs, intervals.phyinfoPolling, 'pollPhyinfo');
    installPeriodicAction(sendNextSMS, intervals.sendSMS, 'sendSMS');
+   installPeriodicAction(checkOCPQueue, intervals.checkOCPQueue, 'checkOCPQueue');
 
    // Ready!
    Engine.debug(Engine.DebugInfo, "Search and Rescue Cell Site is UP! Let's go save some lives.");
@@ -315,6 +316,13 @@ function heartbeat() {
       'pendingSMSs': pendingSMSs.length
    };
    writeToOCP(info, 'status');   
+}
+
+function checkOCPQueue() {
+   var msg = sar.readFromOCP();
+   if (msg) {
+      // obtained a message from the OCP
+   }
 }
 
 function onIntervalMaster() {
