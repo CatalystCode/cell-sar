@@ -98,7 +98,6 @@ while [ $# -ge 1 ]; do
 		--) shift ; break ;;
         *) ADDL_ARGS="${ADDL_ARGS} $1=$2" ; shift 2 ;;
     esac
-    shift
 done
 ### /COMMAND LINE ARGUMENT PARSING ###
 

@@ -11,6 +11,8 @@
 ### DEFAULTS ###
 IMAGE_WORKING_DIR=/root/sar
 WORKING_DIR=/root/imgroll
+GIT_PATH=""
+IMAGE_PATH=""
 ### /DEFAULTS ###
 
 ### SAR INSTALLER COMMON CODE ###
@@ -40,7 +42,7 @@ function execAndCheck()
 
 ### COMMAND LINE ARGUMENT PARSING ###
 ADDL_ARGS=""
-args=$(getopt -o igwd:h:: --long image:,git-path:,working-dir:image-working-dir:,help -- "$@")
+args=$(getopt -o igwd:h:: --long image:,git-path:,working-dir:,image-working-dir:,help -- "$@")
 eval set -- "$args"
 while [ $# -ge 1 ]; do
     case "$1" in
@@ -64,7 +66,6 @@ while [ $# -ge 1 ]; do
         --) shift ; break ;;
         *) ADDL_ARGS="${ADDL_ARGS} $1=$2" ; shift 2 ;;
     esac
-    shift
 done
 ### /COMMAND LINE ARGUMENT PARSING ###
 
@@ -81,8 +82,8 @@ fi
 headerOut "Setting up working environment at ${WORKING_DIR}..."
 ((OUTPUT_DEPTH++))
 
-if [ -d "${WORKING_DIR}" ]; then
-    errorOut "Working directory already exists. Please remove it."
+if [ "$(ls -A ${WORKING_DIR})" ]; then
+    errorOut "Working directory is not empty."
     exit 1
 fi
 if [ ! -z "${GIT_PATH}" ]; then
@@ -180,6 +181,3 @@ normalOut "bootfs"
 umount "${WORKING_DIR}"
 normalOut "rootfs"
 ((OUTPUT_DEPTH--))
-
-rm -r "${WORKING_DIR}"
-normalOut "Removed working environment"

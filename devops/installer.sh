@@ -42,6 +42,11 @@ function execAndCheck()
 	fi
 	echo $errCode
 }
+
+function execAndLog()
+{
+	execAndCheck "$@" > /dev/null 2>&1 &
+}
 ### /SAR INSTALLER COMMON CODE ###
 
 ### COMMAND LINE ARGUMENT PARSING ###
@@ -67,7 +72,6 @@ while [ $# -ge 1 ]; do
         ;;
 		--) shift ; break ;;
     esac
-    shift
 done
 ### /COMMAND LINE ARGUMENT PARSING ###
 
@@ -97,8 +101,8 @@ echo -e "${GREEN}╚═╝  ╚═╝╚══════╝╚═════�
 echo -e "${RESTORE} "
 
 headerOut "Creating logging environment."
-execAndCheck mkdir -p "${LOG_FILE}"
-execAndCheck mkdir -p "${CONFIGURATION_DIR}"
+execAndLog mkdir -p "${LOG_FILE}"
+execAndLog mkdir -p "${CONFIGURATION_DIR}"
 echo "${SAR_VERSION}" >> "${CONFIGURATION_DIR}/sar_${SAR_VERSION}.version"
 
 # ---=[ PREREQUISITES ]=--- #
@@ -215,10 +219,10 @@ headerOut "Building OCP..."
 ((OUTPUT_DEPTH++))
 if [ -d "/home/yate/ocp" ]; then
 	warningOut "OCP build already exists. Attempting to make build environment sane."
-	execAndCheck rm -rf "/home/yate/ocp"
+	execAndLog rm -rf "/home/yate/ocp"
 fi
 
-execAndCheck mkdir -p /home/yate/ocp
+execAndLog mkdir -p /home/yate/ocp
 cd "/home/yate/ocp" || return
 
 if [ "$(execAndCheck cmake "${BASEDIR}/ocp")" -ne 0 ]; then
@@ -241,49 +245,49 @@ headerOut "Builds complete."
 
 # ---=[ USERS/GROUPS ]=--- #
 headerOut "Creating users and groups..."
-execAndCheck useradd yate
-execAndCheck usermod -a -G yate yate
-execAndCheck usermod -a -G dialout yate
-execAndCheck chown yate:yate /usr/local/etc/yate/*.conf
-execAndCheck chmod g+w /usr/local/etc/yate/*.conf
+execAndLog useradd yate
+execAndLog usermod -a -G yate yate
+execAndLog usermod -a -G dialout yate
+execAndLog chown yate:yate /usr/local/etc/yate/*.conf
+execAndLog chmod g+w /usr/local/etc/yate/*.conf
 
 # ---=[ REORG CONFIG FILES ]=--- #
 headerOut "Moving/linking configuration files on FAT32 partition..."
 ((OUTPUT_DEPTH++))
 
 if [[ -e "${PRECONFIGURED_DIR}/ybts.conf" ]]; then
-	execAndCheck cp "${PRECONFIGURED_DIR}/ybts.conf" "${CONFIGURATION_DIR}/ybts.conf"
-	execAndCheck rm /usr/local/etc/yate/ybts.conf
-	execAndCheck ln -s "${CONFIGURATION_DIR}/ybts.conf" /usr/local/etc/yate/ybts.conf
+	execAndLog cp "${PRECONFIGURED_DIR}/ybts.conf" "${CONFIGURATION_DIR}/ybts.conf"
+	execAndLog rm /usr/local/etc/yate/ybts.conf
+	execAndLog ln -s "${CONFIGURATION_DIR}/ybts.conf" /usr/local/etc/yate/ybts.conf
 	normalOut "ybts.conf (from overlay)"
 else
-	execAndCheck mv /usr/local/etc/yate/ybts.conf "${CONFIGURATION_DIR}/ybts.conf"
-	execAndCheck ln -s "${CONFIGURATION_DIR}/ybts.conf" /usr/local/etc/yate/ybts.conf
+	execAndLog mv /usr/local/etc/yate/ybts.conf "${CONFIGURATION_DIR}/ybts.conf"
+	execAndLog ln -s "${CONFIGURATION_DIR}/ybts.conf" /usr/local/etc/yate/ybts.conf
 	normalOut "ybts.conf"
 fi
 
 if [[ -e "${PRECONFIGURED_DIR}/sar.conf" ]]; then
-	execAndCheck cp "${PRECONFIGURED_DIR}/sar.conf" "${CONFIGURATION_DIR}/sar.conf"
-	execAndCheck rm /usr/local/etc/yate/sar.conf
-	execAndCheck ln -s "${CONFIGURATION_DIR}/sar.conf" /usr/local/etc/yate/sar.conf
+	execAndLog cp "${PRECONFIGURED_DIR}/sar.conf" "${CONFIGURATION_DIR}/sar.conf"
+	execAndLog rm /usr/local/etc/yate/sar.conf
+	execAndLog ln -s "${CONFIGURATION_DIR}/sar.conf" /usr/local/etc/yate/sar.conf
 	normalOut "sar.conf (from overlay)"
 else
-	execAndCheck mv /usr/local/etc/yate/sar.conf "${CONFIGURATION_DIR}/sar.conf"
-	execAndCheck ln -s "${CONFIGURATION_DIR}/sar.conf" /usr/local/etc/yate/sar.conf
+	execAndLog mv /usr/local/etc/yate/sar.conf "${CONFIGURATION_DIR}/sar.conf"
+	execAndLog ln -s "${CONFIGURATION_DIR}/sar.conf" /usr/local/etc/yate/sar.conf
 	normalOut "sar.conf"
 fi
 
 if [[ -e "${PRECONFIGURED_DIR}/UserConfig.txt" ]]; then
-	execAndCheck cp "${PRECONFIGURED_DIR}/UserConfig.txt" "${CONFIGURATION_DIR}/UserConfig.txt"
-	execAndCheck rm /home/yate/ocp/bin/UserConfig.txt
-	execAndCheck ln -s "${CONFIGURATION_DIR}/UserConfig.txt" /home/yate/ocp/bin/UserConfig.txt
+	execAndLog cp "${PRECONFIGURED_DIR}/UserConfig.txt" "${CONFIGURATION_DIR}/UserConfig.txt"
+	execAndLog rm /home/yate/ocp/bin/UserConfig.txt
+	execAndLog ln -s "${CONFIGURATION_DIR}/UserConfig.txt" /home/yate/ocp/bin/UserConfig.txt
 	normalOut "UserConfig.txt (from overlay)"
 else
 	if [[ ! -e "/home/yate/ocp/bin/UserConfig.txt" ]]; then
-		execAndCheck touch /home/yate/ocp/bin/UserConfig.txt
+		execAndLog touch /home/yate/ocp/bin/UserConfig.txt
 	fi
-	execAndCheck mv /home/yate/ocp/bin/UserConfig.txt "${CONFIGURATION_DIR}/UserConfig.txt"
-	execAndCheck ln -s "${CONFIGURATION_DIR}/UserConfig.txt" /home/yate/ocp/bin/UserConfig.txt
+	execAndLog mv /home/yate/ocp/bin/UserConfig.txt "${CONFIGURATION_DIR}/UserConfig.txt"
+	execAndLog ln -s "${CONFIGURATION_DIR}/UserConfig.txt" /home/yate/ocp/bin/UserConfig.txt
 	normalOut "UserConfig.txt"
 fi
 ((OUTPUT_DEPTH--))
@@ -292,35 +296,35 @@ fi
 headerOut "Running system post-installation tasks..."
 ((OUTPUT_DEPTH++))
 
-execAndCheck chown -R yate:yate /home/yate
+execAndLog chown -R yate:yate /home/yate
 normalOut "Ensured yate user ownership of home directory."
 
 echo "# nuand bladeRF" > /etc/udev/rules.d/90-yate.rules
 echo "ATTR{idVendor}==\"1d50\", ATTR{idProduct}==\"6066\", MODE=\"660\", GROUP=\"yate\"" >> /etc/udev/rules.d/90-yate.rules
-execAndCheck udevadm control --reload-rules
+execAndLog udevadm control --reload-rules
 normalOut "Added udev rule for yate user."
 
 echo "@yate hard nice -20" >> /etc/security/limits.conf
 echo "@yate hard rtprio 99" >> /etc/security/limits.conf
 normalOut "Added kernel scheduling rules."
 
-execAndCheck sed -i -- 's/\;mode=nib/mode=searchandrescue/g' /boot/ybts.conf
+execAndLog sed -i -- 's/\;mode=nib/mode=searchandrescue/g' /boot/ybts.conf
 normalOut "Set YBTS into searchandrescue mode."
 
-execAndCheck sed -i -- 's/\;radio_read_priority=highest/radio_read_priority=highest/g' /boot/ybts.conf
-execAndCheck sed -i -- 's/\;radio_send_priority=high/radio_send_priority=high/g' /boot/ybts.conf
+execAndLog sed -i -- 's/\;radio_read_priority=highest/radio_read_priority=highest/g' /boot/ybts.conf
+execAndLog sed -i -- 's/\;radio_send_priority=high/radio_send_priority=high/g' /boot/ybts.conf
 normalOut "Changed radio transmit/receive priorities."
 
-execAndCheck cp "${BASEDIR}/devops/raspberrypi/YateBTS" /etc/init.d/YateBTS
-execAndCheck chmod a+x /etc/init.d/YateBTS
-execAndCheck update-rc.d YateBTS defaults
+execAndLog cp "${BASEDIR}/devops/raspberrypi/YateBTS" /etc/init.d/YateBTS
+execAndLog chmod a+x /etc/init.d/YateBTS
+execAndLog update-rc.d YateBTS defaults
 normalOut "Created YateBTS init script."
 
-execAndCheck cp "${BASEDIR}/devops/ocp.service" /etc/systemd/system/ocp.service
+execAndLog cp "${BASEDIR}/devops/ocp.service" /etc/systemd/system/ocp.service
 normalOut "Created ocp.service systemd script."
 
-execAndCheck touch /var/log/YateBTS.log
-execAndCheck chown yate:yate /var/log/YateBTS.log
+execAndLog touch /var/log/YateBTS.log
+execAndLog chown yate:yate /var/log/YateBTS.log
 normalOut "Created YBTS log file."
 ((OUTPUT_DEPTH--))
 
@@ -335,7 +339,7 @@ headerOut "Checking for post-install actions..."
 if [[ -f "${PRECONFIGURED_DIR}/postinstall.sh" ]]; then
 	normalOut "Running post-install script."
 	chmod a+x "${PRECONFIGURED_DIR}/postinstall.sh"
-	execAndCheck "${PRECONFIGURED_DIR}/postinstall.sh"
+	execAndLog "${PRECONFIGURED_DIR}/postinstall.sh"
 else
 	normalOut "No post-install script found."
 fi
