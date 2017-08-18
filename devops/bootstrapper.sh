@@ -73,34 +73,15 @@ function execAndCheck()
 
 ### COMMAND LINE ARGUMENT PARSING ###
 ADDL_ARGS=""
-args=$(getopt -l "searchpath:" -o "s:h" -- "$@")
+args=$(getopt -o glow:h:: --long git-url:,log:,overlay-dir:,working-dir:,help,nofork -- "$@")
 eval set -- "$args"
 while [ $# -ge 1 ]; do
     case "$1" in
-        --) # No more options left.
-        shift
-        break
-        ;;
-		-g|--git-url)
-		SAR_GIT_URL="$2"
-        shift
-        ;;
-		-l|--log)
-		LOG_FILE=$(readlink -f "$2")
-		shift
-		;;
-        -o|--overlay-dir)
-        OVERLAYDIR=$(readlink -f "$2")
-        shift
-        ;;
-        -w|--working-dir)
-        BASEDIR=$(readlink -f "$2")
-        shift
-        ;;
-		--nofork)
-		RUNNING_FORKED=1
-		shift
-		;;
+		-g|--git-url) SAR_GIT_URL="$2" ; shift 2 ;;
+		-l|--log) LOG_FILE=$(readlink -f "$2") ; shift 2 ;;
+        -o|--overlay-dir) OVERLAYDIR=$(readlink -f "$2") ; shift 2 ;;
+        -w|--working-dir) BASEDIR=$(readlink -f "$2") ; shift 2 ;;
+		--nofork) RUNNING_FORKED=1 ; shift ;;
         -h|--help)
         echo " "
         echo "Search and Rescue / Installation Bootstrapper"
@@ -114,10 +95,8 @@ while [ $# -ge 1 ]; do
         echo " "
         exit 0
         ;;
-        *)
-        ADDL_ARGS="${ADDL_ARGS} $1=$2"
-        shift
-        ;;
+		--) shift ; break ;;
+        *) ADDL_ARGS="${ADDL_ARGS} $1=$2" ; shift 2 ;;
     esac
     shift
 done

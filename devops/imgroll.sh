@@ -40,30 +40,14 @@ function execAndCheck()
 
 ### COMMAND LINE ARGUMENT PARSING ###
 ADDL_ARGS=""
-args=$(getopt -l "searchpath:" -o "s:h" -- "$@")
+args=$(getopt -o igwd:h:: --long image:,git-path:,working-dir:image-working-dir:,help -- "$@")
 eval set -- "$args"
 while [ $# -ge 1 ]; do
     case "$1" in
-        --) # No more options left.
-        shift
-        break
-        ;;
-        -i|--image)
-        IMAGE_PATH=$(readlink -f "$2")
-        shift
-        ;;
-        -g|--git-path)
-        GIT_PATH=$(readlink -f "$2")
-        shift
-        ;;
-        -w|--working-dir)
-        WORKING_DIR=$(readlink -f "$2")
-        shift
-        ;;
-        -d|--image-working-dir)
-        IMAGE_WORKING_DIR=$(readlink -f "$2")
-        shift
-        ;;
+        -i|--image) IMAGE_PATH=$(readlink -f "$2") ; shift 2 ;;
+        -g|--git-path) GIT_PATH=$(readlink -f "$2") ; shift 2 ;;
+        -w|--working-dir) WORKING_DIR=$(readlink -f "$2") ; shift 2 ;;
+        -d|--image-working-dir) IMAGE_WORKING_DIR=$(readlink -f "$2") ; shift 2 ;;
         -h|--help)
         echo " "
         echo "Search and Rescue / Image Rolling Utility"
@@ -77,10 +61,8 @@ while [ $# -ge 1 ]; do
         echo " "
         exit 0
         ;;
-        *)
-        ADDL_ARGS="${ADDL_ARGS} $1=$2"
-        shift
-        ;;
+        --) shift ; break ;;
+        *) ADDL_ARGS="${ADDL_ARGS} $1=$2" ; shift 2 ;;
     esac
     shift
 done

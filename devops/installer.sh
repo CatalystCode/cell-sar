@@ -45,30 +45,14 @@ function execAndCheck()
 ### /SAR INSTALLER COMMON CODE ###
 
 ### COMMAND LINE ARGUMENT PARSING ###
-args=$(getopt -l "searchpath:" -o "s:h" -- "$@")
+args=$(getopt -o clpw:h:: --long configuration-dir:,log:,preconfigured-dir:,working-dir:,help -- "$@")
 eval set -- "$args"
 while [ $# -ge 1 ]; do
     case "$1" in
-        --) # No more options left.
-        shift
-        break
-        ;;
-        -c|--configuration-dir)
-        CONFIGURATION_DIR=$(readlink -f "$2")
-        shift
-        ;;
-        -l|--log)
-        LOG_FILE=$(readlink -f "$2")
-        shift
-        ;;
-        -p|--preconfigured-dir)
-		PRECONFIGURED_DIR=$(readlink -f "$2")
-        shift
-        ;;
-        -w|--working-dir)
-        BASEDIR=$(readlink -f "$2")
-        shift
-        ;;
+        -c|--configuration-dir) CONFIGURATION_DIR=$(readlink -f "$2") ; shift 2 ;;
+        -l|--log) LOG_FILE=$(readlink -f "$2") ; shift 2 ;;
+        -p|--preconfigured-dir) PRECONFIGURED_DIR=$(readlink -f "$2") ; shift 2 ;;
+        -w|--working-dir) BASEDIR=$(readlink -f "$2") ; shift 2 ;;
         -h|--help)
         echo " "
         echo "Search and Rescue / Installer Utility"
@@ -81,6 +65,7 @@ while [ $# -ge 1 ]; do
         echo " "
         exit 0
         ;;
+		--) shift ; break ;;
     esac
     shift
 done
