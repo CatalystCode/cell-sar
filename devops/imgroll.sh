@@ -1,8 +1,17 @@
 #!/bin/bash
-WORKING_DIR=/root/imgroll
-IMAGE_WORKING_DIR=/root/sar
+###############################################################################
+# Search and Rescue
+# Image Rolling Utility
+#    This tool mounts and optionally executes the installer against a Raspbian
+#    base image. Once complete, the input image will be pre-loaded with the
+#    Search and Rescue software preconfigured; configuration files will be in
+#    the FAT32 partition of the image.
+###############################################################################
 
-#########################################################################################
+### DEFAULTS ###
+IMAGE_WORKING_DIR=/root/sar
+WORKING_DIR=/root/imgroll
+### /DEFAULTS ###
 
 ### SAR INSTALLER COMMON CODE ###
 RESTORE='\033[0m'
@@ -20,31 +29,71 @@ function warningOut() { writeOut "! $1" "${YELLOW}" ; }
 
 function execAndCheck()
 {
-	"$@" >> "${LOGFILE}" 2>&1 # evaluates program LOGFILE including STDERR
+	"$@" >> "${LOG_FILE}" 2>&1 # evaluates program to LOG_FILE including STDERR
 	local errCode=$?
 	if [ $errCode -ne 0 ]; then
-		echo "-- '$@' exited with code $errCode" >> "${LOGFILE}"
+		echo "-- '$*' exited with code $errCode" >> "${LOG_FILE}"
 	fi
 	echo $errCode
 }
 ### /SAR INSTALLER COMMON CODE ###
 
-if [ $# -lt 1 ]; then
-    echo "syn: imgroll.sh <image file> [git repository path, drops to shell if not given] [working dir, defaults to ${WORKING_DIR}]"
+### COMMAND LINE ARGUMENT PARSING ###
+ADDL_ARGS=""
+args=$(getopt -l "searchpath:" -o "s:h" -- "$@")
+eval set -- "$args"
+while [ $# -ge 1 ]; do
+    case "$1" in
+        --) # No more options left.
+        shift
+        break
+        ;;
+        -i|--image)
+        IMAGE_PATH=$(readlink -f "$2")
+        shift
+        ;;
+        -g|--git-path)
+        GIT_PATH=$(readlink -f "$2")
+        shift
+        ;;
+        -w|--working-dir)
+        WORKING_DIR=$(readlink -f "$2")
+        shift
+        ;;
+        -d|--image-working-dir)
+        IMAGE_WORKING_DIR=$(readlink -f "$2")
+        shift
+        ;;
+        -h|--help)
+        echo " "
+        echo "Search and Rescue / Image Rolling Utility"
+        echo "  --image              Raspbian IMG file to mount"
+        echo "  --git-path           Path to Git repository for SAR installer. If this is not given, the image"
+        echo "                       will be mounted and the user will be put into a chroot environment inside it."
+        echo "  --working-dir        Where the Raspbian image will be mounted"
+        echo "  --image-working-dir  Location inside the image where the SAR build will take place"
+        echo " "
+        echo "syn: imgroll.sh <-i|--image=raspbian.img> [-g|--git-path=/path/to/git/repo] [-w|--working-dir=${WORKING_DIR}] [-i|--image-working-dir=${IMAGE_WORKING_DIR}]"
+        echo " "
+        exit 0
+        ;;
+        *)
+        ADDL_ARGS="${ADDL_ARGS} $1=$2"
+        shift
+        ;;
+    esac
+    shift
+done
+### /COMMAND LINE ARGUMENT PARSING ###
+
+if [[ -z "${IMAGE_PATH}" ]]; then
+    errorOut "No Raspbian image specified; use --help to show command syntax."
     exit 1
 fi
 
 if [[ $EUID -ne 0 ]]; then
     errorOut "SAR image roller script must be run as root."
 	exit 1
-fi
-
-IMAGE_PATH=$(readlink -f "$1")
-if [ $# -gt 1 ]; then
-    GIT_PATH=$(readlink -f "$2")
-fi
-if [ $# -gt 2 ]; then
-    WORKING_DIR=$(readlink -f "$3")
 fi
 
 headerOut "Setting up working environment at ${WORKING_DIR}..."
@@ -104,7 +153,7 @@ headerOut "Preparing content of jailed environment..."
 chroot "${WORKING_DIR}" /bin/bash -c "source /etc/profile"
 normalOut "Set environment profile."
 
-if [ ! -z ${GIT_PATH} ]; then
+if [ ! -z "${GIT_PATH}" ]; then
     mkdir -p "${WORKING_DIR}${IMAGE_WORKING_DIR}"
     cp -R "${GIT_PATH}"/* "${WORKING_DIR}${IMAGE_WORKING_DIR}"
     cp -R "${GIT_PATH}"/.git "${WORKING_DIR}${IMAGE_WORKING_DIR}"
@@ -117,7 +166,7 @@ if [ ! -z ${GIT_PATH} ]; then
     chroot "${WORKING_DIR}" /bin/bash -c "chmod a+x ${IMAGE_WORKING_DIR}/devops/*.sh"
 
     normalOut "Running SAR installer..."
-    chroot "${WORKING_DIR}" /bin/bash -c "${IMAGE_WORKING_DIR}/devops/installer.sh"
+    chroot "${WORKING_DIR}" /bin/bash -c "${IMAGE_WORKING_DIR}/devops/installer.sh --working-dir=${IMAGE_WORKING_DIR} ${ADDL_ARGS}"
 else
     warningOut "Skipping git automation, dropping to chroot environment instead."
     chroot "${WORKING_DIR}" /bin/bash
