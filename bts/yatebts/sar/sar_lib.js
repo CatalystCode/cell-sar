@@ -318,13 +318,6 @@ function heartbeat() {
    writeToOCP(info, 'status');   
 }
 
-function checkOCPQueue() {
-   var msg = sar.readFromOCP();
-   if (msg) {
-      // obtained a message from the OCP
-   }
-}
-
 function onIntervalMaster() {
    var now = Date.now();
 
@@ -339,5 +332,18 @@ function onIntervalMaster() {
          periodicAction.next = now + periodicAction.delay;
       }
    }
+}
+
+function checkOCPQueue() {
+   var msg = sar.readFromOCP();
+   if (!msg) return;
+   
+   var obj = JSON.parse(msg);
+   if (!obj) return;
+
+   handleOCPMessage(obj);
+}
+
+function handleOCPMessage(msg) {
 }
 
