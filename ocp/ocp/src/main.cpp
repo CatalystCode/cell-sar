@@ -50,25 +50,51 @@ using namespace DJI::onboardSDK;
 
 volatile sig_atomic_t stop;
 
-
 // Handle sigint
 void int_hand(int signum)
 {
     stop = 1;
 }
 
+void ocpFromMobileCallback(DJI::onboardSDK::CoreAPI *core_api, Header *header, UserData user_data) {
+   std::cout << ">----==[ MOBILE DATA CALLBACK ]==----<" << std::endl;
+   std::cout << "          >>> HEADER <<<" << std::endl;
+   std::cout << "            sof: " << header->sof << std::endl;
+   std::cout << "         length: " << header->length << std::endl;
+   std::cout << "        version: " << header->version << std::endl;
+   std::cout << "      sessionID: " << header->sessionID << std::endl;
+   std::cout << "          isAck: " << header->isAck << std::endl;
+   std::cout << "      reversed0: " << header->reversed0 << std::endl;
+   std::cout << "        padding: " << header->padding << std::endl;
+   std::cout << "            enc: " << header->enc << std::endl;
+   std::cout << "      reversed1: " << header->reversed1 << std::endl;
+   std::cout << " sequenceNumber: " << header->sequenceNumber << std::endl;
+   std::cout << "            crc: " << header->crc << std::endl;
+   std::cout << "------" << std::endl;
+   std::cout << " UserData: " << (char *)user_data << std::endl;
+   std::cout << "-------------------------------------" << std::endl;
+
+   // fallback
+   core_api->parseFromMobileCallback(core_api, header, user_data);
+}
+
 bool dji_connect(LinuxSerialDevice* serialDevice, CoreAPI* api, LinuxThread* read)
 {
+    // connect to drone
     int setupStatus = setup(serialDevice, api, read);
     if (setupStatus == -1) {
         std::cout << "Failed to connect to drone.  Will retry later.\n";
         return false;
     }
 
+    // restrict broadcasts
     std::cout << "Connected to drone.  Setting broadcast freq to zero.\n";
     api->setBroadcastFreqToZero();
-
     std::cout << "Broadcast freq configured.\n";
+
+    // setup callbacks
+    api->setFromMobileCallback(ocpFromMobileCallback, NULL);
+
     return true;
 }
 
