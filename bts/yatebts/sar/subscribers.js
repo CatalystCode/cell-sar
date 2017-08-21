@@ -126,9 +126,9 @@ function getSubscriberByMSISDN(msisdn) {
 
 function getSubscriber(imsi, tmsi) {
    for (var i = 0; i < activeSubscribers.length; ++i) {
-      if ((!imsi && activeSubscribers[i]["tmsi"] === tmsi) || // Given TMSI but no IMSI
-            (!tmsi && activeSubscribers[i]["imsi"] === imsi) || // Given IMSI but no TMSI
-            activeSubscribers[i]["imsi"] === imsi) // Given both, use IMSI
+      if ((!imsi && activeSubscribers[i]["tmsi"] == tmsi) || // Given TMSI but no IMSI
+            (!tmsi && activeSubscribers[i]["imsi"] == imsi) || // Given IMSI but no TMSI
+            activeSubscribers[i]["imsi"] == imsi) // Given both, use IMSI
       {
          return activeSubscribers[i];
       }
