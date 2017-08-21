@@ -28,6 +28,7 @@ import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Polygon;
 import com.google.android.gms.maps.model.PolygonOptions;
+import com.microsoft.cellsar.clients.OCPClient;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -51,6 +52,11 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMapCli
     private TextView txtLog;
     private ScrollView scrollMap;
     SupportMapFragment mapFragment;
+
+    private OCPClient ocp;
+    private Button plmnButton;
+    private Button sayHiButton;
+    private String lastIMSI = null; // TODO: currently assuming that only one IMSI will ever be on the network.
 
     protected BroadcastReceiver mReceiver = new BroadcastReceiver() {
 
@@ -90,10 +96,10 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMapCli
         fpvWidget.bringToFront();
 
 
+        // setup log
         logToggle = (Button)findViewById(R.id.btnLog);
         txtLog  = (TextView)findViewById(R.id.txtLog);
         txtLog.setMovementMethod(new ScrollingMovementMethod());
-
         logToggle.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
                 if (txtLog.getVisibility() == View.VISIBLE)
@@ -105,6 +111,38 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMapCli
                     txtLog.setVisibility(View.VISIBLE);
                 }
 
+            }
+        });
+
+        // setup plmn button
+        this.plmnButton = (Button) findViewById(R.id.btn_plmn_toggle);
+        this.plmnButton.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                String message = null;
+                if (ocp == null) {
+                    message = "ocp is null";
+                } else {
+                    ocp.togglePMLN();
+                    message = "PLMN toggle request sent.";
+                }
+                Toast.makeText(plmnButton.getContext(), message, Toast.LENGTH_LONG).show();
+            }
+        });
+
+        // setup say hi
+        this.sayHiButton = (Button) findViewById(R.id.btn_say_hi);
+        this.sayHiButton.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                String message = null;
+                if (ocp == null) {
+                    message = "ocp is null";
+                } else if (lastIMSI == null) {
+                    message = "lastIMSI is null";
+                } else {
+                    ocp.sayHi(lastIMSI);
+                    message = "Say Hi request sent.";
+                }
+                Toast.makeText(sayHiButton.getContext(), message, Toast.LENGTH_LONG).show();
             }
         });
     }
@@ -123,6 +161,9 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMapCli
                 | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
 
         initFlightController();
+        if (this.mFlightController != null)
+            this.ocp = new OCPClient(this.mFlightController);
+
     }
 
     @Override
@@ -223,6 +264,7 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMapCli
                             // IR message
                             String[] parts = msg.split("_");
                             String imsi = parts[0];
+                            lastIMSI = imsi;
                             String upRssi = parts[1];
                             Integer upRssiInt = Integer.parseInt(upRssi);
                             drawSignal(upRssiInt, droneLocationLat, droneLocationLng);

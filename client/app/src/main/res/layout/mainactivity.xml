@@ -206,19 +206,20 @@
 
     <TextView
         android:id="@+id/txtLog"
-        android:text=""
-        android:maxLines="7"
-        android:scrollbars="vertical"
-        android:paddingLeft="2dp"
-        android:paddingTop="2dp"
-        android:background="@color/black_transparent"
-        android:textColor="@color/white_medium_transparent"
         android:layout_width="200dp"
         android:layout_height="120dp"
-        android:layout_alignParentLeft="true"
         android:layout_alignParentBottom="true"
+        android:layout_alignParentLeft="true"
+        android:layout_marginBottom="20dp"
         android:layout_marginLeft="20dp"
-        android:layout_marginBottom="20dp"/>
+        android:background="@color/black_transparent"
+        android:maxLines="7"
+        android:paddingLeft="2dp"
+        android:paddingTop="2dp"
+        android:scrollbars="vertical"
+        android:text=""
+        android:textColor="@color/white_medium_transparent"
+        android:visibility="invisible" />
 
     <dji.ui.widget.FPVWidget
         android:id="@+id/FPVWidget"
@@ -228,5 +229,21 @@
         android:layout_alignParentBottom="true"
         android:layout_marginRight="20dp"
         android:layout_marginBottom="20dp"/>
+
+    <Button
+        android:id="@+id/btn_plmn_toggle"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/linearLayout2"
+        android:layout_alignStart="@+id/linearLayout2"
+        android:text="PLMN" />
+
+    <Button
+        android:id="@+id/btn_say_hi"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/btn_plmn_toggle"
+        android:layout_alignEnd="@+id/btn_plmn_toggle"
+        android:text="Say Hi" />
 
 </RelativeLayout>
