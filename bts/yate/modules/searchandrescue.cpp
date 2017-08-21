@@ -98,6 +98,7 @@ SearchAndRescue::SearchAndRescue(Mutex *mtx) : JsObject("SearchAndRescue", mtx, 
    Debug(DebugAll, "SearchAndRescue::SearchAndRescue(%p) [%p]", mtx, this);
    params().addParam(new ExpFunction("writeToOCP"));
    params().addParam(new ExpFunction("readFromOCP"));
+   params().addParam(new ExpFunction("changePLMN"));
 }
 
 SearchAndRescue::~SearchAndRescue() {
@@ -136,6 +137,8 @@ bool SearchAndRescue::runNative(ObjList &stack, const ExpOperation &oper, GenObj
       this->write_to_ocp(stack, oper, context);
    else if (oper.name() == YSTRING("readFromOCP"))
       this->read_from_ocp(stack, oper, context);
+   else if (oper.name() == YSTRING("changePLMN"))
+      this->change_plmn(stack, oper, context);
    return true;
 }
 
