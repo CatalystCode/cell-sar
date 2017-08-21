@@ -53,7 +53,7 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMapCli
     private ScrollView scrollMap;
     SupportMapFragment mapFragment;
 
-    private OCPClient ocp;
+    private OCPClient ocp = new OCPClient();
     private Button plmnButton;
     private Button sayHiButton;
     private String lastIMSI = null; // TODO: currently assuming that only one IMSI will ever be on the network.
@@ -118,14 +118,18 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMapCli
         this.plmnButton = (Button) findViewById(R.id.btn_plmn_toggle);
         this.plmnButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                String message = null;
-                if (ocp == null) {
-                    message = "ocp is null";
-                } else {
-                    ocp.togglePMLN();
-                    message = "PLMN toggle request sent.";
+                try {
+                    String message = null;
+                    if (ocp == null) {
+                        message = "ocp is null";
+                    } else {
+                        ocp.togglePMLN();
+                        message = "PLMN toggle request sent.";
+                    }
+                    Toast.makeText(plmnButton.getContext(), message, Toast.LENGTH_LONG).show();
+                } catch (Exception e) {
+                    Toast.makeText(plmnButton.getContext(), e.getMessage(), Toast.LENGTH_LONG).show();
                 }
-                Toast.makeText(plmnButton.getContext(), message, Toast.LENGTH_LONG).show();
             }
         });
 
@@ -133,16 +137,20 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMapCli
         this.sayHiButton = (Button) findViewById(R.id.btn_say_hi);
         this.sayHiButton.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                String message = null;
-                if (ocp == null) {
-                    message = "ocp is null";
-                } else if (lastIMSI == null) {
-                    message = "lastIMSI is null";
-                } else {
-                    ocp.sayHi(lastIMSI);
-                    message = "Say Hi request sent.";
+                try {
+                    String message = null;
+                    if (ocp == null) {
+                        message = "ocp is null";
+                    } else if (lastIMSI == null) {
+                        message = "lastIMSI is null";
+                    } else {
+                        ocp.sayHi(lastIMSI);
+                        message = "Say Hi request sent.";
+                    }
+                    Toast.makeText(sayHiButton.getContext(), message, Toast.LENGTH_LONG).show();
+                } catch (Exception e) {
+                    Toast.makeText(sayHiButton.getContext(), e.getMessage(), Toast.LENGTH_LONG).show();
                 }
-                Toast.makeText(sayHiButton.getContext(), message, Toast.LENGTH_LONG).show();
             }
         });
     }

@@ -16,12 +16,16 @@ public class OCPClient {
 
     private Boolean plmn310410 = true;
 
+    public OCPClient() {
+        this.flightController = null;
+    }
+
     public OCPClient(FlightController flightController) {
         this.flightController = flightController;
     }
 
     public void togglePMLN() {
-        byte[] data = null;
+        byte[] data;
         if (this.plmn310410) {
             Log.v("ocp", "toggling PLMN to 311 480");
             data = buildPLMNPacket("311", "480");
@@ -41,6 +45,9 @@ public class OCPClient {
     }
 
     private void sendData(byte[] data, final String type) {
+        if (this.flightController == null)
+            return;
+
         this.flightController.sendDataToOnboardSDKDevice(data, new CommonCallbacks.CompletionCallback() {
             @Override
             public void onResult(DJIError djiError) {
