@@ -98,16 +98,18 @@
             android:layout_height="25dp"/>
 
         <dji.ui.widget.config.CameraConfigApertureWidget
+            android:id="@+id/cameraConfigApertureWidget"
             android:layout_width="50dp"
-            android:layout_height="25dp"/>
+            android:layout_height="25dp" />
 
         <dji.ui.widget.config.CameraConfigEVWidget
             android:layout_width="50dp"
             android:layout_height="25dp"/>
 
         <dji.ui.widget.config.CameraConfigWBWidget
+            android:id="@+id/cameraConfigWBWidget"
             android:layout_width="50dp"
-            android:layout_height="25dp"/>
+            android:layout_height="25dp" />
 
         <dji.ui.widget.CameraConfigStorageWidget
             android:layout_width="108dp"
@@ -119,7 +121,8 @@
         android:layout_marginTop="18dp"
         android:layout_width="match_parent"
         android:background="@color/transparent"
-        android:layout_height="20dp"/>
+        android:layout_height="20dp"
+        android:id="@+id/remainingFlightTimeWidget" />
 
 
     <LinearLayout
@@ -169,11 +172,10 @@
 
     <dji.ui.widget.controls.CameraControlsWidget
         android:id="@+id/CameraCapturePanel"
-        android:layout_alignParentRight="true"
-        android:layout_below="@id/camera"
         android:layout_width="50dp"
-        android:layout_height="213dp"/>
-
+        android:layout_height="213dp"
+        android:layout_alignParentRight="true"
+        android:layout_below="@id/camera" />
 
     <dji.ui.panel.CameraSettingExposurePanel
         android:id="@+id/CameraExposureMode"
@@ -231,19 +233,12 @@
         android:layout_marginBottom="20dp"/>
 
     <Button
-        android:id="@+id/btn_plmn_toggle"
+        android:id="@+id/btn_sar"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_above="@+id/linearLayout2"
         android:layout_alignStart="@+id/linearLayout2"
-        android:text="PLMN" />
-
-    <Button
-        android:id="@+id/btn_say_hi"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_above="@+id/btn_plmn_toggle"
-        android:layout_alignEnd="@+id/btn_plmn_toggle"
-        android:text="Say Hi" />
+        android:layout_below="@+id/signal"
+        android:layout_toStartOf="@+id/camera"
+        android:text="SAR" />
 
 </RelativeLayout>

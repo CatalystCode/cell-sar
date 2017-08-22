@@ -1,8 +1,11 @@
 package com.microsoft.cellsar;
 
 import android.animation.ArgbEvaluator;
+import android.app.AlertDialog;
+import android.app.Dialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.graphics.Color;
@@ -11,8 +14,10 @@ import android.support.v4.app.FragmentActivity;
 import android.support.v4.app.FragmentTransaction;
 import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
+import android.widget.EditText;
 import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -28,6 +33,7 @@ import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Polygon;
 import com.google.android.gms.maps.model.PolygonOptions;
+import com.google.android.gms.tasks.Task;
 import com.microsoft.cellsar.clients.OCPClient;
 
 import java.util.Collections;
@@ -50,13 +56,11 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMapCli
     private Button logToggle;
     private FPVWidget fpvWidget;
     private TextView txtLog;
+    private Button btnSAR;
     private ScrollView scrollMap;
     SupportMapFragment mapFragment;
 
     private OCPClient ocp = new OCPClient();
-    private Button plmnButton;
-    private Button sayHiButton;
-    private String lastIMSI = null; // TODO: currently assuming that only one IMSI will ever be on the network.
 
     protected BroadcastReceiver mReceiver = new BroadcastReceiver() {
 
@@ -102,62 +106,83 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMapCli
         txtLog.setMovementMethod(new ScrollingMovementMethod());
         logToggle.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                if (txtLog.getVisibility() == View.VISIBLE)
-                {
-                    txtLog.setVisibility(View.INVISIBLE);
-                }
-                else
-                {
-                    txtLog.setVisibility(View.VISIBLE);
-                }
-
+                txtLog.setVisibility(txtLog.getVisibility() == View.VISIBLE ? View.INVISIBLE : View.VISIBLE);
             }
         });
 
-        // setup plmn button
-        this.plmnButton = (Button) findViewById(R.id.btn_plmn_toggle);
-        this.plmnButton.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) {
-                try {
-                    String message = null;
-                    if (ocp == null) {
-                        message = "ocp is null";
-                    } else {
-                        ocp.togglePMLN();
-                        message = "PLMN toggle request sent.";
-                    }
-                    Toast.makeText(plmnButton.getContext(), message, Toast.LENGTH_LONG).show();
-                } catch (Exception e) {
-                    Toast.makeText(plmnButton.getContext(), e.getMessage(), Toast.LENGTH_LONG).show();
-                }
-            }
-        });
+        // setup SAR button
+        initSARButton();
+    }
 
-        // setup say hi
-        this.sayHiButton = (Button) findViewById(R.id.btn_say_hi);
-        this.sayHiButton.setOnClickListener(new View.OnClickListener() {
+    private void initSARButton() {
+        btnSAR = (Button)findViewById(R.id.btn_sar);
+        btnSAR.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                try {
-                    String message = null;
-                    if (ocp == null) {
-                        message = "ocp is null";
-                    } else {
-                        ocp.sayHi(lastIMSI);
-                        message = "Say Hi request sent.";
-                    }
-                    Toast.makeText(sayHiButton.getContext(), message, Toast.LENGTH_LONG).show();
-                } catch (Exception e) {
-                    Toast.makeText(sayHiButton.getContext(), e.getMessage(), Toast.LENGTH_LONG).show();
-                }
+                final CharSequence items[] = new CharSequence[] {"Change PLMN", "SMS Messaging"};
+                new AlertDialog.Builder(btnSAR.getContext())
+                    .setTitle("Search And Rescue")
+                    .setItems(items, new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialogInterface, int i) {
+                            switch (i) {
+                                case 0: // Change PLMN
+                                    startChangePLMNDialog();
+                                    break;
+                                case 1: // SMS Messaging
+                                    startShowSMSMessaging();
+                                    break;
+                            }
+                        }
+                    }).setOnDismissListener(new DialogInterface.OnDismissListener() {
+                        @Override
+                        public void onDismiss(DialogInterface dialogInterface) {
+                            hideNavAndStatus();
+                        }
+                    }).show();
             }
         });
     }
 
-    @Override
-    protected void onResume() {
-        super.onResume();
+    private void startChangePLMNDialog() {
+        LayoutInflater li = LayoutInflater.from(getApplicationContext());
+        final View plmnView = li.inflate(R.layout.plmn_change, null);
 
-        // Hide both the navigation bar and the status bar.
+        new AlertDialog.Builder(this)
+            .setMessage("Set the new PLM").setView(plmnView)
+            .setNegativeButton("Cancel", null)
+            .setPositiveButton("Apply", new DialogInterface.OnClickListener() {
+                @Override
+                public void onClick(DialogInterface dialogInterface, int i) {
+
+                    String mcc = parsePLMNFragment((EditText)plmnView.findViewById(R.id.txt_plmn_mcc));
+                    String mnc = parsePLMNFragment((EditText)plmnView.findViewById(R.id.txt_plmn_mnc));
+                    ocp.setPLMN(mcc, mnc);
+
+                    String message = "Set PLMN to " + mcc + mnc;
+                    Toast.makeText(getApplicationContext(), message, Toast.LENGTH_LONG).show();
+                }
+            })
+        .show();
+    }
+
+    private String parsePLMNFragment(EditText et) {
+        String result = et.getText().toString();
+        if (result.length() != 3) {
+            try {
+                result = String.format("%03d", Integer.parseInt(result));
+            } catch (NumberFormatException nfe) {
+                result = "000";
+            }
+        }
+
+        return result;
+    }
+
+    private void startShowSMSMessaging() {
+        // TODO
+    }
+
+    private void hideNavAndStatus() {
         View decorView = getWindow().getDecorView();
         decorView.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE
                 | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION
@@ -165,11 +190,19 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMapCli
                 | View.SYSTEM_UI_FLAG_HIDE_NAVIGATION
                 | View.SYSTEM_UI_FLAG_FULLSCREEN
                 | View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY);
+    }
 
-        initFlightController();
-        if (this.mFlightController != null)
-            this.ocp = new OCPClient(this.mFlightController);
+    @Override
+    protected void onResume() {
+        super.onResume();
 
+        // Hide both the navigation bar and the status bar.
+        hideNavAndStatus();
+
+        if (this.mFlightController == null) {
+            initFlightController();
+            ocp.setFlightController(this.mFlightController);
+        }
     }
 
     @Override
@@ -270,7 +303,6 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMapCli
                             // IR message
                             String[] parts = msg.split("_");
                             String imsi = parts[0];
-                            lastIMSI = imsi;
                             String upRssi = parts[1];
                             Integer upRssiInt = Integer.parseInt(upRssi);
                             drawSignal(upRssiInt, droneLocationLat, droneLocationLng);

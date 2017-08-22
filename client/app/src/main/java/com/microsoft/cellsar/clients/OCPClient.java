@@ -20,27 +20,16 @@ public class OCPClient {
         this.flightController = null;
     }
 
-    public OCPClient(FlightController flightController) {
-        this.flightController = flightController;
+    public void setFlightController(FlightController fc) {
+        this.flightController = fc;
     }
 
-    public void togglePMLN() {
-        byte[] data;
-        if (this.plmn310410) {
-            Log.v("ocp", "toggling PLMN to 311 480");
-            data = buildPLMNPacket("311", "480");
-        } else {
-            Log.v("ocp", "toggling PLMN to 310 410");
-            data = buildPLMNPacket("310", "410");
-        }
-
-        Log.v("ocp", "plmn packet built. sending...");
-        this.sendData(data, "plmn");
+    public void setPLMN(String mcc, String mnc) {
+        sendData(buildPLMNPacket(mcc, mnc), "plmn");
     }
 
     public void sayHi(String imsi) {
         byte[] data = buildSMSPacket(imsi, "hakuna matata");
-        Log.v("ocp", "sms packet built. sending...");
         sendData(data, "sms");
     }
 
@@ -49,12 +38,6 @@ public class OCPClient {
             return;
 
         this.flightController.sendDataToOnboardSDKDevice(data, null);
-//        this.flightController.sendDataToOnboardSDKDevice(data, new CommonCallbacks.CompletionCallback() {
-//            @Override
-//            public void onResult(DJIError djiError) {
-//                Log.v("ocp", "OCPClient.sendData (type=" + type + " completed: " + djiError.getDescription());
-//            }
-//        });
     }
 
     private byte[] buildPLMNPacket(String mcc, String mnc) {
