@@ -48,12 +48,13 @@ public class OCPClient {
         if (this.flightController == null)
             return;
 
-        this.flightController.sendDataToOnboardSDKDevice(data, new CommonCallbacks.CompletionCallback() {
-            @Override
-            public void onResult(DJIError djiError) {
-                Log.v("ocp", "OCPClient.sendData (type=" + type + " completed: " + djiError.getDescription());
-            }
-        });
+        this.flightController.sendDataToOnboardSDKDevice(data, null);
+//        this.flightController.sendDataToOnboardSDKDevice(data, new CommonCallbacks.CompletionCallback() {
+//            @Override
+//            public void onResult(DJIError djiError) {
+//                Log.v("ocp", "OCPClient.sendData (type=" + type + " completed: " + djiError.getDescription());
+//            }
+//        });
     }
 
     private byte[] buildPLMNPacket(String mcc, String mnc) {
@@ -75,6 +76,9 @@ public class OCPClient {
     }
 
     private byte[] buildSMSPacket(String imsi, String message) {
+
+        if (imsi == null) imsi = "111222333444555"; // temporary for debugging
+
         byte[] data = new byte[100];
 
         /* SMS packet

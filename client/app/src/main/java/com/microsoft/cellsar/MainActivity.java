@@ -141,8 +141,6 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMapCli
                     String message = null;
                     if (ocp == null) {
                         message = "ocp is null";
-                    } else if (lastIMSI == null) {
-                        message = "lastIMSI is null";
                     } else {
                         ocp.sayHi(lastIMSI);
                         message = "Say Hi request sent.";
