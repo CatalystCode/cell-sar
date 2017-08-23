@@ -1,8 +1,6 @@
 package com.microsoft.cellsar;
 
-import android.animation.ArgbEvaluator;
 import android.app.AlertDialog;
-import android.app.Dialog;
 import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -11,7 +9,6 @@ import android.content.IntentFilter;
 import android.graphics.Color;
 import android.os.Bundle;
 import android.support.v4.app.FragmentActivity;
-import android.support.v4.app.FragmentTransaction;
 import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
 import android.view.LayoutInflater;
@@ -33,7 +30,6 @@ import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Polygon;
 import com.google.android.gms.maps.model.PolygonOptions;
-import com.google.android.gms.tasks.Task;
 import com.microsoft.cellsar.clients.OCPClient;
 
 import java.util.Collections;
@@ -60,8 +56,6 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMapCli
     private ScrollView scrollMap;
     SupportMapFragment mapFragment;
 
-    private OCPClient ocp = new OCPClient();
-
     protected BroadcastReceiver mReceiver = new BroadcastReceiver() {
 
         @Override
@@ -86,8 +80,6 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMapCli
         mapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.mapView);
         mapFragment.getMapAsync(this);
-
-
     }
 
     private void initUI() {
@@ -111,10 +103,6 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMapCli
         });
 
         // setup SAR button
-        initSARButton();
-    }
-
-    private void initSARButton() {
         btnSAR = (Button)findViewById(R.id.btn_sar);
         btnSAR.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
@@ -129,7 +117,8 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMapCli
                                     startChangePLMNDialog();
                                     break;
                                 case 1: // SMS Messaging
-                                    startShowSMSMessaging();
+                                    Intent smsIntent = new Intent(getApplicationContext(), SARSMSActivity.class);
+                                    startActivity(smsIntent);
                                     break;
                             }
                         }
@@ -148,7 +137,7 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMapCli
         final View plmnView = li.inflate(R.layout.plmn_change, null);
 
         new AlertDialog.Builder(this)
-            .setMessage("Set the new PLM").setView(plmnView)
+            .setMessage("Set the new PLMN").setView(plmnView)
             .setNegativeButton("Cancel", null)
             .setPositiveButton("Apply", new DialogInterface.OnClickListener() {
                 @Override
@@ -156,7 +145,7 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMapCli
 
                     String mcc = parsePLMNFragment((EditText)plmnView.findViewById(R.id.txt_plmn_mcc));
                     String mnc = parsePLMNFragment((EditText)plmnView.findViewById(R.id.txt_plmn_mnc));
-                    ocp.setPLMN(mcc, mnc);
+                    OCPClient.getInstance().setPLMN(mcc, mnc);
 
                     String message = "Set PLMN to " + mcc + mnc;
                     Toast.makeText(getApplicationContext(), message, Toast.LENGTH_LONG).show();
@@ -178,10 +167,6 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMapCli
         return result;
     }
 
-    private void startShowSMSMessaging() {
-        // TODO
-    }
-
     private void hideNavAndStatus() {
         View decorView = getWindow().getDecorView();
         decorView.setSystemUiVisibility(View.SYSTEM_UI_FLAG_LAYOUT_STABLE
@@ -201,7 +186,7 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMapCli
 
         if (this.mFlightController == null) {
             initFlightController();
-            ocp.setFlightController(this.mFlightController);
+            OCPClient.getInstance().setFlightController(this.mFlightController);
         }
     }
 

@@ -21,8 +21,9 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:ems="10"
-            android:hint="Mobile Country Code"
+            android:hint="@string/mcc"
             android:maxLength="3"
+            android:imeOptions="flagNoExtractUi"
             android:inputType="number" />
 
     </LinearLayout>
@@ -45,8 +46,9 @@
             android:layout_height="wrap_content"
             android:layout_weight="1"
             android:ems="10"
-            android:hint="Mobile Network Code"
+            android:hint="@string/mnc"
             android:maxLength="3"
+            android:imeOptions="flagNoExtractUi"
             android:inputType="number" />
 
     </LinearLayout>
@@ -56,7 +58,7 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:layout_weight="1"
-        android:layout_marginTop="10dp"
-        android:text="The PLMN (Public Land Mobile Network) is a network identifier made up of an MCC (Mobile Country Code) and MNC (Mobile Network Code)" />
+        android:text="@string/plmn_description"
+        android:layout_marginTop="10dp" />
 
 </LinearLayout>

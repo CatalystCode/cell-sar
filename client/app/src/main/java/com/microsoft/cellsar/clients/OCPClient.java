@@ -14,10 +14,12 @@ public class OCPClient {
 
     private FlightController flightController;
 
-    private Boolean plmn310410 = true;
-
-    public OCPClient() {
-        this.flightController = null;
+    private static OCPClient instance;
+    private OCPClient() {}
+    public static OCPClient getInstance() {
+        if (instance == null)
+            instance = new OCPClient();
+        return instance;
     }
 
     public void setFlightController(FlightController fc) {
@@ -25,15 +27,17 @@ public class OCPClient {
     }
 
     public void setPLMN(String mcc, String mnc) {
-        sendData(buildPLMNPacket(mcc, mnc), "plmn");
+        sendData(buildPLMNPacket(mcc, mnc));
     }
 
-    public void sayHi(String imsi) {
-        byte[] data = buildSMSPacket(imsi, "hakuna matata");
-        sendData(data, "sms");
+    public void sendSMS(String imsi, String message) {
+        if (message == null) message = "";
+        if (message.length() > 75)
+            message = message.substring(0, 75);
+        sendData(buildSMSPacket(imsi, message));
     }
 
-    private void sendData(byte[] data, final String type) {
+    private void sendData(byte[] data) {
         if (this.flightController == null)
             return;
 

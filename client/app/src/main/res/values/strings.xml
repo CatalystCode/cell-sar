@@ -5,4 +5,9 @@
     <string name="title_activity_demo">GSDemoActivity</string>
     <string name="disconnected">Disconnected</string>
     <string name="connection_lose">Status: No Product Connected</string>
+
+    <string name="mcc">Mobile Country Code</string>
+    <string name="mnc">Mobile Network Code</string>
+    <string name="plmn_description">The PLMN (Public Land Mobile Network) is a network identifier made up of an MCC (Mobile Country Code) and MNC (Mobile Network Code)</string>
+
 </resources>

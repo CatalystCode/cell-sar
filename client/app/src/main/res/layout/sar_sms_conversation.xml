@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:orientation="vertical" android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/chat_bg_color">
+
+    <TextView
+        android:id="@+id/textview_which_imsi"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_alignParentTop="true"
+        android:text="Chatting with [IMSI]"
+        android:textAlignment="center"
+        android:background="@color/colorBlack"
+        android:padding="10dp"
+        android:textSize="18sp"
+        android:textColor="@color/colorWhite"/>
+
+
+    <ListView
+        android:id="@+id/lv_chat_items"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_above="@+id/msg_sending_layout"
+        android:layout_below="@+id/textview_which_imsi"/>
+
+    <LinearLayout
+        android:id="@+id/msg_sending_layout"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:layout_alignParentBottom="true">
+
+        <EditText
+            android:id="@+id/text_sms_message"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:imeOptions="flagNoExtractUi"
+            android:layout_weight="5"/>
+
+        <ImageButton
+            android:id="@+id/btn_send_sms"
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:layout_weight="2"
+            android:layout_margin="5dp"
+            android:background="@drawable/send_selected"/>
+
+    </LinearLayout>
+
+
+</RelativeLayout>
