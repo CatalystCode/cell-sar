@@ -1,0 +1,11 @@
+[Unit]
+Description=OCP Service
+After=network.target
+
+[Service]
+ExecStart=/home/yate/ocp/bin/ocp
+Type=simple
+WorkingDirectory=/home/yate/ocp/bin/
+
+[Install]
+WantedBy=default.target
