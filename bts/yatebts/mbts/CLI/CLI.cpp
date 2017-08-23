@@ -271,13 +271,27 @@ int printStats(int argc, char** argv, ostream& os)
 /** Get/Set MCC, MNC, LAC, CI. */
 int cellID(int argc, char** argv, ostream& os)
 {
-	if (argc!=1) return BAD_NUM_ARGS;
-	os << "MCC=" << gConfig.getStr("GSM.Identity.MCC")
-	<< " MNC=" << gConfig.getStr("GSM.Identity.MNC")
-	<< " LAC=" << gConfig.getNum("GSM.Identity.LAC")
-	<< " CI=" << gConfig.getNum("GSM.Identity.CI")
-	<< endl;
-	return SUCCESS;
+        if (argc == 1) {
+                os << "MCC=" << gConfig.getStr("GSM.Identity.MCC")
+                << " MNC=" << gConfig.getStr("GSM.Identity.MNC")
+                << " LAC=" << gConfig.getNum("GSM.Identity.LAC")
+                << " CI=" << gConfig.getNum("GSM.Identity.CI")
+                << endl;
+                return SUCCESS;
+        } else if (argc == 3) {
+                os << "Setting MCC to " << argv[1] << endl;
+                os << "Setting MNC to " << argv[2] << endl;
+
+                gConfig.set("GSM.Identity.MCC", argv[1]);
+                gConfig.set("GSM.Identity.MNC", argv[2]);
+
+                os << "Updated MCC " << gConfig.getStr("GSM.Identity.MCC")
+                   << " and MNC " << gConfig.getStr("GSM.Identity.MNC") << endl;
+
+                return SUCCESS;
+        } else {
+                return BAD_NUM_ARGS;
+        }
 }
 
 static string s_useReloadTrx[] = {"TRX.MinimumRxRSSI","TRX.RadioFrequencyOffset","TRX.TxAttenOffset",""};
@@ -755,6 +769,13 @@ int reload(int argc, char** argv, ostream& os)
 	return SUCCESS;
 }
 
+int reloadPLMN(int argc, char **argv, ostream &os) {
+        if (argc != 1) return BAD_NUM_ARGS;
+
+        gBTS.regenerateBeacon();
+
+        return SUCCESS;
+}
 
 /** Change the registration timers. */
 int regperiod(int argc, char** argv, ostream& os)
@@ -1139,6 +1160,7 @@ void Parser::addCommands()
         addCommand("noise", noise, "-- report receive noise level in RSSI dB");
         addCommand("radio", radio, "[command] -- execute custom radio command");
         addCommand("reload", reload, "-- reload configuration from file");
+        addCommand("reloadPLMN", reloadPLMN, "-- reload the in-memory configuration");
 	addCommand("rmconfig", rmconfig, "key -- set a configuration value back to its default or remove a custom key/value pair");
 	addCommand("unconfig", unconfig, "key -- disable a configuration key by setting an empty value");
 	addCommand("notices", notices, "-- show startup copyright and legal notices");

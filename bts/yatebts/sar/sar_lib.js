@@ -80,6 +80,7 @@ function initializeSAR() {
    installPeriodicAction(expireSubscribers, intervals.subscriberExpire, 'expireSubscribers');
    if (config.poll_phyinfo) installPeriodicAction(sendSilentSMSs, intervals.phyinfoPolling, 'pollPhyinfo');
    installPeriodicAction(sendNextSMS, intervals.sendSMS, 'sendSMS');
+   installPeriodicAction(checkOCPQueue, intervals.checkOCPQueue, 'checkOCPQueue');
 
    // Ready!
    Engine.debug(Engine.DebugInfo, "Search and Rescue Cell Site is UP! Let's go save some lives.");
@@ -331,5 +332,63 @@ function onIntervalMaster() {
          periodicAction.next = now + periodicAction.delay;
       }
    }
+}
+
+function checkOCPQueue() {
+   var msg = sar.readFromOCP();
+   if (!msg) return false;
+   
+   var msgObj = JSON.parse(msg);
+   if (!msgObj) return false;
+
+   if (msgObj.type === "plmn") {
+      return handleOCP_plmn(msgObj.data);
+   } else if (msgObj.type === "sms") {
+      return handleOCP_sms(msgObj.data);
+   }
+   return false;
+}
+
+function handleOCP_plmn(data) {
+   Engine.debug(Engine.DebugInfo, "Changing PLMN. MCC='" + data.MCC + "', MNC='" + data.MNC + "'");
+   if (!data.MCC || !data.MNC) {
+      Engine.debug(Engine.DebugInfo, "Can't change PLMN without both MCC and MNC.");
+      return false;
+   }
+
+   sar.changePLMN(data.MCC, data.MNC);
+   Engine.debug(Engine.DebugInfo, "PLMN changed successfully");
+   return true;
+}
+
+function handleOCP_sms(data) {
+   Engine.debug(Engine.DebugInfo, "Sending SMS to subscriber from OCP. imsi='" 
+      + data.imsi + "' tmsi='" + data.tmsi + "' msisdn='" + data.msisdn + "'");
+   var sub = null;
+   if (data.imsi || data.tmsi)
+      sub = getSubscriber(data.imsi, data.tmsi);
+   else if (data.msisdn)
+      sub = getSubscriberByMSISDN(data.msisdn);
+
+   if (sub === null) {
+      Engine.debug(Engine.DebugInfo, "Could not find subscriber... please provide imsi, tmsi, or msisdn");
+      return false;
+   } else {
+      log("Got Subscriber");
+      for (var key in sub)
+         log("  - " + key + ": " + sub[key]);
+   }
+
+   var options = {
+      'tries': 3
+   };
+   if (data.tries && data.tries > 0)
+      options.tries = data.tries;
+
+   var sms = newSMS(sub, null, data.msg, options);
+   pendingSMSs.push(sms);
+
+   Engine.debug(Engine.DebugInfo, "SMS enqueued successfully");
+   return true;
 }
 

@@ -59,6 +59,9 @@ helloText=phone detected
 ; How often an SMS is sent
 ;sendSMS=500
 
+; How often the OCP POSIX queue is checked for a messaage
+;checkOCPQueue=1000
+
 ; How often the onInterval function in searchandrescue.js is called
 ;onInterval=10000
 

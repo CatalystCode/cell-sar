@@ -75,6 +75,8 @@
 
         <activity android:name=".MainActivity"
             android:screenOrientation="sensorLandscape"></activity>
+        <activity android:name=".SARSMSActivity" />
+        <activity android:name=".SARSMSConversationActivity" />
     </application>
 
 </manifest>

@@ -279,7 +279,7 @@ qt4/%.o: @srcdir@/qt4/%.cpp $(MKDEPS) $(INCFILES)
 %.o: @srcdir@/%.cpp $(MKDEPS) $(INCFILES)
 	$(COMPILE) -c $<
 
-mqcommon.o: mqcommon.cpp $(MKDEPS) $(INCFILES)
+sarqueue.o: sarqueue.cpp $(MKDEPS) $(INCFILES)
 	$(COMPILE) -c $< -lrt
 
 do-all do-strip do-clean do-install do-uninstall:
@@ -320,8 +320,8 @@ sip/%.yate: @srcdir@/sip/%.cpp $(MKDEPS) $(INCFILES)
 %.yate: @srcdir@/%.cpp $(MKDEPS) $(INCFILES)
 	$(MODCOMP) -o $@ $(LOCALFLAGS) $(EXTERNFLAGS) $< $(LOCALLIBS) $(YATELIBS) $(EXTERNLIBS)
 
-searchandrescue.yate: searchandrescue.cpp mqcommon.o $(MKDEPS) $(INCFILES)
-	$(MODCOMP) mqcommon.o -o $@ $(LOCALFLAGS) $(EXTERNFLAGS) $< $(LOCALLIBS) $(YATELIBS) $(EXTERNLIBS) -lrt
+searchandrescue.yate: searchandrescue.cpp sarqueue.o $(MKDEPS) $(INCFILES)
+	$(MODCOMP) sarqueue.o -o $@ $(LOCALFLAGS) $(EXTERNFLAGS) $< $(LOCALLIBS) $(YATELIBS) $(EXTERNLIBS) -lrt
 
 # Take special care of the modules that depend on optional libs
 

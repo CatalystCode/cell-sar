@@ -9,4 +9,7 @@
     <color name="colorPrimary">#3F51B5</color>
     <color name="colorPrimaryDark">#303F9F</color>
     <color name="colorAccent">#FF4081</color>
+
+    <color name="new_sms_notification">#4422DD</color>
+    <color name="chat_bg_color">#E1E1E1</color>
 </resources>

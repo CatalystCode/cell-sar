@@ -42,7 +42,11 @@
 #include <DJI_Version.h>
 #include <DJI_WayPoint.h>
 
-#include "mqcommon.h"
+#include "sarqueue.h"
+
+#define CMD_TYPE_SIZE 10
+#define PLMN_REQUEST "plmn\0\0\0\0\0\0"
+#define SMS_REQUEST  "sms\0\0\0\0\0\0\0"
 
 using namespace std;
 using namespace DJI;
@@ -50,25 +54,101 @@ using namespace DJI::onboardSDK;
 
 volatile sig_atomic_t stop;
 
-
 // Handle sigint
-void int_hand(int signum)
-{
+void int_hand(int signum) {
     stop = 1;
+}
+
+void handlePLMNRequest(const char *mcc, const char *mnc);
+void handleSMSRequest(const char *imsi, const char *msg);
+
+// inspired by https://github.com/MenchiG/DJI-Onboard-SDK-Raspberry-Transparent-Transmit/blob/master/pm25/src/DJI_LIB/DJI_Pro_App.cpp
+// TODO: make this whole process more robust
+void ocpFromMobileCallback(DJI::onboardSDK::CoreAPI *core_api, Header *header, 
+      UserData user_data) {
+
+   // get the buffer
+   unsigned int len = header->length - EXC_DATA_SIZE - 2 > 100 
+      ? 100 : (header->length - EXC_DATA_SIZE - 2);
+   char *buffer = (char *)header + sizeof(Header) + 2;
+
+   // print the buffer
+   for (int i = 0; i < len; ++i) {
+      std::cout << buffer[i];
+      if (i % 20 == 19)
+         std::cout << std::endl;
+   }
+   std::cout << std::endl;
+
+   if (!strncmp(buffer, PLMN_REQUEST, CMD_TYPE_SIZE)) {
+      std::cout << "plmn request start" << std::endl;
+      unsigned char mcc[4];
+      memcpy(mcc, buffer + 10, 3);
+      mcc[3] = '\0';
+
+      unsigned char mnc[4];
+      memcpy(mnc, buffer + 13, 3);
+      mnc[3] = '\0';
+
+      handlePLMNRequest((const char *)mcc, (const char *)mnc);
+      return;
+
+   } else if (!strncmp(buffer, SMS_REQUEST, CMD_TYPE_SIZE)) {
+      std::cout << "sms request start" << std::endl;
+      unsigned char imsi[16];
+      memcpy(imsi, buffer + 10, 15);
+      imsi[15] = '\0';
+
+      unsigned char msg[76];
+      memcpy(msg, buffer + 25, 75);
+      msg[75] = '\0';
+
+      handleSMSRequest((const char *)imsi, (const char *)msg);
+      return;
+   }
+   
+   // fallback
+   std::cout << "no custom request, fallback to default behavior" << std::endl;
+   core_api->parseFromMobileCallback(core_api, header, user_data);
+}
+
+void handlePLMNRequest(const char *mcc, const char *mnc) {
+   std::string json = "{\"type\": \"plmn\", \"data\": {";
+   json += "\"MCC\": \"" + std::string(mcc) + "\", ";
+   json += "\"MNC\": \"" + std::string(mnc) + "\"";
+   json += "}}";
+
+   std::cout << "To Yate: " << json << std::endl;
+   MQCommon::push(json.c_str());
+}
+
+void handleSMSRequest(const char *imsi, const char *msg) {
+   std::string json = "{\"type\": \"sms\", \"data\": {";
+   json += "\"imsi\": \"" + std::string(imsi) + "\", ";
+   json += "\"msg\": \"" + std::string(msg) + "\"";
+   json += "}}";
+
+   std::cout << "To Yate: " << json << std::endl;
+   MQCommon::push(json.c_str());
 }
 
 bool dji_connect(LinuxSerialDevice* serialDevice, CoreAPI* api, LinuxThread* read)
 {
+    // connect to drone
     int setupStatus = setup(serialDevice, api, read);
     if (setupStatus == -1) {
         std::cout << "Failed to connect to drone.  Will retry later.\n";
         return false;
     }
 
+    // restrict broadcasts
     std::cout << "Connected to drone.  Setting broadcast freq to zero.\n";
     api->setBroadcastFreqToZero();
-
     std::cout << "Broadcast freq configured.\n";
+
+    // setup callbacks
+    api->setFromMobileCallback(ocpFromMobileCallback, NULL);
+
     return true;
 }
 
@@ -79,8 +159,11 @@ void poll_messages(LinuxSerialDevice* serialDevice, CoreAPI* api, LinuxThread* r
 
   droneConnected = dji_connect(serialDevice, api, read);
 
+  MQCommon::init(OCP);
+
   while (!stop) {
-        char* buffer = MQCommon::pop();
+        char* buffer;
+        unsigned int buflen = MQCommon::pop(&buffer);
 
         if (buffer != NULL) {
             // attempt drone connection

@@ -98,16 +98,18 @@
             android:layout_height="25dp"/>
 
         <dji.ui.widget.config.CameraConfigApertureWidget
+            android:id="@+id/cameraConfigApertureWidget"
             android:layout_width="50dp"
-            android:layout_height="25dp"/>
+            android:layout_height="25dp" />
 
         <dji.ui.widget.config.CameraConfigEVWidget
             android:layout_width="50dp"
             android:layout_height="25dp"/>
 
         <dji.ui.widget.config.CameraConfigWBWidget
+            android:id="@+id/cameraConfigWBWidget"
             android:layout_width="50dp"
-            android:layout_height="25dp"/>
+            android:layout_height="25dp" />
 
         <dji.ui.widget.CameraConfigStorageWidget
             android:layout_width="108dp"
@@ -119,7 +121,8 @@
         android:layout_marginTop="18dp"
         android:layout_width="match_parent"
         android:background="@color/transparent"
-        android:layout_height="20dp"/>
+        android:layout_height="20dp"
+        android:id="@+id/remainingFlightTimeWidget" />
 
 
     <LinearLayout
@@ -169,11 +172,10 @@
 
     <dji.ui.widget.controls.CameraControlsWidget
         android:id="@+id/CameraCapturePanel"
-        android:layout_alignParentRight="true"
-        android:layout_below="@id/camera"
         android:layout_width="50dp"
-        android:layout_height="213dp"/>
-
+        android:layout_height="213dp"
+        android:layout_alignParentRight="true"
+        android:layout_below="@id/camera" />
 
     <dji.ui.panel.CameraSettingExposurePanel
         android:id="@+id/CameraExposureMode"
@@ -206,19 +208,20 @@
 
     <TextView
         android:id="@+id/txtLog"
-        android:text=""
-        android:maxLines="7"
-        android:scrollbars="vertical"
-        android:paddingLeft="2dp"
-        android:paddingTop="2dp"
-        android:background="@color/black_transparent"
-        android:textColor="@color/white_medium_transparent"
         android:layout_width="200dp"
         android:layout_height="120dp"
-        android:layout_alignParentLeft="true"
         android:layout_alignParentBottom="true"
+        android:layout_alignParentLeft="true"
+        android:layout_marginBottom="20dp"
         android:layout_marginLeft="20dp"
-        android:layout_marginBottom="20dp"/>
+        android:background="@color/black_transparent"
+        android:maxLines="7"
+        android:paddingLeft="2dp"
+        android:paddingTop="2dp"
+        android:scrollbars="vertical"
+        android:text=""
+        android:textColor="@color/white_medium_transparent"
+        android:visibility="invisible" />
 
     <dji.ui.widget.FPVWidget
         android:id="@+id/FPVWidget"
@@ -228,5 +231,14 @@
         android:layout_alignParentBottom="true"
         android:layout_marginRight="20dp"
         android:layout_marginBottom="20dp"/>
+
+    <Button
+        android:id="@+id/btn_sar"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_alignStart="@+id/linearLayout2"
+        android:layout_below="@+id/signal"
+        android:layout_toStartOf="@+id/camera"
+        android:text="SAR" />
 
 </RelativeLayout>

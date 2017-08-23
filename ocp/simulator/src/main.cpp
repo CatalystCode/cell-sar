@@ -10,7 +10,7 @@
 #include <unistd.h>
 #include <time.h>
 
-#include "mqcommon.h"
+#include "sarqueue.h"
 
 volatile sig_atomic_t stop;
 

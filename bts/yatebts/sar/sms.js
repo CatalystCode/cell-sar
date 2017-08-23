@@ -171,6 +171,8 @@ function sendNextSMS() {
 
    // nothing to send
    if (!sms) return;
+   
+   Engine.debug(Engine.DebugInfo, "Sending '" + sms.text + "' to IMSI: '" + sms.to.imsi + "'");
 
    // try to send, if it fails, try again later
    if (dispatchSMS(sms)) {

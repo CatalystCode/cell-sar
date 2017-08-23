@@ -34,6 +34,7 @@ var intervals = {
    'phyinfoPolling': 1000,
    'subscriberExpire': 60000,
    'onInterval': 10000,
+   'checkOCPQueue': 1000,
    'sendSMS': 500
 };
 
