@@ -252,10 +252,12 @@ function onSMS(msg) {
       if (dest == droneRootMsisdn) {
          Engine.debug(Engine.DebugInfo, "SUCCESSFUL sending SMS to OCP");
 
-         writeToOCP({
-            'subscriber': simpleSubscriber(from),
+         var simpleSub = simpleSubscriber(from);
+         var data = {
+            'subscriber': simpleSub,
             'msg': msg.text
-         }, 'sms');
+         };
+         writeToOCP(data, 'sms');
 
          if (onSMSDetected) onSMSDetected({'imsi': from.imsi, 'dest_imsi': droneRootImsi, 'msg': msg.text});
          return true;
