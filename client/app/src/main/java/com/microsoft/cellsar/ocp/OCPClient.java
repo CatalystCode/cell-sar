@@ -1,9 +1,5 @@
-package com.microsoft.cellsar.clients;
+package com.microsoft.cellsar.ocp;
 
-import android.util.Log;
-
-import dji.common.error.DJIError;
-import dji.common.util.CommonCallbacks;
 import dji.sdk.flightcontroller.FlightController;
 
 /**

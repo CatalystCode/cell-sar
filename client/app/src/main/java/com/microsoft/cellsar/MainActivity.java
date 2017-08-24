@@ -30,7 +30,9 @@ import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Polygon;
 import com.google.android.gms.maps.model.PolygonOptions;
-import com.microsoft.cellsar.clients.OCPClient;
+import com.microsoft.cellsar.ocp.OCPClient;
+import com.microsoft.cellsar.sms.SMS;
+import com.microsoft.cellsar.sms.SMSConversation;
 
 import java.util.Collections;
 import java.util.HashMap;
@@ -98,7 +100,7 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMapCli
         txtLog.setMovementMethod(new ScrollingMovementMethod());
         logToggle.setOnClickListener(new View.OnClickListener() {
             public void onClick(View v) {
-                txtLog.setVisibility(txtLog.getVisibility() == View.VISIBLE ? View.INVISIBLE : View.VISIBLE);
+                 txtLog.setVisibility(txtLog.getVisibility() == View.VISIBLE ? View.INVISIBLE : View.VISIBLE);
             }
         });
 
@@ -273,32 +275,56 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMapCli
             mFlightController.setOnboardSDKDeviceDataCallback(new FlightController.OnboardSDKDeviceDataCallback() {
                 @Override
                 public void onReceive(byte[] bytes) {
-                    try {
-                        // do something with incoming OSDK data
-                        final String msg =  new String(bytes);
-                        Log.v("OnboardSDKDevice", msg);
-
-                        // Is this a STATUS or an IR (IMSI/RSSI) message?
-                        if (msg.startsWith("!"))
-                        {
-                            // STATUS message
-                            writeToConsole(msg.substring(1));
-                        }
-                        else {
-                            // IR message
-                            String[] parts = msg.split("_");
-                            String imsi = parts[0];
-                            String upRssi = parts[1];
-                            Integer upRssiInt = Integer.parseInt(upRssi);
-                            drawSignal(upRssiInt, droneLocationLat, droneLocationLng);
-                        }
-                    }
-                    catch (Throwable e)
-                    {
-                        Log.v("OnboardSDKDevice", "failed parsing message");
-                    }
+                    if (!oldHandleOCPMessage(bytes))
+                        newHandleOCPMessage(bytes);
                 }
             });
+        }
+    }
+
+    public boolean oldHandleOCPMessage(byte[] bytes) {
+        try {
+            // do something with incoming OSDK data
+            final String msg =  new String(bytes);
+            Log.v("OnboardSDKDevice", msg);
+
+            // Is this a STATUS or an IR (IMSI/RSSI) message?
+            if (msg.startsWith("!")) {
+                // STATUS message
+                writeToConsole(msg.substring(1));
+                return true;
+            } else {
+                // IR message
+                String[] parts = msg.split("_");
+                String imsi = parts[0];
+                String upRssi = parts[1];
+                Integer upRssiInt = Integer.parseInt(upRssi);
+                drawSignal(upRssiInt, droneLocationLat, droneLocationLng);
+                return true;
+            }
+        } catch (Throwable e) {
+            Log.v("OnboardSDKDevice", "failed parsing message");
+            return false;
+        }
+    }
+
+    public void newHandleOCPMessage(byte[] bytes) {
+        try {
+            String str = new String(bytes);
+
+            // check if first 10 bytes are the sms header
+            if (str.startsWith("sms\0\0\0\0\0\0\0")) {
+                String imsi = str.substring(10, 25);
+                String msg = str.substring(25, str.length());
+
+                SMS.startConversation(imsi);
+                SMSConversation conversation = SMS.getConversation(imsi);
+                conversation.say(imsi, msg);
+
+                Toast.makeText(getApplicationContext(), "New SMS from " + imsi, Toast.LENGTH_LONG).show();
+            }
+        } catch (Throwable e) {
+            Log.v("OnboardSDKDevice", "failed parsing message the second time...");
         }
     }
 

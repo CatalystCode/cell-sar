@@ -7,11 +7,10 @@ import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.view.LayoutInflater;
 import android.view.View;
-import android.view.Window;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
-import com.microsoft.cellsar.clients.OCPClient;
+import com.microsoft.cellsar.ocp.OCPClient;
 import com.microsoft.cellsar.sms.SMS;
 import com.microsoft.cellsar.sms.SMSConversation;
 import com.microsoft.cellsar.sms.SMSMessage;

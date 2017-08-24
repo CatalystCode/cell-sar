@@ -297,6 +297,7 @@ function onSMSFailed(msg) {
    writeToOCP(data, "sms_failed");
 }
 
+// TODO: include the current PLMN here 
 function heartbeat() {
    var subs = activeSubscribers.map(function(sub) { 
       return simpleSubscriber(sub);

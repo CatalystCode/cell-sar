@@ -9,18 +9,14 @@ import android.view.View;
 import android.view.Window;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.AbsListView;
-import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.ImageButton;
 import android.widget.ListView;
 import android.widget.TextView;
 
-import com.microsoft.cellsar.clients.OCPClient;
+import com.microsoft.cellsar.ocp.OCPClient;
 import com.microsoft.cellsar.sms.SMS;
 import com.microsoft.cellsar.sms.SMSConversation;
-import com.microsoft.cellsar.sms.SMSMessage;
-
-import org.w3c.dom.Text;
 
 /**
  * Created by t-catayl on 8/23/2017.
