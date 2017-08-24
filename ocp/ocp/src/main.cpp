@@ -205,21 +205,20 @@ void poll_messages(LinuxSerialDevice* serialDevice, CoreAPI* api, LinuxThread* r
                     }
                 }
                 else if (root["type"].asString() == "sms") {
-                    std::string message = "sms\0\0\0\0\0\0\0";
+
+                    char buffer[100];
+                    memcpy(buffer, "sms", 3);
+
                     std::string imsi = root["data"]["subscriber"]["imsi"].asString();
-                    message += imsi;
+                    memcpy(buffer + 10, imsi.c_str(), 15);
+
                     std::string text = root["data"]["msg"].asString();
-                    message += text;
+                    size_t text_len = text.length();
+                    if (text_len > 75) text_len = 75;
+                    memcpy(buffer + 25, text.c_str(), text_len);
 
-                    size_t msg_len = strlen(message.c_str());
-                    if (msg_len > 100) msg_len = 100;
-
-                    std::cout << "Routing SMS from IMSI " << imsi << std::endl;
-                    std::cout << "   \"" << text << "\"" << std::endl;
-
-                    if (droneConnected) {
-                        api->sendToMobile((uint8_t *)message.c_str(), msg_len);
-                    }
+                    if (droneConnected)
+                        api->sendToMobile((uint8_t *)buffer, 25 + text_len);
                 }
             }
             catch (std::exception const& ex) {
