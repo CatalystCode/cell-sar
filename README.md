@@ -3,7 +3,7 @@
 This repository holds all program code for the sensor component, drone communications, and client application used to drive the Cellular Search and Rescue system.
 
 ### Getting Started / Documentation
-A great place to get started is to check out the documentation in the [project wiki](https://github.com/CatalystCode/cell-sar/wiki). This also contains reference materials for the configuration files and automation extensibility framework.
+A great place to get started is the documentation in the [project wiki](https://github.com/CatalystCode/cell-sar/wiki). This also contains reference materials for the configuration files and automation extensibility framework.
 
 ### Components
 ##### /bts
