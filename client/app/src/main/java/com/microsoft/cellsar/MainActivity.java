@@ -7,6 +7,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.graphics.Color;
+import android.nfc.FormatException;
 import android.os.Bundle;
 import android.support.v4.app.FragmentActivity;
 import android.text.method.ScrollingMovementMethod;
@@ -36,6 +37,7 @@ import com.microsoft.cellsar.sms.SMSConversation;
 
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.IllegalFormatException;
 import java.util.Map;
 
 import dji.common.flightcontroller.FlightControllerState;
@@ -296,7 +298,10 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMapCli
             } else {
                 // IR message
                 String[] parts = msg.split("_");
+                if (parts.length != 2)
+                    throw new FormatException();
                 String imsi = parts[0];
+                SMS.startConversation(imsi);
                 String upRssi = parts[1];
                 Integer upRssiInt = Integer.parseInt(upRssi);
                 drawSignal(upRssiInt, droneLocationLat, droneLocationLng);
@@ -313,15 +318,23 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMapCli
             String str = new String(bytes);
 
             // check if first 10 bytes are the sms header
-            if (str.startsWith("sms\0\0\0\0\0\0\0")) {
-                String imsi = str.substring(10, 25);
-                String msg = str.substring(25, str.length());
+            if (str.startsWith("sms")) {
+                final String imsi = str.substring(10, 25);
+                final String msg = str.substring(25, str.length());
 
                 SMS.startConversation(imsi);
                 SMSConversation conversation = SMS.getConversation(imsi);
                 conversation.say(imsi, msg);
 
-                Toast.makeText(getApplicationContext(), "New SMS from " + imsi, Toast.LENGTH_LONG).show();
+                runOnUiThread(new Runnable() {
+                    @Override
+                    public void run() {
+                        Toast.makeText(getApplicationContext(), "New SMS from " + imsi, Toast.LENGTH_LONG).show();
+                        SMSMessageArrayListAdapter chat = OCPClient.getInstance().chatAdapter;
+                        if (chat != null)
+                            chat.notifyDataSetChanged();
+                    }
+                });
             }
         } catch (Throwable e) {
             Log.v("OnboardSDKDevice", "failed parsing message the second time...");

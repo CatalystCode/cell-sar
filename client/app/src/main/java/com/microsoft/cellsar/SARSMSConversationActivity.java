@@ -25,7 +25,7 @@ import com.microsoft.cellsar.sms.SMSConversation;
 public class SARSMSConversationActivity extends Activity {
 
     private SMSConversation conversation;
-    private SMSMessageArrayListAdapter msgAdapter;
+    public SMSMessageArrayListAdapter msgAdapter;
 
     private ImageButton btnSendSMS;
     private EditText textSMSMessage;
@@ -76,6 +76,7 @@ public class SARSMSConversationActivity extends Activity {
         msgAdapter = new SMSMessageArrayListAdapter(getApplicationContext(), conversation);
         messageListView = (ListView) findViewById(R.id.lv_chat_items);
         messageListView.setAdapter(msgAdapter);
+        OCPClient.getInstance().chatAdapter = msgAdapter;
 
         messageListView.setTranscriptMode(AbsListView.TRANSCRIPT_MODE_ALWAYS_SCROLL);
         messageListView.setSelection(msgAdapter.getCount() - 1);
@@ -97,4 +98,7 @@ public class SARSMSConversationActivity extends Activity {
         // this is most convenient.
         setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LANDSCAPE);
     }
+
+
 }
+

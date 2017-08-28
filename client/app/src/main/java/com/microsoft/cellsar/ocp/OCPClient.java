@@ -1,5 +1,8 @@
 package com.microsoft.cellsar.ocp;
 
+import com.microsoft.cellsar.SARSMSConversationActivity;
+import com.microsoft.cellsar.SMSMessageArrayListAdapter;
+
 import dji.sdk.flightcontroller.FlightController;
 
 /**
@@ -9,6 +12,7 @@ import dji.sdk.flightcontroller.FlightController;
 public class OCPClient {
 
     private FlightController flightController;
+    public SMSMessageArrayListAdapter chatAdapter;
 
     private static OCPClient instance;
     private OCPClient() {}
