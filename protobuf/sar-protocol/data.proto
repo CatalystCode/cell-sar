@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package sar.data;
+package com.microsoft.cellsar.protobuf;
 
 message Subscriber {
    string imsi = 1;

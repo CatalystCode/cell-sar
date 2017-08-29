@@ -2,12 +2,12 @@ syntax = "proto3";
 
 import "data.proto";
 
-package sar.yate;
+package com.microsoft.cellsar.protobuf.yate;
 
 /* Specific Message Types */
 
 message PhyData {
-   sar.data.Subscriber subscriber = 1;
+   com.microsoft.cellsar.protobuf.Subscriber subscriber = 1;
    uint32 ta = 2;
    float te = 3;
    float up_rssi = 4;
@@ -16,10 +16,10 @@ message PhyData {
 
 message StatusData {
    bool engine_started = 1;
-   sar.data.Radio radio = 2;
+   com.microsoft.cellsar.protobuf.Radio radio = 2;
    uint32 pending_smss = 3;
 
-   repeated sar.data.Subscriber subscribers = 4;
+   repeated com.microsoft.cellsar.protobuf.Subscriber subscribers = 4;
 }
 
 message YbtsData {
@@ -40,17 +40,17 @@ message YbtsData {
 }
 
 message SmsData {
-   sar.data.Subscriber subscriber = 1;
+   com.microsoft.cellsar.protobuf.Subscriber subscriber = 1;
    string msg = 2;
 }
 
 message SmsFailedData {
-   sar.data.Subscriber to_subscriber = 1;
+   com.microsoft.cellsar.protobuf.Subscriber to_subscriber = 1;
    string error = 2;
    string reason = 3;
    bool silent = 4;
    uint64 silent_sms_count = 5;
-   sar.data.Subscriber from_subscriber = 6;
+   com.microsoft.cellsar.protobuf.Subscriber from_subscriber = 6;
    string msg = 7;
 }
 

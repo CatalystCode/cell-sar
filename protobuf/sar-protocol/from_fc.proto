@@ -2,7 +2,7 @@ syntax = "proto3";
 
 import "data.proto";
 
-package sar.fc;
+package com.microsoft.cellsar.protobuf.fc;
 
 /* Specific Message Types */
 
@@ -12,7 +12,7 @@ message PlmnData {
 }
 
 message SmsData {
-   sar.data.Subscriber subscriber = 1;
+   com.microsoft.cellsar.protobuf.Subscriber subscriber = 1;
    string msg = 2;
    uint32 tries = 3;
 }
