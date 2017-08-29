@@ -1,0 +1,31 @@
+syntax = "proto3";
+
+import "data.proto";
+
+package sar.fc;
+
+/* Specific Message Types */
+
+message PlmnData {
+   string mcc = 1;
+   string mnc = 2;
+}
+
+message SmsData {
+   sar.data.Subscriber subscriber = 1;
+   string msg = 2;
+   uint32 tries = 3;
+}
+
+/* Generic Message Wrapper */
+
+message FcMessage {
+
+   string type = 1;
+   uint64 time = 2;
+
+   // One of these types will be used, depending on 'type'
+   PlmnData plmn_data = 3;                // type == "plmn"
+   SmsData sms_data = 4;                  // type == "sms"
+}
+

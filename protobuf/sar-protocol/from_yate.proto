@@ -1,0 +1,72 @@
+syntax = "proto3";
+
+import "data.proto";
+
+package sar.yate;
+
+/* Specific Message Types */
+
+message PhyData {
+   sar.data.Subscriber subscriber = 1;
+   uint32 ta = 2;
+   float te = 3;
+   float up_rssi = 4;
+   float dn_rssi_dbm = 5;
+}
+
+message StatusData {
+   bool engine_started = 1;
+   sar.data.Radio radio = 2;
+   uint32 pending_smss = 3;
+
+   repeated sar.data.Subscriber subscribers = 4;
+}
+
+message YbtsData {
+   string type = 1;
+
+   message YbtsTimeoutData {
+      string timeout_for = 1;
+   }
+
+   message YbtsStopnotificationData {
+      bool restarting = 1;
+      string reason = 2;
+   }
+
+   // One of these types will be used, depending on 'type'
+   YbtsTimeoutData ybts_timeout_data = 2;                      // type == "timeout"
+   YbtsStopnotificationData ybts_stopnotification_data = 3;    // type == "stopnotification"
+}
+
+message SmsData {
+   sar.data.Subscriber subscriber = 1;
+   string msg = 2;
+}
+
+message SmsFailedData {
+   sar.data.Subscriber to_subscriber = 1;
+   string error = 2;
+   string reason = 3;
+   bool silent = 4;
+   uint64 silent_sms_count = 5;
+   sar.data.Subscriber from_subscriber = 6;
+   string msg = 7;
+}
+
+/* Generic Messagae Wrapper */
+
+message YateMessage {
+
+   string type = 1;
+   uint64 time = 2;
+
+   // One of these types will be used, depending on 'type'
+   PhyData phy_data = 3;                      // type == "phy"
+   StatusData status_data = 4;                // type == "status"
+   YbtsData ybts_data = 5;                    // type == "ybts"
+   SmsData sms_data = 6;                      // type == "sms"
+   SmsFailedData sms_failed_data = 7;         // type == "sms_failed"
+
+}
+

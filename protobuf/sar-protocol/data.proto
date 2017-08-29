@@ -1,0 +1,16 @@
+syntax = "proto3";
+
+package sar.data;
+
+message Subscriber {
+   string imsi = 1;
+   string tmsi = 2;
+   string msisdn = 3;
+}
+
+message Radio {
+   bool stopped = 1;
+   string stopped_reason = 2;
+}
+
+
