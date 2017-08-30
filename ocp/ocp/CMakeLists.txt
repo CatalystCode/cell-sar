@@ -19,7 +19,6 @@ if (LIDAR_LOGGING)
   include_directories(../sensor-integration/velodyne_vlp16puck_lite_API_example/vlp16lidar-driver/inc)
 endif ()
 
-
 FILE(GLOB SOURCE_FILES inc/*.h src/*.cpp ../ocp-common/*.cpp ../ocp-common/*.h)
 add_executable(${PROJECT_NAME} ${SOURCE_FILES})
 
