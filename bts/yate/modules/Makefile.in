@@ -282,6 +282,9 @@ qt4/%.o: @srcdir@/qt4/%.cpp $(MKDEPS) $(INCFILES)
 sarqueue.o: sarqueue.cpp $(MKDEPS) $(INCFILES)
 	$(COMPILE) -c $< -lrt
 
+%.pb.o: @srcdir@/%.pb.cc
+	$(COMPILE) -c $<
+
 do-all do-strip do-clean do-install do-uninstall:
 	$(if $(SUBDIRS),\
 	@target=`echo $@ | $(SED) -e 's/^do-//'`; \
@@ -320,8 +323,8 @@ sip/%.yate: @srcdir@/sip/%.cpp $(MKDEPS) $(INCFILES)
 %.yate: @srcdir@/%.cpp $(MKDEPS) $(INCFILES)
 	$(MODCOMP) -o $@ $(LOCALFLAGS) $(EXTERNFLAGS) $< $(LOCALLIBS) $(YATELIBS) $(EXTERNLIBS)
 
-searchandrescue.yate: searchandrescue.cpp sarqueue.o $(MKDEPS) $(INCFILES)
-	$(MODCOMP) sarqueue.o -o $@ $(LOCALFLAGS) $(EXTERNFLAGS) $< $(LOCALLIBS) $(YATELIBS) $(EXTERNLIBS) -lrt
+searchandrescue.yate: searchandrescue.cpp sarqueue.o data.pb.o from_yate.pb.o from_fc.pb.o $(MKDEPS) $(INCFILES)
+	$(MODCOMP) sarqueue.o data.pb.o from_yate.pb.o from_fc.pb.o -o $@ $(LOCALFLAGS) $(EXTERNFLAGS) $< $(LOCALLIBS) $(YATELIBS) $(EXTERNLIBS) -lrt `pkg-config --cflags --libs protobuf`
 
 # Take special care of the modules that depend on optional libs
 

@@ -42,15 +42,40 @@ var sar = SearchAndRescue();
 
 function writeToOCP(data, type) {
    var now = Date.now();
-   var obj = {
-      'type': type,
+   var msg = {
+      'type': type, 
       'time': now,
-      'data': data
+
+      'phy_data': null,
+      'status_data': null,
+      'ybts_data': null,
+      'sms_data': null,
+      'sms_failed_data': null
    };
 
-   var objStr = JSON.stringify(obj);
+   switch (type) {
+      case "phy":
+         msg.phy_data = data;
+         break;
+      case "status":
+         msg.status_data = data;
+         break;
+      case "ybts":
+         msg.ybts_data = data;
+         break;
+      case "sms":
+         msg.sms_data = data;
+         break;
+      case "sms_failed":
+         msg.sms_failed_data = data;
+         break;
+      default;
+         break;
+   }
+
+   var objStr = JSON.stringify(msg);
    sar.writeToOCP(objStr);
-};
+}
 
 /* ############### SAR Initialization ############### */
 

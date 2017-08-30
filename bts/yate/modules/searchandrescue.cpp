@@ -34,9 +34,15 @@
 #include <yatengine.h>
 #include <yatescript.h>
 
+#include <google/protobuf/util/json_util.h>
 #include "sarqueue.h"
+#include "data.pb.h"
+#include "from_fc.pb.h"
+#include "from_yate.pb.h"
 
 using namespace TelEngine;
+using namespace google::protobuf::util;
+using namespace com::microsoft::cellsar::protobuf;
 
 class SearchAndRescue : public JsObject {
    YCLASS(SearchAndRescue, JsObject)
@@ -57,8 +63,14 @@ protected:
 
    bool runNative(ObjList &stack, const ExpOperation &oper, GenObject *context);
 
+   /**
+    * Convert the passed JSON object to a YateMessage protobuffer and pass it to the ocp.
+    */
    void write_to_ocp(ObjList &stack, const ExpOperation &oper, GenObject *context);
 
+   /**
+    * Convert the FcMessage protobuffer to JSON and return it.
+    */
    void read_from_ocp(ObjList &stack, const ExpOperation &oper, GenObject *context);
 
    void change_plmn(ObjList &stack, const ExpOperation &oper, GenObject *context);
@@ -144,56 +156,75 @@ bool SearchAndRescue::runNative(ObjList &stack, const ExpOperation &oper, GenObj
 
 void SearchAndRescue::write_to_ocp(ObjList &stack, const ExpOperation &oper, GenObject *context) {
    ObjList args;
-   int argc = extractArgs(stack, oper, context, args);
-   String tmp;
-   tmp << "SearchAndRescue::write_to_ocp '";
-   std::string message;
+   if (extractArgs(stack, oper, context, args) < 1) return;
 
-   // Evaluate
-   if (argc < 1) {
-      tmp << " ''";
-      ExpEvaluator::pushOne(stack, new ExpOperation(tmp));      
-   } else {
-      ExpOperation *msg = static_cast<ExpOperation*>(args[0]);
-      tmp << " '" << msg->c_str() << "'";
-      ExpEvaluator::pushOne(stack, new ExpOperation(tmp));
-      message = std::string(msg->c_str());
-   }
+   // get the json string
+   ExpOperation *msg = static_cast<ExpOperation*>(args[0]);
+   std::string json(msg->c_str());
 
-   // write to the POSIX queue
-   MQCommon::push((message + "\n").c_str());
+   // convert it to a protobuf object
+   yate::YateMessage yate_message;
+   Status status = JsonStringToMessage(json, &yate_message);
 
-   // write to the log file
    std::ofstream sar_log;
    sar_log.open(SearchAndRescue::OUT_FILE, std::ios_base::app);
-   sar_log << "[WRITE]> " << message.c_str() << std::endl << std::endl;
+   sar_log << "[WRITE]> " << json.c_str() << std::endl;
+
+   if (status.ok()) {
+
+      // write the protobuf object to the POSIX queue
+      unsigned int size = yate_message.ByteSize();
+      void *buffer = malloc(size);
+      yate_message.SerializeToArray(buffer, size);
+      MQCommon::push((const char *)buffer);
+      free(buffer);
+
+   } else {
+      sar_log << "   ERROR converting json to YateMessage: " << status.ToString() << std::endl;
+   } 
+   
+   sar_log << std::endl;
    sar_log.close();
+   ExpEvaluator::pushOne(stack, new ExpOperation(status.ok()));
 }
 
 void SearchAndRescue::read_from_ocp(ObjList &stack, const ExpOperation &oper, GenObject *context) {
-   ObjList args;
-   int argc = extractArgs(stack, oper, context, args);
    String tmp;
 
    // read from the POSIX queue
    char *buffer;
    unsigned int buflen = MQCommon::pop(&buffer);
    if (buffer == NULL) {
-      // nothing in the queue
       ExpEvaluator::pushOne(stack, new ExpOperation(tmp));
       return;
    }
 
-   std::string message(buffer, buflen);
-   tmp << message.c_str();
-   
-   ExpEvaluator::pushOne(stack, new ExpOperation(tmp));
-
-   // write to the log file
    std::ofstream sar_log;
    sar_log.open(SearchAndRescue::OUT_FILE, std::ios_base::app);
-   sar_log << "[READ ]> " << message << std::endl << std::endl;
+   
+   // convert the buffer to an FcMessage
+   fc::FcMessage fc_message;
+   bool result = fc_message.ParseFromArray((const void *)buffer, buflen);
+
+   // convert to a JSON string
+   std::string json("");
+   Status status;
+   if (result) {
+      status = MessageToJsonString(fc_message, &json);
+   }
+
+   // log results
+   sar_log << "[READ ]> " << json << std::endl;
+   if (!result) {
+      sar_log << "   ERROR parsing FcMessage from array." << std::endl;
+   } else if (!status.ok()) {
+      sar_log << "   ERROR converting FcMessage to JSON: " << status.ToString() << std::endl;
+   }
+   sar_log << std::endl;
+
    sar_log.close();
+   String jsonResult(json.c_str());
+   ExpEvaluator::pushOne(stack, new ExpOperation(jsonResult));
 }
 
 void SearchAndRescue::change_plmn(ObjList &stack, const ExpOperation &oper, GenObject *context) {
