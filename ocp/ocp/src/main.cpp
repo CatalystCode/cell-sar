@@ -20,10 +20,6 @@
 #include <sys/stat.h> /* For mode constants */
 #include <sys/types.h>
 
-
-//JSONCPP Amalgamated
-#include <json.h>
-
 //DJI Linux Application Headers
 #include "LinuxSerialDevice.h"
 #include "LinuxThread.h"
@@ -42,8 +38,10 @@
 #include <DJI_Version.h>
 #include <DJI_WayPoint.h>
 
+#include <google/protobuf/util/json_util.h>
 #include "sarqueue.h"
 #include "from_fc.pb.h"
+#include "from_yate.pb.h"
 
 #define CMD_TYPE_SIZE 10
 #define PLMN_REQUEST "plmn\0\0\0\0\0\0"
@@ -53,6 +51,7 @@ using namespace std;
 using namespace DJI;
 using namespace DJI::onboardSDK;
 using namespace com::microsoft::cellsar::protobuf;
+using namespace google::protobuf::util;
 
 volatile sig_atomic_t stop;
 
@@ -66,6 +65,7 @@ void int_hand(int signum) {
 void ocpFromMobileCallback(DJI::onboardSDK::CoreAPI *core_api, Header *header, 
       UserData user_data) {
 
+   std::cout << "------------------------------" << std::endl;
    std::cout << "FromMobileCallback executing..." << std::endl;
 
    // get the buffer
@@ -93,6 +93,7 @@ void ocpFromMobileCallback(DJI::onboardSDK::CoreAPI *core_api, Header *header,
       MQCommon::push(for_yate.c_str());
 
    }
+   std::cout << "------------------------------" << std::endl;
 }
 
 bool dji_connect(LinuxSerialDevice* serialDevice, CoreAPI* api, LinuxThread* read)
@@ -115,6 +116,34 @@ bool dji_connect(LinuxSerialDevice* serialDevice, CoreAPI* api, LinuxThread* rea
     return true;
 }
 
+bool handle_yate_message(char *buffer, unsigned int buflen, std::string *message) {
+   std::string result;
+   std::cout << "------------------------------" << std::endl;
+   std::cout << "Read byte buffer of size " << buflen << " from YATE" << std::endl;
+
+   std::cout << "   Verifying that the buffer is a YateMessage" << std::endl;
+   yate::YateMessage yate_message;
+   bool is_yate_message = yate_message.ParseFromArray((const void *)buffer, buflen);
+   if (!is_yate_message) {
+      std::cout << "   Could not convert byte array to YateMessage. Skipping." << std::endl;
+   std::cout << "------------------------------" << std::endl;
+      return false;
+   }
+
+   // convert to JSON and print for debugging purposes.
+   std::string json("");
+   Status status = MessageToJsonString(yate_message, &json);
+   if (!status.ok())
+      std::cout << "   Failed to turn YateMessage into JSON, passing along anyways." << std::endl;
+   else 
+      std::cout << "   " << json << std::endl;
+
+   std::cout << "   Passing YateMessage to the flight controller." << std::endl;
+   std::cout << "------------------------------" << std::endl;
+   *message = result;
+   return true;
+}
+
 void poll_messages(LinuxSerialDevice* serialDevice, CoreAPI* api, LinuxThread* read)
 {
   bool droneConnected = false;
@@ -124,6 +153,7 @@ void poll_messages(LinuxSerialDevice* serialDevice, CoreAPI* api, LinuxThread* r
 
   MQCommon::init(OCP);
 
+  std::string message;
   while (!stop) {
         char* buffer;
         unsigned int buflen = MQCommon::pop(&buffer);
@@ -136,53 +166,9 @@ void poll_messages(LinuxSerialDevice* serialDevice, CoreAPI* api, LinuxThread* r
               iterationsUntilAttempt = 10;
             }
 
-            std::cout << "----------" << std::endl;
-            std::cout << buffer << "\n";
-            std::cout << "----------" << std::endl;
-
             try {
-                Json::Value root;
-                Json::Reader reader;
-                reader.parse(buffer, root);
-
-                /* Signal strength messages for a phone */
-                if (root["type"].asString() == "phy") {
-                    std::string message = root["data"]["IMSI"].asString() + "_" + root["data"]["UpRSSI"].asString();
-
-                    std::cout << message << "\n";
-
-                    if (droneConnected) {
-                        api->sendToMobile((uint8_t*)message.c_str(), strlen(message.c_str()));
-                    }
-                }
-                /* Other status messages */
-                else if (root["type"].asString() == "status") {
-
-                    // Prefix message with a !bang! to signal to the mobile device this is a status message.
-                    std::string message = "!ping"; // We can pull a message field if there is a meaningful one, later.
-
-                    std::cout << message << "\n";
-
-                    if (droneConnected) {
-                        api->sendToMobile((uint8_t*)message.c_str(), strlen(message.c_str()));
-                    }
-                }
-                else if (root["type"].asString() == "sms") {
-
-                    char buffer[100];
-                    memcpy(buffer, "sms", 3);
-
-                    std::string imsi = root["data"]["subscriber"]["imsi"].asString();
-                    memcpy(buffer + 10, imsi.c_str(), 15);
-
-                    std::string text = root["data"]["msg"].asString();
-                    size_t text_len = text.length();
-                    if (text_len > 75) text_len = 75;
-                    memcpy(buffer + 25, text.c_str(), text_len);
-
-                    if (droneConnected)
-                        api->sendToMobile((uint8_t *)buffer, 25 + text_len);
-                }
+               if (handle_yate_message(buffer, buflen, &message) && droneConnected)
+                  api->sendToMobile((uint8_t *)message.c_str(), strlen(message.c_str()));
             }
             catch (std::exception const& ex) {
                 std::cout << ex.what() << "\n";
@@ -221,3 +207,4 @@ int main(int argc, char* argv[])
     std::cout << "Program exited successfully." << std::endl;
     return 0;
 }
+

@@ -370,9 +370,9 @@ function checkOCPQueue() {
    if (!msgObj) return false;
 
    if (msgObj.type === "plmn") {
-      return handleOCP_plmn(msgObj.data);
+      return handleOCP_plmn(msgObj.plmn_data);
    } else if (msgObj.type === "sms") {
-      return handleOCP_sms(msgObj.data);
+      return handleOCP_sms(msgObj.sms_data);
    }
    return false;
 }

@@ -19,7 +19,7 @@ if (LIDAR_LOGGING)
   include_directories(../sensor-integration/velodyne_vlp16puck_lite_API_example/vlp16lidar-driver/inc)
 endif ()
 
-FILE(GLOB SOURCE_FILES inc/*.h src/*.cpp ../ocp-common/*.cpp ../ocp-common/*.h)
+FILE(GLOB SOURCE_FILES inc/*.h src/*.cpp ../ocp-common/*.cpp ../ocp-common/*.cc ../ocp-common/*.h)
 add_executable(${PROJECT_NAME} ${SOURCE_FILES})
 
 add_dependencies(${PROJECT_NAME} djiosdk-wrapper)
@@ -32,5 +32,10 @@ endif()
 
 set(BLOCKING_LINK_LIBRARIES djiosdk-core djiosdk-platform djiosdk-wrapper)
 
-target_link_libraries(${PROJECT_NAME} ${BLOCKING_LINK_LIBRARIES} -lrt)
+# Protobuf
+include(FindProtobuf)
+find_package(Protobuf REQUIRED)
+include_directories(${PROTOBUF_INCLUDE_DIR})
+
+target_link_libraries(${PROJECT_NAME} ${BLOCKING_LINK_LIBRARIES} ${PROTOBUF_LIBRARY} -lrt)
 

@@ -75,6 +75,10 @@ protected:
 
    void change_plmn(ObjList &stack, const ExpOperation &oper, GenObject *context);
 
+private:
+
+   std::ofstream sar_log;
+
 };
 
 class SearchAndRescueHandler : public MessageHandler {
@@ -111,10 +115,15 @@ SearchAndRescue::SearchAndRescue(Mutex *mtx) : JsObject("SearchAndRescue", mtx, 
    params().addParam(new ExpFunction("writeToOCP"));
    params().addParam(new ExpFunction("readFromOCP"));
    params().addParam(new ExpFunction("changePLMN"));
+
+   sar_log.open(SearchAndRescue::OUT_FILE, std::ios_base::app);
 }
 
 SearchAndRescue::~SearchAndRescue() {
    Debug(DebugAll, "SearchAndRescue::~SearchAndRescue() [%p]", this);
+
+   if (sar_log.is_open())
+      sar_log.close();
 }
 
 SearchAndRescue *SearchAndRescue::runConstructor(ObjList &stack, const ExpOperation &oper, GenObject *context) {
@@ -166,11 +175,8 @@ void SearchAndRescue::write_to_ocp(ObjList &stack, const ExpOperation &oper, Gen
    yate::YateMessage yate_message;
    Status status = JsonStringToMessage(json, &yate_message);
 
-   std::ofstream sar_log;
-   sar_log.open(SearchAndRescue::OUT_FILE, std::ios_base::app);
-   sar_log << "[WRITE]> " << json.c_str() << std::endl;
-
    if (status.ok()) {
+      sar_log << "[WRITE]> " << json.c_str() << std::endl;
 
       // write the protobuf object to the POSIX queue
       unsigned int size = yate_message.ByteSize();
@@ -184,7 +190,6 @@ void SearchAndRescue::write_to_ocp(ObjList &stack, const ExpOperation &oper, Gen
    } 
    
    sar_log << std::endl;
-   sar_log.close();
    ExpEvaluator::pushOne(stack, new ExpOperation(status.ok()));
 }
 
@@ -199,9 +204,6 @@ void SearchAndRescue::read_from_ocp(ObjList &stack, const ExpOperation &oper, Ge
       return;
    }
 
-   std::ofstream sar_log;
-   sar_log.open(SearchAndRescue::OUT_FILE, std::ios_base::app);
-   
    // convert the buffer to an FcMessage
    fc::FcMessage fc_message;
    bool result = fc_message.ParseFromArray((const void *)buffer, buflen);
@@ -222,7 +224,6 @@ void SearchAndRescue::read_from_ocp(ObjList &stack, const ExpOperation &oper, Ge
    }
    sar_log << std::endl;
 
-   sar_log.close();
    String jsonResult(json.c_str());
    ExpEvaluator::pushOne(stack, new ExpOperation(jsonResult));
 }
