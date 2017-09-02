@@ -7,11 +7,11 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.graphics.Color;
-import android.nfc.FormatException;
 import android.os.Bundle;
 import android.support.v4.app.FragmentActivity;
 import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
+import android.util.StringBuilderPrinter;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.Button;
@@ -31,14 +31,20 @@ import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Polygon;
 import com.google.android.gms.maps.model.PolygonOptions;
-import com.microsoft.cellsar.ocp.OCPClient;
+import com.microsoft.cellsar.ocp.OCP;
+import com.microsoft.cellsar.protobuf.yate.FromYate.PhyData;
+import com.microsoft.cellsar.protobuf.yate.FromYate.StatusData;
+import com.microsoft.cellsar.protobuf.yate.FromYate.YbtsData;
+import com.microsoft.cellsar.protobuf.yate.FromYate.SmsData;
+import com.microsoft.cellsar.protobuf.yate.FromYate.SmsFailedData;
+import com.microsoft.cellsar.protobuf.yate.FromYate.YateMessage;
 import com.microsoft.cellsar.sms.SMS;
 import com.microsoft.cellsar.sms.SMSConversation;
 
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.IllegalFormatException;
 import java.util.Map;
+import java.util.concurrent.RunnableFuture;
 
 import dji.common.flightcontroller.FlightControllerState;
 import dji.common.flightcontroller.LocationCoordinate3D;
@@ -49,6 +55,8 @@ import dji.ui.widget.FPVWidget;
 
 /** Main activity that displays two choices to user */
 public class MainActivity extends FragmentActivity implements GoogleMap.OnMapClickListener, OnMapReadyCallback {
+    private static final String TAG = "MainActivity";
+
     private GoogleMap gMap;
     private double droneLocationLat = 181, droneLocationLng = 181;
     private Marker droneMarker = null;
@@ -149,7 +157,7 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMapCli
 
                     String mcc = parsePLMNFragment((EditText)plmnView.findViewById(R.id.txt_plmn_mcc));
                     String mnc = parsePLMNFragment((EditText)plmnView.findViewById(R.id.txt_plmn_mnc));
-                    OCPClient.getInstance().setPLMN(mcc, mnc);
+                    OCP.getInstance().setPLMN(mcc, mnc);
 
                     String message = "Set PLMN to " + mcc + mnc;
                     Toast.makeText(getApplicationContext(), message, Toast.LENGTH_LONG).show();
@@ -190,7 +198,7 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMapCli
 
         if (this.mFlightController == null) {
             initFlightController();
-            OCPClient.getInstance().setFlightController(this.mFlightController);
+            OCP.getInstance().setFlightController(this.mFlightController);
         }
     }
 
@@ -277,68 +285,134 @@ public class MainActivity extends FragmentActivity implements GoogleMap.OnMapCli
             mFlightController.setOnboardSDKDeviceDataCallback(new FlightController.OnboardSDKDeviceDataCallback() {
                 @Override
                 public void onReceive(byte[] bytes) {
-                    if (!oldHandleOCPMessage(bytes))
-                        newHandleOCPMessage(bytes);
+                    YateMessage yateMessage = OCP.parseBytes(bytes);
+                    if (yateMessage == null) return;
+
+                    // TODO: make a proper message handling system
+                    Log.i(TAG, "Handling incoming " + yateMessage.getType() + " message");
+                    try {
+                        switch (yateMessage.getType()) {
+                            case "phy":
+                                handleYatePhyMessage(yateMessage.getPhyData());
+                                break;
+                            case "status":
+                                handleYateStatusMessage(yateMessage.getStatusData());
+                                break;
+                            case "ybts":
+                                handleYateYbtsMessage(yateMessage.getYbtsData());
+                                break;
+                            case "sms":
+                                handleYateSmsMessage(yateMessage.getSmsData());
+                                break;
+                            case "sms_failed":
+                                handleYateSmsFailedMessage(yateMessage.getSmsFailedData());
+                                break;
+                            default:
+                                Log.w(TAG, "Unknown YateMessage type: " + yateMessage.getType());
+                                break;
+                        }
+                        Log.i(TAG, "Message handled successfully");
+                    } catch (Exception e) {
+                        Log.e(TAG, "Error handling YateMessage: " + e.getMessage(), e);
+                    }
                 }
             });
         }
     }
 
-    public boolean oldHandleOCPMessage(byte[] bytes) {
-        try {
-            // do something with incoming OSDK data
-            final String msg =  new String(bytes);
-            Log.v("OnboardSDKDevice", msg);
-
-            // Is this a STATUS or an IR (IMSI/RSSI) message?
-            if (msg.startsWith("!")) {
-                // STATUS message
-                writeToConsole(msg.substring(1));
-                return true;
-            } else {
-                // IR message
-                String[] parts = msg.split("_");
-                if (parts.length != 2)
-                    throw new FormatException();
-                String imsi = parts[0];
-                SMS.startConversation(imsi);
-                String upRssi = parts[1];
-                Integer upRssiInt = Integer.parseInt(upRssi);
-                drawSignal(upRssiInt, droneLocationLat, droneLocationLng);
-                return true;
-            }
-        } catch (Throwable e) {
-            Log.v("OnboardSDKDevice", "failed parsing message");
-            return false;
-        }
+    private void handleYatePhyMessage(PhyData data) {
+        String imsi = data.getSubscriber().getImsi();
+        SMS.startConversation(imsi);
+        Float upRssi = data.getUpRssi();
+        drawSignal(Math.round(upRssi), droneLocationLat, droneLocationLng);
     }
 
-    public void newHandleOCPMessage(byte[] bytes) {
-        try {
-            String str = new String(bytes);
+    private void handleYateStatusMessage(StatusData data) {
+        StringBuilder sb = new StringBuilder("status: ");
 
-            // check if first 10 bytes are the sms header
-            if (str.startsWith("sms")) {
-                final String imsi = str.substring(10, 25);
-                final String msg = str.substring(25, str.length());
+        sb.append("engine_started=");
+        sb.append(data.getEngineStarted());
 
-                SMS.startConversation(imsi);
-                SMSConversation conversation = SMS.getConversation(imsi);
-                conversation.say(imsi, msg);
+        sb.append(", pending_smss=");
+        sb.append(data.getPendingSmss());
 
-                runOnUiThread(new Runnable() {
-                    @Override
-                    public void run() {
-                        Toast.makeText(getApplicationContext(), "New SMS from " + imsi, Toast.LENGTH_LONG).show();
-                        SMSMessageArrayListAdapter chat = OCPClient.getInstance().chatAdapter;
-                        if (chat != null)
-                            chat.notifyDataSetChanged();
-                    }
-                });
-            }
-        } catch (Throwable e) {
-            Log.v("OnboardSDKDevice", "failed parsing message the second time...");
+        sb.append(", radio_stopped=");
+        boolean radioStopped = data.getRadio().getStopped();
+        sb.append(radioStopped);
+        if (radioStopped) {
+            sb.append(", radio_stopped_reason=");
+            sb.append(data.getRadio().getStoppedReason());
         }
+
+        sb.append(", subscribers=");
+        sb.append(data.getSubscribersCount());
+
+        writeToConsole(sb.toString());
+    }
+
+    private void handleYateYbtsMessage(YbtsData data) {
+        StringBuilder sb = new StringBuilder();
+
+        switch (data.getType()) {
+
+            case "timeout":
+                sb.append("ybts_timeout: ");
+                YbtsData.YbtsTimeoutData timeoutData = data.getYbtsTimeoutData();
+                sb.append("timeout_for=");
+                sb.append(timeoutData.getTimeoutFor());
+                break;
+
+            case "stopnotification":
+                sb.append("ybts_stopnotification: ");
+                YbtsData.YbtsStopnotificationData stopData = data.getYbtsStopnotificationData();
+                sb.append("restarting=");
+                sb.append(stopData.getRestarting());
+                sb.append(", reason=");
+                sb.append(stopData.getReason());
+                break;
+        }
+
+        writeToConsole(sb.toString());
+    }
+
+    private void handleYateSmsFailedMessage(SmsFailedData data) {
+        StringBuilder sb = new StringBuilder("sms_failed: ");
+
+        sb.append("to=");
+        sb.append(data.getToSubscriber().getImsi());
+        sb.append(", silent=");
+        boolean silent = data.getSilent();
+        sb.append(silent);
+        if (silent) {
+            sb.append(", silent_count=");
+            sb.append(data.getSilentSmsCount());
+        }
+        sb.append(", error=");
+        sb.append(data.getError());
+        sb.append(", reason=");
+        sb.append(data.getReason());
+
+        writeToConsole(sb.toString());
+    }
+
+    private void handleYateSmsMessage(SmsData data) {
+        final String imsi = data.getSubscriber().getImsi();
+        final String msg = data.getMsg();
+
+        SMS.startConversation(imsi);
+        SMSConversation conversation = SMS.getConversation(imsi);
+        conversation.say(imsi, msg);
+
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                // TODO: make a more obvioius 'new message' notification'
+                Toast.makeText(getApplicationContext(), "New SMS from " + imsi, Toast.LENGTH_LONG).show();
+                SMSMessageArrayListAdapter chat = OCP.getInstance().chatAdapter;
+                if (chat != null)
+                    chat.notifyDataSetChanged();
+            }
+        });
     }
 
     public static boolean checkGpsCoordinates(double latitude, double longitude) {

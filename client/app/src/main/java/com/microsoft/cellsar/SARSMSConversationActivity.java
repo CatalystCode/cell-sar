@@ -14,7 +14,7 @@ import android.widget.ImageButton;
 import android.widget.ListView;
 import android.widget.TextView;
 
-import com.microsoft.cellsar.ocp.OCPClient;
+import com.microsoft.cellsar.ocp.OCP;
 import com.microsoft.cellsar.sms.SMS;
 import com.microsoft.cellsar.sms.SMSConversation;
 
@@ -66,7 +66,7 @@ public class SARSMSConversationActivity extends Activity {
                 conversation.setAnyUnreadMessages(false);
 
                 // send the SMS
-                OCPClient.getInstance().sendSMS(conversation.getWho(), message);
+                OCP.getInstance().sendSMS(conversation.getWho(), message);
 
                 hideKeyboard();
             }
@@ -76,7 +76,7 @@ public class SARSMSConversationActivity extends Activity {
         msgAdapter = new SMSMessageArrayListAdapter(getApplicationContext(), conversation);
         messageListView = (ListView) findViewById(R.id.lv_chat_items);
         messageListView.setAdapter(msgAdapter);
-        OCPClient.getInstance().chatAdapter = msgAdapter;
+        OCP.getInstance().chatAdapter = msgAdapter;
 
         messageListView.setTranscriptMode(AbsListView.TRANSCRIPT_MODE_ALWAYS_SCROLL);
         messageListView.setSelection(msgAdapter.getCount() - 1);

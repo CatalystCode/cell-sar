@@ -10,7 +10,7 @@ import android.view.View;
 import android.widget.LinearLayout;
 import android.widget.TextView;
 
-import com.microsoft.cellsar.ocp.OCPClient;
+import com.microsoft.cellsar.ocp.OCP;
 import com.microsoft.cellsar.sms.SMS;
 import com.microsoft.cellsar.sms.SMSConversation;
 import com.microsoft.cellsar.sms.SMSMessage;
@@ -27,7 +27,7 @@ public class SARSMSActivity extends Activity {
     private static final String TAG = "SARSMS";
     private static final int PREVIEW_LENGTH = 32;
 
-    private OCPClient ocp;
+    private OCP ocp;
 
     private LinearLayout conversationTable;
     private ArrayList<ConversationCell> conversationCells;
