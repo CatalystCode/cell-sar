@@ -24,6 +24,10 @@
 #include <yateradio.h>
 #include <yatemath.h>
 #include <libusb-1.0/libusb.h>
+#include <iostream>
+#include <iomanip>
+#include <sstream>
+#include <string>
 
 #ifdef __MMX__
 #include <mmintrin.h>
@@ -1828,7 +1832,15 @@ public:
 	Calibrated,                      // Succesfully calibrated
 	Calibrating,                     // Calibration in progress
     };
+
+    // Cameron
+    enum XB300Setting {
+        XB300_PA = 0,
+        XB300_LNA = 1
+    };
+
     ~BrfLibUsbDevice();
+
     inline BrfInterface* owner() const
 	{ return m_owner; }
     inline libusb_device_handle* handle() const
@@ -2578,6 +2590,19 @@ private:
     unsigned int waitCancel(const char* loc, const char* reason, String* error);
     // Apply parameters from start notification message
     unsigned int applyStartParams(const NamedList& params, String* error);
+
+    // Cameron
+    //    Implementations and explanations below
+    unsigned int xb300GpioRead(uint8_t addr, uint32_t& value, uint8_t len, String *error = 0);
+    unsigned int xb300GpioWrite(uint8_t addr, uint32_t value, uint8_t len, String *error = 0);
+    bool xb300Attached;
+    bool initializeXb300();
+    bool checkXb(String &error);
+    bool _xb300_attach(String &error);
+    bool _xb300_enable(String &error);
+    bool _xb300_set_trx(String &error);
+    bool _xb300_get_output_power(float *pwr, String &error);
+    bool configureXb300(XB300Setting, bool);
 
     BrfInterface* m_owner;               // The interface owning the device
     String m_serial;                     // Serial number of device to use
@@ -4304,6 +4329,19 @@ unsigned int BrfLibUsbDevice::open(const NamedList& params, String& error)
 		Debug(m_owner,DebugConf,"Failed to parse srate_buffered_samples='%s': %s [%p]",
 		    sRateSamples.c_str(),s,m_owner);
 	}
+
+
+        // Cameron
+        // Turn on XB300 Amp
+        // TODO: determine if this is the proper spot to hook these actions.
+        xb300Attached = false;
+        bool xb300Pa = true;             // TODO: load value from config 
+        bool xb300Lna = true;            // TODO: load value from config
+        if ((xb300Pa || xb300Lna) && initializeXb300()) {
+            configureXb300(XB300_PA, xb300Pa);
+            configureXb300(XB300_LNA, xb300Lna);       
+        }
+
 	break;
     }
     if (status) {
@@ -10281,6 +10319,335 @@ unsigned int BrfLibUsbDevice::applyStartParams(const NamedList& params, String* 
     return 0;
 }
 
+// Cameron
+
+#define SHOW_GPIO_IO false
+
+// bladeRF XB flags
+//   Defined here:
+//   https://github.com/Nuand/bladeRF/blob/fcd775f2b92bcb3cb70781df5824ca7ddfc3e00f/host/libraries/libbladeRF/src/xb.c#L65
+#define BLADERF_XB_AUX_EN       0x000002
+#define BLADERF_XB_TX_LED       0x000010
+#define BLADERF_XB_RX_LED       0x000020
+#define BLADERF_XB_TRX_TXn      0x000040
+#define BLADERF_XB_TRX_RXn      0x000080
+#define BLADERF_XB_TRX_MASK     0x0000c0
+#define BLADERF_XB_PA_EN        0x000200
+#define BLADERF_XB_LNA_ENn      0x000400
+#define BLADERF_XB_CS           0x010000
+#define BLADERF_XB_CSEL         0x040000
+#define BLADERF_XB_DOUT         0x100000
+#define BLADERF_XB_SCLK         0x400000
+
+// NIOS addressing
+//   Defined here:
+//   https://github.com/Nuand/bladeRF/blob/fcd775f2b92bcb3cb70781df5824ca7ddfc3e00f/fpga_common/include/nios_pkt_legacy.h
+#define NIOS_PKT_LEGACY_PIO_ADDR_CONTROL     0
+#define NIOS_PKT_LEGACY_PIO_LEN_CONTROL      4
+#define NIOS_PKT_LEGACY_PIO_ADDR_EXP        40
+#define NIOS_PKT_LEGACY_PIO_LEN_EXP          4
+#define NIOS_PKT_LEGACY_PIO_ADDR_EXP_DIR    44
+#define NIOS_PKT_LEGACY_PIO_LEN_EXP_DIR      4
+
+// Blade Expansion Board Types
+//   Defined here:
+//   https://github.com/Nuand/bladeRF/blob/6aafcaa0cf5887ed7a45de8284e04a976fee3851/host/libraries/libbladeRF/include/libbladeRF.h#L2067
+#define BLADERF_XB_NONE 0
+#define BLADERF_XB_100  1
+#define BLADERF_XB_200  2
+#define BLADERF_XB_300  3
+
+/**
+ * Wrapper arround BrfLibUsbDevice::gpioRead that also prints the values in hex
+ */
+unsigned int BrfLibUsbDevice::xb300GpioRead(uint8_t addr, uint32_t& value, uint8_t len, String *error) {
+    if (SHOW_GPIO_IO) {
+        std::stringstream read_val;
+        read_val << "      READ  [0x" << std::setfill('0') << std::setw(16) << std::hex << value << "]";
+        Debug(m_owner, DebugConf, read_val.str().c_str());
+    }
+    return gpioRead(addr, value, len, error);
+}
+
+/**
+ * Wrapper arround BrfLibUsbDevice::gpioWrite that also prints the values in hex
+ * 
+ * NOTE: 
+ *
+ *      Normally, the writing operations are preceded by a read operation and the writing value is 
+ *      applied to the read value by filtering through a mask. But, in all writes the mask value was
+ *      0xffffffff. If we look at the legacy implementation:
+ *
+ *      https://github.com/Nuand/bladeRF/blob/fcd775f2b92bcb3cb70781df5824ca7ddfc3e00f/host/libraries/libbladeRF/src/backend/usb/nios_legacy_access.c#L568
+ *
+ *      it only does the read operation if the mask is NOT 0xffffffff. So, we are ignoring the read
+ *      step when using this function. 
+ */
+unsigned int BrfLibUsbDevice::xb300GpioWrite(uint8_t addr, uint32_t value, uint8_t len, String *error) {
+    if (SHOW_GPIO_IO) {
+        std::stringstream write_val;
+        write_val << "      WRITE [0x" << std::setfill('0') << std::setw(16) << std::hex << value << "]";
+        Debug(m_owner, DebugConf, write_val.str().c_str());
+    }
+    return gpioWrite(addr, value, len, error); 
+}
+
+/**
+ * The equivalent operations to bladeRF-cli's 
+ *    xb 300 enable
+ *
+ * Performs the actions here for the XB300 specifically: 
+ *    https://github.com/Nuand/bladeRF/blob/fcd775f2b92bcb3cb70781df5824ca7ddfc3e00f/host/libraries/libbladeRF/src/xb.c#L201
+ *
+ */
+bool BrfLibUsbDevice::initializeXb300() {
+
+    Debug(m_owner, DebugConf, "Initializing XB300...");
+    String error;
+
+    // might already be attached
+    if (xb300Attached) return true;
+
+    Debug(m_owner, DebugConf, "   Checking for exisintg expansion board");
+    if (!checkXb(error)) {
+        Debug(m_owner, DebugConf, "   An XB that isn't the XB300 has been configured: " + error);
+        return false;
+    }
+
+    Debug(m_owner, DebugConf, "   Attaching the XB300");
+    if (!_xb300_attach(error)) {
+        Debug(m_owner, DebugConf, "   Failed to attach the XB300 device: " + error);
+        return false;
+    }
+
+    Debug(m_owner, DebugConf, "   Enabling the XB300");
+    if (!_xb300_enable(error)) {
+        Debug(m_owner, DebugConf, "   Failed to enable the XB300: " + error);
+        return false;
+    }
+
+    Debug(m_owner, DebugConf, "   Setting TRX path to TX");
+    if (!_xb300_set_trx(error)) {
+        Debug(m_owner, DebugConf, "   Failed to set TRX path to TX: " + error);
+        return false;
+    }
+
+    Debug(m_owner, DebugConf, "   Successfully initialized XB300");
+    return xb300Attached = true;
+}
+
+/**
+ * Makes sure that the current expansion board is not there or is an XB300
+ */
+bool BrfLibUsbDevice::checkXb(String &error) {
+    unsigned int result;
+    uint32_t val;
+
+    result = xb300GpioRead(NIOS_PKT_LEGACY_PIO_ADDR_CONTROL, val, NIOS_PKT_LEGACY_PIO_LEN_CONTROL, &error);
+    if (result) return false;
+
+    uint32_t xb = (val >> 30) & 0x3;
+    
+    if (xb != BLADERF_XB_NONE && xb != BLADERF_XB_300)
+        return false;
+
+    return true;
+}
+
+/**
+ * Mimics this:
+ *   https://github.com/Nuand/bladeRF/blob/fcd775f2b92bcb3cb70781df5824ca7ddfc3e00f/host/libraries/libbladeRF/src/xb.c#L169
+ */
+bool BrfLibUsbDevice::_xb300_attach(String &error) {
+    unsigned int result;
+
+    uint32_t val = BLADERF_XB_TX_LED | BLADERF_XB_RX_LED | BLADERF_XB_TRX_MASK
+        | BLADERF_XB_PA_EN | BLADERF_XB_LNA_ENn
+        | BLADERF_XB_CSEL | BLADERF_XB_SCLK | BLADERF_XB_CS;
+    result = xb300GpioWrite(NIOS_PKT_LEGACY_PIO_ADDR_EXP_DIR, val, NIOS_PKT_LEGACY_PIO_LEN_EXP_DIR, &error);
+    if (result) return false;
+
+    val = BLADERF_XB_CS | BLADERF_XB_LNA_ENn;
+    result = xb300GpioWrite(NIOS_PKT_LEGACY_PIO_ADDR_EXP, val, NIOS_PKT_LEGACY_PIO_LEN_EXP, &error);
+    if (result) return false;
+
+    return true;
+}
+
+/**
+ * Mimics this:
+ *   https://github.com/Nuand/bladeRF/blob/fcd775f2b92bcb3cb70781df5824ca7ddfc3e00f/host/libraries/libbladeRF/src/xb.c#L187
+ */
+bool BrfLibUsbDevice::_xb300_enable(String &error) {
+    unsigned int result;
+        
+    uint32_t val = BLADERF_XB_CS | BLADERF_XB_CSEL | BLADERF_XB_LNA_ENn;
+    result = xb300GpioWrite(NIOS_PKT_LEGACY_PIO_ADDR_EXP, val, NIOS_PKT_LEGACY_PIO_LEN_EXP, &error);
+    if (result) return false;
+
+    float pwr;
+    if (!_xb300_get_output_power(&pwr, error)) return false;
+    String pwr_log;
+    pwr_log << "   power reading: " << pwr;
+    Debug(m_owner, DebugConf, pwr_log);
+
+    return true;
+}
+
+/**
+ * Mimics this:
+ *   https://github.com/Nuand/bladeRF/blob/fcd775f2b92bcb3cb70781df5824ca7ddfc3e00f/host/libraries/libbladeRF/src/xb.c#L595
+ * for the specific case BLADERF_XB300_TRX_TX
+ */
+bool BrfLibUsbDevice::_xb300_set_trx(String &error) {
+    unsigned int result;
+
+    uint32_t val;
+    result = xb300GpioRead(NIOS_PKT_LEGACY_PIO_ADDR_EXP, val, NIOS_PKT_LEGACY_PIO_LEN_EXP, &error);
+    if (result) return false;
+
+    val &= ~BLADERF_XB_TRX_MASK;
+    val |= BLADERF_XB_TRX_TXn;
+
+    result = xb300GpioWrite(NIOS_PKT_LEGACY_PIO_ADDR_EXP, val, NIOS_PKT_LEGACY_PIO_LEN_EXP, &error);
+    if (result) return false;
+
+    return true;
+}
+
+/**
+ * Mimics this:
+ *   https://github.com/Nuand/bladeRF/blob/fcd775f2b92bcb3cb70781df5824ca7ddfc3e00f/host/libraries/libbladeRF/src/xb.c#L746
+ */
+bool BrfLibUsbDevice::_xb300_get_output_power(float *pwr, String &error) {
+    uint32_t val;
+    unsigned int result;
+
+    result = xb300GpioRead(NIOS_PKT_LEGACY_PIO_ADDR_EXP, val, NIOS_PKT_LEGACY_PIO_LEN_EXP, &error);
+    if (result) return false;
+
+    val &= ~(BLADERF_XB_CS | BLADERF_XB_SCLK | BLADERF_XB_CSEL);
+    
+    result = xb300GpioWrite(NIOS_PKT_LEGACY_PIO_ADDR_EXP, val | BLADERF_XB_SCLK, NIOS_PKT_LEGACY_PIO_LEN_EXP, &error);
+    if (result) return false;
+
+    result = xb300GpioWrite(NIOS_PKT_LEGACY_PIO_ADDR_EXP, val | BLADERF_XB_SCLK | BLADERF_XB_CS, NIOS_PKT_LEGACY_PIO_LEN_EXP, &error);
+    if (result) return false;
+
+    uint32_t rval;
+    int ret = 0;
+    for (int i = 1; i <= 14; i++) {
+        
+        result = xb300GpioWrite(NIOS_PKT_LEGACY_PIO_ADDR_EXP, val, NIOS_PKT_LEGACY_PIO_LEN_EXP, &error);
+        if (result) return false;
+
+        result = xb300GpioWrite(NIOS_PKT_LEGACY_PIO_ADDR_EXP, val | BLADERF_XB_SCLK, NIOS_PKT_LEGACY_PIO_LEN_EXP, &error);
+        if (result) return false;
+
+        result = xb300GpioRead(NIOS_PKT_LEGACY_PIO_ADDR_EXP, rval, NIOS_PKT_LEGACY_PIO_LEN_EXP, &error);
+        if (result) return false;
+
+        if (i >= 2 && i <= 11) {
+            ret |= (!!(rval & BLADERF_XB_DOUT)) << (11 - i);
+        }
+
+    }
+
+    float volt, volt2, volt3, volt4;
+    volt = (1.8f / 1024.0f) * ret;
+    volt2 = volt * volt;
+    volt3 = volt2 * volt;
+    volt4 = volt3 * volt;
+
+    *pwr = -503.933f  * volt4 +
+           1409.489f  * volt3 -
+           1487.84f   * volt2 +
+            722.9793f * volt  -
+            114.7529f;
+
+    return true;
+}
+
+/**
+ * Performs PA and LNA enable/disable actions. 
+ *   https://github.com/Nuand/bladeRF/blob/fcd775f2b92bcb3cb70781df5824ca7ddfc3e00f/host/libraries/libbladeRF/src/xb.c#L663
+ */
+bool BrfLibUsbDevice::configureXb300(XB300Setting setting, bool on) {
+
+    if (setting == XB300_PA)
+       Debug(m_owner, DebugConf, "Setting PA on XB300");
+    else if (setting == XB300_LNA)
+       Debug(m_owner, DebugConf, "Setting LNA on XB300");
+    else
+       Debug(m_owner, DebugConf, "Configuring XB300");
+
+    // Make sure the expansion board is attached
+    if (!xb300Attached) {
+        Debug(m_owner, DebugConf, "   Can't set PA on XB300, no board detected");
+        return false;
+    }
+
+    String error;
+    unsigned int result;
+    uint32_t value;
+
+    // Read expansion port
+    result = xb300GpioRead(NIOS_PKT_LEGACY_PIO_ADDR_EXP, value, NIOS_PKT_LEGACY_PIO_LEN_EXP, &error);
+    if (result) {
+        Debug(m_owner, DebugConf, "   Failed to read legacy expansion port: " + error);
+        return false;
+    }
+
+    // make the relevant modifications
+    Debug(m_owner, DebugConf, "   Configuring bits");
+    switch (setting) {
+                                                // TODO: verify that all of these bit operations are correct...
+                                                //   LNA bits seem strange since they are turning off when enabling
+                                                //   and turning on when disabling.
+        case XB300_PA:
+            if (on) {
+                value |= BLADERF_XB_TX_LED;
+                value |= BLADERF_XB_PA_EN;
+            } else {
+                value &= ~BLADERF_XB_TX_LED;
+                value &= ~BLADERF_XB_PA_EN;
+            }
+            break;
+
+        case XB300_LNA:
+            if (on) {
+                value |= BLADERF_XB_RX_LED;
+                value &= ~BLADERF_XB_LNA_ENn;
+            } else {
+                value &= ~BLADERF_XB_RX_LED;
+                value |= BLADERF_XB_LNA_ENn;
+            }
+            break;
+            
+        default:
+            Debug(m_owner, DebugConf, "   Failed to handle Unknown XB300Setting");
+            return false;
+
+    }
+
+    // write to expansion port 
+    result = xb300GpioWrite(NIOS_PKT_LEGACY_PIO_ADDR_EXP, value, NIOS_PKT_LEGACY_PIO_LEN_EXP, &error);
+    if (result) {
+        Debug(m_owner, DebugConf, "   Failed to write to legacy expansion port: " + error);
+        return false;
+    }
+
+    // read to confirm
+    result = xb300GpioRead(NIOS_PKT_LEGACY_PIO_ADDR_EXP, value, NIOS_PKT_LEGACY_PIO_LEN_EXP, &error);
+    if (result) {
+        Debug(m_owner, DebugConf, "   Failed to confirm result of write to legacy expansion port: " + error);
+        return false;
+    }
+
+    // Success!
+    Debug(m_owner, DebugConf, "   Successfully set PA on XB300");
+    return true;
+}
 
 //
 // BrfInterface
