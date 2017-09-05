@@ -2593,8 +2593,8 @@ private:
 
     // Cameron
     //    Implementations and explanations below
-    unsigned int myGpioRead(uint8_t addr, uint32_t& value, uint8_t len, String *error = 0);
-    unsigned int myGpioWrite(uint8_t addr, uint32_t value, uint8_t len, String *error = 0);
+    unsigned int xb300GpioRead(uint8_t addr, uint32_t& value, uint8_t len, String *error = 0);
+    unsigned int xb300GpioWrite(uint8_t addr, uint32_t value, uint8_t len, String *error = 0);
     bool xb300Attached;
     bool initializeXb300();
     bool checkXb(String &error);
@@ -10321,6 +10321,8 @@ unsigned int BrfLibUsbDevice::applyStartParams(const NamedList& params, String* 
 
 // Cameron
 
+#define SHOW_GPIO_IO false
+
 // bladeRF XB flags
 //   Defined here:
 //   https://github.com/Nuand/bladeRF/blob/fcd775f2b92bcb3cb70781df5824ca7ddfc3e00f/host/libraries/libbladeRF/src/xb.c#L65
@@ -10358,35 +10360,36 @@ unsigned int BrfLibUsbDevice::applyStartParams(const NamedList& params, String* 
 /**
  * Wrapper arround BrfLibUsbDevice::gpioRead that also prints the values in hex
  */
-unsigned int BrfLibUsbDevice::myGpioRead(uint8_t addr, uint32_t& value, uint8_t len, String *error) {
-    std::stringstream read_val;
-    read_val << "      READ  [0x" << std::setfill('0') << std::setw(16) << std::hex << value << "]";
-    Debug(m_owner, DebugConf, read_val.str().c_str());
+unsigned int BrfLibUsbDevice::xb300GpioRead(uint8_t addr, uint32_t& value, uint8_t len, String *error) {
+    if (SHOW_GPIO_IO) {
+        std::stringstream read_val;
+        read_val << "      READ  [0x" << std::setfill('0') << std::setw(16) << std::hex << value << "]";
+        Debug(m_owner, DebugConf, read_val.str().c_str());
+    }
     return gpioRead(addr, value, len, error);
 }
 
 /**
  * Wrapper arround BrfLibUsbDevice::gpioWrite that also prints the values in hex
  * 
- * NOTES: 
+ * NOTE: 
  *
- *   1. the actual write operation is commented out to prevent accidentally corrupting the hardware.
- *
- *   2. Normally, the writing operations are preceded by a read operation and the writing value is 
+ *      Normally, the writing operations are preceded by a read operation and the writing value is 
  *      applied to the read value by filtering through a mask. But, in all writes the mask value was
  *      0xffffffff. If we look at the legacy implementation:
  *
- *         https://github.com/Nuand/bladeRF/blob/fcd775f2b92bcb3cb70781df5824ca7ddfc3e00f/host/libraries/libbladeRF/src/backend/usb/nios_legacy_access.c#L568
+ *      https://github.com/Nuand/bladeRF/blob/fcd775f2b92bcb3cb70781df5824ca7ddfc3e00f/host/libraries/libbladeRF/src/backend/usb/nios_legacy_access.c#L568
  *
  *      it only does the read operation if the mask is NOT 0xffffffff. So, we are ignoring the read
  *      step when using this function. 
  */
-unsigned int BrfLibUsbDevice::myGpioWrite(uint8_t addr, uint32_t value, uint8_t len, String *error) {
-    std::stringstream write_val;
-    write_val << "      WRITE [0x" << std::setfill('0') << std::setw(16) << std::hex << value << "]";
-    Debug(m_owner, DebugConf, write_val.str().c_str());
-    // return gpioWrite(addr, value, len, error); DISABLED until we are sure we want to write
-    return 0;
+unsigned int BrfLibUsbDevice::xb300GpioWrite(uint8_t addr, uint32_t value, uint8_t len, String *error) {
+    if (SHOW_GPIO_IO) {
+        std::stringstream write_val;
+        write_val << "      WRITE [0x" << std::setfill('0') << std::setw(16) << std::hex << value << "]";
+        Debug(m_owner, DebugConf, write_val.str().c_str());
+    }
+    return gpioWrite(addr, value, len, error); 
 }
 
 /**
@@ -10440,7 +10443,7 @@ bool BrfLibUsbDevice::checkXb(String &error) {
     unsigned int result;
     uint32_t val;
 
-    result = myGpioRead(NIOS_PKT_LEGACY_PIO_ADDR_CONTROL, val, NIOS_PKT_LEGACY_PIO_LEN_CONTROL, &error);
+    result = xb300GpioRead(NIOS_PKT_LEGACY_PIO_ADDR_CONTROL, val, NIOS_PKT_LEGACY_PIO_LEN_CONTROL, &error);
     if (result) return false;
 
     uint32_t xb = (val >> 30) & 0x3;
@@ -10461,11 +10464,11 @@ bool BrfLibUsbDevice::_xb300_attach(String &error) {
     uint32_t val = BLADERF_XB_TX_LED | BLADERF_XB_RX_LED | BLADERF_XB_TRX_MASK
         | BLADERF_XB_PA_EN | BLADERF_XB_LNA_ENn
         | BLADERF_XB_CSEL | BLADERF_XB_SCLK | BLADERF_XB_CS;
-    result = myGpioWrite(NIOS_PKT_LEGACY_PIO_ADDR_EXP_DIR, val, NIOS_PKT_LEGACY_PIO_LEN_EXP_DIR, &error);
+    result = xb300GpioWrite(NIOS_PKT_LEGACY_PIO_ADDR_EXP_DIR, val, NIOS_PKT_LEGACY_PIO_LEN_EXP_DIR, &error);
     if (result) return false;
 
     val = BLADERF_XB_CS | BLADERF_XB_LNA_ENn;
-    result = myGpioWrite(NIOS_PKT_LEGACY_PIO_ADDR_EXP, val, NIOS_PKT_LEGACY_PIO_LEN_EXP, &error);
+    result = xb300GpioWrite(NIOS_PKT_LEGACY_PIO_ADDR_EXP, val, NIOS_PKT_LEGACY_PIO_LEN_EXP, &error);
     if (result) return false;
 
     return true;
@@ -10479,7 +10482,7 @@ bool BrfLibUsbDevice::_xb300_enable(String &error) {
     unsigned int result;
         
     uint32_t val = BLADERF_XB_CS | BLADERF_XB_CSEL | BLADERF_XB_LNA_ENn;
-    result = myGpioWrite(NIOS_PKT_LEGACY_PIO_ADDR_EXP, val, NIOS_PKT_LEGACY_PIO_LEN_EXP, &error);
+    result = xb300GpioWrite(NIOS_PKT_LEGACY_PIO_ADDR_EXP, val, NIOS_PKT_LEGACY_PIO_LEN_EXP, &error);
     if (result) return false;
 
     float pwr;
@@ -10500,13 +10503,13 @@ bool BrfLibUsbDevice::_xb300_set_trx(String &error) {
     unsigned int result;
 
     uint32_t val;
-    result = myGpioRead(NIOS_PKT_LEGACY_PIO_ADDR_EXP, val, NIOS_PKT_LEGACY_PIO_LEN_EXP, &error);
+    result = xb300GpioRead(NIOS_PKT_LEGACY_PIO_ADDR_EXP, val, NIOS_PKT_LEGACY_PIO_LEN_EXP, &error);
     if (result) return false;
 
     val &= ~BLADERF_XB_TRX_MASK;
     val |= BLADERF_XB_TRX_TXn;
 
-    result = myGpioWrite(NIOS_PKT_LEGACY_PIO_ADDR_EXP, val, NIOS_PKT_LEGACY_PIO_LEN_EXP, &error);
+    result = xb300GpioWrite(NIOS_PKT_LEGACY_PIO_ADDR_EXP, val, NIOS_PKT_LEGACY_PIO_LEN_EXP, &error);
     if (result) return false;
 
     return true;
@@ -10520,28 +10523,28 @@ bool BrfLibUsbDevice::_xb300_get_output_power(float *pwr, String &error) {
     uint32_t val;
     unsigned int result;
 
-    result = myGpioRead(NIOS_PKT_LEGACY_PIO_ADDR_EXP, val, NIOS_PKT_LEGACY_PIO_LEN_EXP, &error);
+    result = xb300GpioRead(NIOS_PKT_LEGACY_PIO_ADDR_EXP, val, NIOS_PKT_LEGACY_PIO_LEN_EXP, &error);
     if (result) return false;
 
     val &= ~(BLADERF_XB_CS | BLADERF_XB_SCLK | BLADERF_XB_CSEL);
     
-    result = myGpioWrite(NIOS_PKT_LEGACY_PIO_ADDR_EXP, val | BLADERF_XB_SCLK, NIOS_PKT_LEGACY_PIO_LEN_EXP, &error);
+    result = xb300GpioWrite(NIOS_PKT_LEGACY_PIO_ADDR_EXP, val | BLADERF_XB_SCLK, NIOS_PKT_LEGACY_PIO_LEN_EXP, &error);
     if (result) return false;
 
-    result = myGpioWrite(NIOS_PKT_LEGACY_PIO_ADDR_EXP, val | BLADERF_XB_SCLK | BLADERF_XB_CS, NIOS_PKT_LEGACY_PIO_LEN_EXP, &error);
+    result = xb300GpioWrite(NIOS_PKT_LEGACY_PIO_ADDR_EXP, val | BLADERF_XB_SCLK | BLADERF_XB_CS, NIOS_PKT_LEGACY_PIO_LEN_EXP, &error);
     if (result) return false;
 
     uint32_t rval;
     int ret = 0;
     for (int i = 1; i <= 14; i++) {
         
-        result = myGpioWrite(NIOS_PKT_LEGACY_PIO_ADDR_EXP, val, NIOS_PKT_LEGACY_PIO_LEN_EXP, &error);
+        result = xb300GpioWrite(NIOS_PKT_LEGACY_PIO_ADDR_EXP, val, NIOS_PKT_LEGACY_PIO_LEN_EXP, &error);
         if (result) return false;
 
-        result = myGpioWrite(NIOS_PKT_LEGACY_PIO_ADDR_EXP, val | BLADERF_XB_SCLK, NIOS_PKT_LEGACY_PIO_LEN_EXP, &error);
+        result = xb300GpioWrite(NIOS_PKT_LEGACY_PIO_ADDR_EXP, val | BLADERF_XB_SCLK, NIOS_PKT_LEGACY_PIO_LEN_EXP, &error);
         if (result) return false;
 
-        result = myGpioRead(NIOS_PKT_LEGACY_PIO_ADDR_EXP, rval, NIOS_PKT_LEGACY_PIO_LEN_EXP, &error);
+        result = xb300GpioRead(NIOS_PKT_LEGACY_PIO_ADDR_EXP, rval, NIOS_PKT_LEGACY_PIO_LEN_EXP, &error);
         if (result) return false;
 
         if (i >= 2 && i <= 11) {
@@ -10571,7 +10574,12 @@ bool BrfLibUsbDevice::_xb300_get_output_power(float *pwr, String &error) {
  */
 bool BrfLibUsbDevice::configureXb300(XB300Setting setting, bool on) {
 
-    Debug(m_owner, DebugConf, "Setting PA on XB300");
+    if (setting == XB300_PA)
+       Debug(m_owner, DebugConf, "Setting PA on XB300");
+    else if (setting == XB300_LNA)
+       Debug(m_owner, DebugConf, "Setting LNA on XB300");
+    else
+       Debug(m_owner, DebugConf, "Configuring XB300");
 
     // Make sure the expansion board is attached
     if (!xb300Attached) {
@@ -10584,7 +10592,7 @@ bool BrfLibUsbDevice::configureXb300(XB300Setting setting, bool on) {
     uint32_t value;
 
     // Read expansion port
-    result = myGpioRead(NIOS_PKT_LEGACY_PIO_ADDR_EXP, value, NIOS_PKT_LEGACY_PIO_LEN_EXP, &error);
+    result = xb300GpioRead(NIOS_PKT_LEGACY_PIO_ADDR_EXP, value, NIOS_PKT_LEGACY_PIO_LEN_EXP, &error);
     if (result) {
         Debug(m_owner, DebugConf, "   Failed to read legacy expansion port: " + error);
         return false;
@@ -10623,9 +10631,16 @@ bool BrfLibUsbDevice::configureXb300(XB300Setting setting, bool on) {
     }
 
     // write to expansion port 
-    result = myGpioWrite(NIOS_PKT_LEGACY_PIO_ADDR_EXP, value, NIOS_PKT_LEGACY_PIO_LEN_EXP, &error);
+    result = xb300GpioWrite(NIOS_PKT_LEGACY_PIO_ADDR_EXP, value, NIOS_PKT_LEGACY_PIO_LEN_EXP, &error);
     if (result) {
         Debug(m_owner, DebugConf, "   Failed to write to legacy expansion port: " + error);
+        return false;
+    }
+
+    // read to confirm
+    result = xb300GpioRead(NIOS_PKT_LEGACY_PIO_ADDR_EXP, value, NIOS_PKT_LEGACY_PIO_LEN_EXP, &error);
+    if (result) {
+        Debug(m_owner, DebugConf, "   Failed to confirm result of write to legacy expansion port: " + error);
         return false;
     }
 
