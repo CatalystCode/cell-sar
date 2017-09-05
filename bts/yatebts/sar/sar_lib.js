@@ -157,7 +157,7 @@ function onYBTSStatus(msg) {
          }
          break;
       case "timeout":
-         data['for'] = msg['for'];
+         data['timeout_for'] = msg['for'];
          break;
       default:
          break;
@@ -225,13 +225,14 @@ function onPhyinfo(msg) {
    }
 
    // call the searchandrescue C++ module
+   var simpleSub = simpleSubscriber(subscriber);
    var phyinfo = {
-      'IMSI': subscriber.imsi,
-      'TMSI': subscriber.tmsi,
-      'TA': msg.TA,
-      'TE': msg.TE,
-      'UpRSSI': msg.UpRSSI,
-      'DnRSSIdBm': msg.DnRSSIdBm,
+      'subscriber': simpleSub,
+      'ta': msg.TA,
+      'te': msg.TE,
+      'up_rssi': msg.UpRSSI,
+      'dn_rssi_dbm': msg.DnRSSIdBm,
+      'tx_pwr': msg.TxPwr,
       'time': msg.time
    };
    writeToOCP(phyinfo, 'phy');
@@ -307,21 +308,27 @@ function onSMS(msg) {
 }
 
 function onSMSFailed(msg) {
+   var to_subscriber = getSubscriber(msg.to_imsi);
+   var to_sub = simpleSubscriber(to_subscriber); 
    var data = {
-      'to_imsi': msg.to_imsi,
+      'to_subscriber': to_sub,
       'error': msg.error,
       'reason': msg.reason,
       'silent': msg.silent
    };
 
    if (msg.silent) {
-      data.silentSMSCount = msg.silentSMSCount;
+      data['silent_sms_count'] = msg.silentSMSCount;
    } else {
-      data.from_imsi = msg.from_imsi;
-      data.text = msg.text;
+      var from_subscriber = getSubscriber(msg.from_imsi);
+      if (from_subscriber) {
+         var from_sub = simpleSubscriber(from_subscriber);
+         data['from_subscriber'] = from_sub;
+      }
+      data['msg'] = msg.text;
    }
 
-   writeToOCP(data, "sms_failed");
+   writeToOCP(data, 'sms_failed');
 }
 
 // TODO: include the current PLMN here 
@@ -332,17 +339,17 @@ function heartbeat() {
 
    var radio = {
       'stopped': radioStopped,
-      'stoppedReason': radioStoppedReason
+      'stopped_reason': radioStoppedReason
    };
 
    var started = Engine.started();
    var info = {
-      'ybtsTimersState': ybtsTimersState,
-      'engineStarted': started,
+      'engine_started': started,
       'radio': radio,
-      'subscribers': subs,
-      'pendingSMSs': pendingSMSs.length
+      'pending_smss': pendingSMSs.length,
+      'subscribers': subs
    };
+
    writeToOCP(info, 'status');   
 }
 

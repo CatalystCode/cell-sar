@@ -12,6 +12,7 @@ message PhyData {
    float te = 3;
    float up_rssi = 4;
    float dn_rssi_dbm = 5;
+   float tx_pwr = 6;
 }
 
 message StatusData {

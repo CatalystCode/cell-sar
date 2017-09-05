@@ -104,6 +104,7 @@ const ::google::protobuf::uint32 TableStruct::offsets[] GOOGLE_ATTRIBUTE_SECTION
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(PhyData, te_),
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(PhyData, up_rssi_),
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(PhyData, dn_rssi_dbm_),
+  GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(PhyData, tx_pwr_),
   ~0u,  // no _has_bits_
   GOOGLE_PROTOBUF_GENERATED_MESSAGE_FIELD_OFFSET(StatusData, _internal_metadata_),
   ~0u,  // no _extensions_
@@ -168,13 +169,13 @@ const ::google::protobuf::uint32 TableStruct::offsets[] GOOGLE_ATTRIBUTE_SECTION
 };
 static const ::google::protobuf::internal::MigrationSchema schemas[] GOOGLE_ATTRIBUTE_SECTION_VARIABLE(protodesc_cold) = {
   { 0, -1, sizeof(PhyData)},
-  { 10, -1, sizeof(StatusData)},
-  { 19, -1, sizeof(YbtsData_YbtsTimeoutData)},
-  { 25, -1, sizeof(YbtsData_YbtsStopnotificationData)},
-  { 32, -1, sizeof(YbtsData)},
-  { 40, -1, sizeof(SmsData)},
-  { 47, -1, sizeof(SmsFailedData)},
-  { 59, -1, sizeof(YateMessage)},
+  { 11, -1, sizeof(StatusData)},
+  { 20, -1, sizeof(YbtsData_YbtsTimeoutData)},
+  { 26, -1, sizeof(YbtsData_YbtsStopnotificationData)},
+  { 33, -1, sizeof(YbtsData)},
+  { 41, -1, sizeof(SmsData)},
+  { 48, -1, sizeof(SmsFailedData)},
+  { 60, -1, sizeof(YateMessage)},
 };
 
 static ::google::protobuf::Message const * const file_default_instances[] = {
@@ -266,44 +267,45 @@ void AddDescriptorsImpl() {
   InitDefaults();
   static const char descriptor[] GOOGLE_ATTRIBUTE_SECTION_VARIABLE(protodesc_cold) = {
       "\n\017from_yate.proto\022#com.microsoft.cellsar"
-      ".protobuf.yate\032\ndata.proto\"\207\001\n\007PhyData\022>"
+      ".protobuf.yate\032\ndata.proto\"\227\001\n\007PhyData\022>"
       "\n\nsubscriber\030\001 \001(\0132*.com.microsoft.cells"
       "ar.protobuf.Subscriber\022\n\n\002ta\030\002 \001(\r\022\n\n\002te"
       "\030\003 \001(\002\022\017\n\007up_rssi\030\004 \001(\002\022\023\n\013dn_rssi_dbm\030\005"
-      " \001(\002\"\261\001\n\nStatusData\022\026\n\016engine_started\030\001 "
-      "\001(\010\0224\n\005radio\030\002 \001(\0132%.com.microsoft.cells"
-      "ar.protobuf.Radio\022\024\n\014pending_smss\030\003 \001(\r\022"
-      "\?\n\013subscribers\030\004 \003(\0132*.com.microsoft.cel"
-      "lsar.protobuf.Subscriber\"\306\002\n\010YbtsData\022\014\n"
-      "\004type\030\001 \001(\t\022X\n\021ybts_timeout_data\030\002 \001(\0132="
-      ".com.microsoft.cellsar.protobuf.yate.Ybt"
-      "sData.YbtsTimeoutData\022j\n\032ybts_stopnotifi"
-      "cation_data\030\003 \001(\0132F.com.microsoft.cellsa"
-      "r.protobuf.yate.YbtsData.YbtsStopnotific"
-      "ationData\032&\n\017YbtsTimeoutData\022\023\n\013timeout_"
-      "for\030\001 \001(\t\032>\n\030YbtsStopnotificationData\022\022\n"
-      "\nrestarting\030\001 \001(\010\022\016\n\006reason\030\002 \001(\t\"V\n\007Sms"
-      "Data\022>\n\nsubscriber\030\001 \001(\0132*.com.microsoft"
-      ".cellsar.protobuf.Subscriber\022\013\n\003msg\030\002 \001("
-      "\t\"\355\001\n\rSmsFailedData\022A\n\rto_subscriber\030\001 \001"
-      "(\0132*.com.microsoft.cellsar.protobuf.Subs"
-      "criber\022\r\n\005error\030\002 \001(\t\022\016\n\006reason\030\003 \001(\t\022\016\n"
-      "\006silent\030\004 \001(\010\022\030\n\020silent_sms_count\030\005 \001(\004\022"
-      "C\n\017from_subscriber\030\006 \001(\0132*.com.microsoft"
-      ".cellsar.protobuf.Subscriber\022\013\n\003msg\030\007 \001("
-      "\t\"\376\002\n\013YateMessage\022\014\n\004type\030\001 \001(\t\022\014\n\004time\030"
-      "\002 \001(\004\022>\n\010phy_data\030\003 \001(\0132,.com.microsoft."
-      "cellsar.protobuf.yate.PhyData\022D\n\013status_"
-      "data\030\004 \001(\0132/.com.microsoft.cellsar.proto"
-      "buf.yate.StatusData\022@\n\tybts_data\030\005 \001(\0132-"
-      ".com.microsoft.cellsar.protobuf.yate.Ybt"
-      "sData\022>\n\010sms_data\030\006 \001(\0132,.com.microsoft."
-      "cellsar.protobuf.yate.SmsData\022K\n\017sms_fai"
-      "led_data\030\007 \001(\01322.com.microsoft.cellsar.p"
-      "rotobuf.yate.SmsFailedDatab\006proto3"
+      " \001(\002\022\016\n\006tx_pwr\030\006 \001(\002\"\261\001\n\nStatusData\022\026\n\016e"
+      "ngine_started\030\001 \001(\010\0224\n\005radio\030\002 \001(\0132%.com"
+      ".microsoft.cellsar.protobuf.Radio\022\024\n\014pen"
+      "ding_smss\030\003 \001(\r\022\?\n\013subscribers\030\004 \003(\0132*.c"
+      "om.microsoft.cellsar.protobuf.Subscriber"
+      "\"\306\002\n\010YbtsData\022\014\n\004type\030\001 \001(\t\022X\n\021ybts_time"
+      "out_data\030\002 \001(\0132=.com.microsoft.cellsar.p"
+      "rotobuf.yate.YbtsData.YbtsTimeoutData\022j\n"
+      "\032ybts_stopnotification_data\030\003 \001(\0132F.com."
+      "microsoft.cellsar.protobuf.yate.YbtsData"
+      ".YbtsStopnotificationData\032&\n\017YbtsTimeout"
+      "Data\022\023\n\013timeout_for\030\001 \001(\t\032>\n\030YbtsStopnot"
+      "ificationData\022\022\n\nrestarting\030\001 \001(\010\022\016\n\006rea"
+      "son\030\002 \001(\t\"V\n\007SmsData\022>\n\nsubscriber\030\001 \001(\013"
+      "2*.com.microsoft.cellsar.protobuf.Subscr"
+      "iber\022\013\n\003msg\030\002 \001(\t\"\355\001\n\rSmsFailedData\022A\n\rt"
+      "o_subscriber\030\001 \001(\0132*.com.microsoft.cells"
+      "ar.protobuf.Subscriber\022\r\n\005error\030\002 \001(\t\022\016\n"
+      "\006reason\030\003 \001(\t\022\016\n\006silent\030\004 \001(\010\022\030\n\020silent_"
+      "sms_count\030\005 \001(\004\022C\n\017from_subscriber\030\006 \001(\013"
+      "2*.com.microsoft.cellsar.protobuf.Subscr"
+      "iber\022\013\n\003msg\030\007 \001(\t\"\376\002\n\013YateMessage\022\014\n\004typ"
+      "e\030\001 \001(\t\022\014\n\004time\030\002 \001(\004\022>\n\010phy_data\030\003 \001(\0132"
+      ",.com.microsoft.cellsar.protobuf.yate.Ph"
+      "yData\022D\n\013status_data\030\004 \001(\0132/.com.microso"
+      "ft.cellsar.protobuf.yate.StatusData\022@\n\ty"
+      "bts_data\030\005 \001(\0132-.com.microsoft.cellsar.p"
+      "rotobuf.yate.YbtsData\022>\n\010sms_data\030\006 \001(\0132"
+      ",.com.microsoft.cellsar.protobuf.yate.Sm"
+      "sData\022K\n\017sms_failed_data\030\007 \001(\01322.com.mic"
+      "rosoft.cellsar.protobuf.yate.SmsFailedDa"
+      "tab\006proto3"
   };
   ::google::protobuf::DescriptorPool::InternalAddGeneratedFile(
-      descriptor, 1434);
+      descriptor, 1450);
   ::google::protobuf::MessageFactory::InternalRegisterGeneratedFile(
     "from_yate.proto", &protobuf_RegisterTypes);
   ::com::microsoft::cellsar::protobuf::protobuf_data_2eproto::AddDescriptors();
@@ -332,6 +334,7 @@ const int PhyData::kTaFieldNumber;
 const int PhyData::kTeFieldNumber;
 const int PhyData::kUpRssiFieldNumber;
 const int PhyData::kDnRssiDbmFieldNumber;
+const int PhyData::kTxPwrFieldNumber;
 #endif  // !defined(_MSC_VER) || _MSC_VER >= 1900
 
 PhyData::PhyData()
@@ -353,15 +356,15 @@ PhyData::PhyData(const PhyData& from)
     subscriber_ = NULL;
   }
   ::memcpy(&ta_, &from.ta_,
-    static_cast<size_t>(reinterpret_cast<char*>(&dn_rssi_dbm_) -
-    reinterpret_cast<char*>(&ta_)) + sizeof(dn_rssi_dbm_));
+    static_cast<size_t>(reinterpret_cast<char*>(&tx_pwr_) -
+    reinterpret_cast<char*>(&ta_)) + sizeof(tx_pwr_));
   // @@protoc_insertion_point(copy_constructor:com.microsoft.cellsar.protobuf.yate.PhyData)
 }
 
 void PhyData::SharedCtor() {
   ::memset(&subscriber_, 0, static_cast<size_t>(
-      reinterpret_cast<char*>(&dn_rssi_dbm_) -
-      reinterpret_cast<char*>(&subscriber_)) + sizeof(dn_rssi_dbm_));
+      reinterpret_cast<char*>(&tx_pwr_) -
+      reinterpret_cast<char*>(&subscriber_)) + sizeof(tx_pwr_));
   _cached_size_ = 0;
 }
 
@@ -408,8 +411,8 @@ void PhyData::Clear() {
   }
   subscriber_ = NULL;
   ::memset(&ta_, 0, static_cast<size_t>(
-      reinterpret_cast<char*>(&dn_rssi_dbm_) -
-      reinterpret_cast<char*>(&ta_)) + sizeof(dn_rssi_dbm_));
+      reinterpret_cast<char*>(&tx_pwr_) -
+      reinterpret_cast<char*>(&ta_)) + sizeof(tx_pwr_));
   _internal_metadata_.Clear();
 }
 
@@ -491,6 +494,20 @@ bool PhyData::MergePartialFromCodedStream(
         break;
       }
 
+      // float tx_pwr = 6;
+      case 6: {
+        if (static_cast< ::google::protobuf::uint8>(tag) ==
+            static_cast< ::google::protobuf::uint8>(53u /* 53 & 0xFF */)) {
+
+          DO_((::google::protobuf::internal::WireFormatLite::ReadPrimitive<
+                   float, ::google::protobuf::internal::WireFormatLite::TYPE_FLOAT>(
+                 input, &tx_pwr_)));
+        } else {
+          goto handle_unusual;
+        }
+        break;
+      }
+
       default: {
       handle_unusual:
         if (tag == 0) {
@@ -543,6 +560,11 @@ void PhyData::SerializeWithCachedSizes(
     ::google::protobuf::internal::WireFormatLite::WriteFloat(5, this->dn_rssi_dbm(), output);
   }
 
+  // float tx_pwr = 6;
+  if (this->tx_pwr() != 0) {
+    ::google::protobuf::internal::WireFormatLite::WriteFloat(6, this->tx_pwr(), output);
+  }
+
   if ((_internal_metadata_.have_unknown_fields() &&  ::google::protobuf::internal::GetProto3PreserveUnknownsDefault())) {
     ::google::protobuf::internal::WireFormat::SerializeUnknownFields(
         (::google::protobuf::internal::GetProto3PreserveUnknownsDefault()   ? _internal_metadata_.unknown_fields()   : _internal_metadata_.default_instance()), output);
@@ -582,6 +604,11 @@ void PhyData::SerializeWithCachedSizes(
   // float dn_rssi_dbm = 5;
   if (this->dn_rssi_dbm() != 0) {
     target = ::google::protobuf::internal::WireFormatLite::WriteFloatToArray(5, this->dn_rssi_dbm(), target);
+  }
+
+  // float tx_pwr = 6;
+  if (this->tx_pwr() != 0) {
+    target = ::google::protobuf::internal::WireFormatLite::WriteFloatToArray(6, this->tx_pwr(), target);
   }
 
   if ((_internal_metadata_.have_unknown_fields() &&  ::google::protobuf::internal::GetProto3PreserveUnknownsDefault())) {
@@ -630,6 +657,11 @@ size_t PhyData::ByteSizeLong() const {
     total_size += 1 + 4;
   }
 
+  // float tx_pwr = 6;
+  if (this->tx_pwr() != 0) {
+    total_size += 1 + 4;
+  }
+
   int cached_size = ::google::protobuf::internal::ToCachedSize(total_size);
   GOOGLE_SAFE_CONCURRENT_WRITES_BEGIN();
   _cached_size_ = cached_size;
@@ -674,6 +706,9 @@ void PhyData::MergeFrom(const PhyData& from) {
   if (from.dn_rssi_dbm() != 0) {
     set_dn_rssi_dbm(from.dn_rssi_dbm());
   }
+  if (from.tx_pwr() != 0) {
+    set_tx_pwr(from.tx_pwr());
+  }
 }
 
 void PhyData::CopyFrom(const ::google::protobuf::Message& from) {
@@ -705,6 +740,7 @@ void PhyData::InternalSwap(PhyData* other) {
   swap(te_, other->te_);
   swap(up_rssi_, other->up_rssi_);
   swap(dn_rssi_dbm_, other->dn_rssi_dbm_);
+  swap(tx_pwr_, other->tx_pwr_);
   _internal_metadata_.Swap(&other->_internal_metadata_);
   swap(_cached_size_, other->_cached_size_);
 }
@@ -811,6 +847,20 @@ void PhyData::set_dn_rssi_dbm(float value) {
   
   dn_rssi_dbm_ = value;
   // @@protoc_insertion_point(field_set:com.microsoft.cellsar.protobuf.yate.PhyData.dn_rssi_dbm)
+}
+
+// float tx_pwr = 6;
+void PhyData::clear_tx_pwr() {
+  tx_pwr_ = 0;
+}
+float PhyData::tx_pwr() const {
+  // @@protoc_insertion_point(field_get:com.microsoft.cellsar.protobuf.yate.PhyData.tx_pwr)
+  return tx_pwr_;
+}
+void PhyData::set_tx_pwr(float value) {
+  
+  tx_pwr_ = value;
+  // @@protoc_insertion_point(field_set:com.microsoft.cellsar.protobuf.yate.PhyData.tx_pwr)
 }
 
 #endif  // PROTOBUF_INLINE_NOT_IN_HEADERS

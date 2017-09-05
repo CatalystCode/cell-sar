@@ -203,6 +203,12 @@ class PhyData : public ::google::protobuf::Message /* @@protoc_insertion_point(c
   float dn_rssi_dbm() const;
   void set_dn_rssi_dbm(float value);
 
+  // float tx_pwr = 6;
+  void clear_tx_pwr();
+  static const int kTxPwrFieldNumber = 6;
+  float tx_pwr() const;
+  void set_tx_pwr(float value);
+
   // @@protoc_insertion_point(class_scope:com.microsoft.cellsar.protobuf.yate.PhyData)
  private:
 
@@ -212,6 +218,7 @@ class PhyData : public ::google::protobuf::Message /* @@protoc_insertion_point(c
   float te_;
   float up_rssi_;
   float dn_rssi_dbm_;
+  float tx_pwr_;
   mutable int _cached_size_;
   friend struct protobuf_from_5fyate_2eproto::TableStruct;
 };
@@ -1239,6 +1246,20 @@ inline void PhyData::set_dn_rssi_dbm(float value) {
   
   dn_rssi_dbm_ = value;
   // @@protoc_insertion_point(field_set:com.microsoft.cellsar.protobuf.yate.PhyData.dn_rssi_dbm)
+}
+
+// float tx_pwr = 6;
+inline void PhyData::clear_tx_pwr() {
+  tx_pwr_ = 0;
+}
+inline float PhyData::tx_pwr() const {
+  // @@protoc_insertion_point(field_get:com.microsoft.cellsar.protobuf.yate.PhyData.tx_pwr)
+  return tx_pwr_;
+}
+inline void PhyData::set_tx_pwr(float value) {
+  
+  tx_pwr_ = value;
+  // @@protoc_insertion_point(field_set:com.microsoft.cellsar.protobuf.yate.PhyData.tx_pwr)
 }
 
 // -------------------------------------------------------------------

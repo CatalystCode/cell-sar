@@ -148,9 +148,9 @@ function buildLoudSMS(subscriber) {
    var text = "Silent SMS #" + silentSMSCount[subscriber.imsi] + ".";
    var phy = subscriber.lastPhyinfo;
    if (phy)
-      text += " Last Phyinfo: {TA: " + phy.TA + ", TE: " + phy.TE
-         + ", UpRSSI: " + phy.UpRSSI + ", TxPwr: " + phy.TxPwr
-         + ", DnRSSIdBm: " + phy.DnRSSIdBm + "}";
+      text += " Last Phyinfo: {TA: " + phy.ta + ", TE: " + phy.te
+         + ", UpRSSI: " + phy.up_rssi + ", TxPwr: " + phy.tx_pwr
+         + ", DnRSSIdBm: " + phy.dn_rssi_dbm + "}";
 
    var sms = newSMS(subscriber, null, text);
    return sms;

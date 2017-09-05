@@ -50,6 +50,11 @@ public final class FromYate {
      * <code>float dn_rssi_dbm = 5;</code>
      */
     float getDnRssiDbm();
+
+    /**
+     * <code>float tx_pwr = 6;</code>
+     */
+    float getTxPwr();
   }
   /**
    * Protobuf type {@code com.microsoft.cellsar.protobuf.yate.PhyData}
@@ -68,6 +73,7 @@ public final class FromYate {
       te_ = 0F;
       upRssi_ = 0F;
       dnRssiDbm_ = 0F;
+      txPwr_ = 0F;
     }
 
     @java.lang.Override
@@ -129,6 +135,11 @@ public final class FromYate {
             case 45: {
 
               dnRssiDbm_ = input.readFloat();
+              break;
+            }
+            case 53: {
+
+              txPwr_ = input.readFloat();
               break;
             }
           }
@@ -212,6 +223,15 @@ public final class FromYate {
       return dnRssiDbm_;
     }
 
+    public static final int TX_PWR_FIELD_NUMBER = 6;
+    private float txPwr_;
+    /**
+     * <code>float tx_pwr = 6;</code>
+     */
+    public float getTxPwr() {
+      return txPwr_;
+    }
+
     private byte memoizedIsInitialized = -1;
     public final boolean isInitialized() {
       byte isInitialized = memoizedIsInitialized;
@@ -238,6 +258,9 @@ public final class FromYate {
       }
       if (dnRssiDbm_ != 0F) {
         output.writeFloat(5, dnRssiDbm_);
+      }
+      if (txPwr_ != 0F) {
+        output.writeFloat(6, txPwr_);
       }
       unknownFields.writeTo(output);
     }
@@ -266,6 +289,10 @@ public final class FromYate {
       if (dnRssiDbm_ != 0F) {
         size += com.google.protobuf.CodedOutputStream
           .computeFloatSize(5, dnRssiDbm_);
+      }
+      if (txPwr_ != 0F) {
+        size += com.google.protobuf.CodedOutputStream
+          .computeFloatSize(6, txPwr_);
       }
       size += unknownFields.getSerializedSize();
       memoizedSize = size;
@@ -302,6 +329,10 @@ public final class FromYate {
           java.lang.Float.floatToIntBits(getDnRssiDbm())
           == java.lang.Float.floatToIntBits(
               other.getDnRssiDbm()));
+      result = result && (
+          java.lang.Float.floatToIntBits(getTxPwr())
+          == java.lang.Float.floatToIntBits(
+              other.getTxPwr()));
       result = result && unknownFields.equals(other.unknownFields);
       return result;
     }
@@ -328,6 +359,9 @@ public final class FromYate {
       hash = (37 * hash) + DN_RSSI_DBM_FIELD_NUMBER;
       hash = (53 * hash) + java.lang.Float.floatToIntBits(
           getDnRssiDbm());
+      hash = (37 * hash) + TX_PWR_FIELD_NUMBER;
+      hash = (53 * hash) + java.lang.Float.floatToIntBits(
+          getTxPwr());
       hash = (29 * hash) + unknownFields.hashCode();
       memoizedHashCode = hash;
       return hash;
@@ -471,6 +505,8 @@ public final class FromYate {
 
         dnRssiDbm_ = 0F;
 
+        txPwr_ = 0F;
+
         return this;
       }
 
@@ -502,6 +538,7 @@ public final class FromYate {
         result.te_ = te_;
         result.upRssi_ = upRssi_;
         result.dnRssiDbm_ = dnRssiDbm_;
+        result.txPwr_ = txPwr_;
         onBuilt();
         return result;
       }
@@ -557,6 +594,9 @@ public final class FromYate {
         }
         if (other.getDnRssiDbm() != 0F) {
           setDnRssiDbm(other.getDnRssiDbm());
+        }
+        if (other.getTxPwr() != 0F) {
+          setTxPwr(other.getTxPwr());
         }
         this.mergeUnknownFields(other.unknownFields);
         onChanged();
@@ -802,6 +842,32 @@ public final class FromYate {
       public Builder clearDnRssiDbm() {
         
         dnRssiDbm_ = 0F;
+        onChanged();
+        return this;
+      }
+
+      private float txPwr_ ;
+      /**
+       * <code>float tx_pwr = 6;</code>
+       */
+      public float getTxPwr() {
+        return txPwr_;
+      }
+      /**
+       * <code>float tx_pwr = 6;</code>
+       */
+      public Builder setTxPwr(float value) {
+        
+        txPwr_ = value;
+        onChanged();
+        return this;
+      }
+      /**
+       * <code>float tx_pwr = 6;</code>
+       */
+      public Builder clearTxPwr() {
+        
+        txPwr_ = 0F;
         onChanged();
         return this;
       }
@@ -8004,41 +8070,42 @@ public final class FromYate {
   static {
     java.lang.String[] descriptorData = {
       "\n\017from_yate.proto\022#com.microsoft.cellsar" +
-      ".protobuf.yate\032\ndata.proto\"\207\001\n\007PhyData\022>" +
+      ".protobuf.yate\032\ndata.proto\"\227\001\n\007PhyData\022>" +
       "\n\nsubscriber\030\001 \001(\0132*.com.microsoft.cells" +
       "ar.protobuf.Subscriber\022\n\n\002ta\030\002 \001(\r\022\n\n\002te" +
       "\030\003 \001(\002\022\017\n\007up_rssi\030\004 \001(\002\022\023\n\013dn_rssi_dbm\030\005" +
-      " \001(\002\"\261\001\n\nStatusData\022\026\n\016engine_started\030\001 " +
-      "\001(\010\0224\n\005radio\030\002 \001(\0132%.com.microsoft.cells" +
-      "ar.protobuf.Radio\022\024\n\014pending_smss\030\003 \001(\r\022" +
-      "?\n\013subscribers\030\004 \003(\0132*.com.microsoft.cel" +
-      "lsar.protobuf.Subscriber\"\306\002\n\010YbtsData\022\014\n",
-      "\004type\030\001 \001(\t\022X\n\021ybts_timeout_data\030\002 \001(\0132=" +
-      ".com.microsoft.cellsar.protobuf.yate.Ybt" +
-      "sData.YbtsTimeoutData\022j\n\032ybts_stopnotifi" +
-      "cation_data\030\003 \001(\0132F.com.microsoft.cellsa" +
-      "r.protobuf.yate.YbtsData.YbtsStopnotific" +
-      "ationData\032&\n\017YbtsTimeoutData\022\023\n\013timeout_" +
-      "for\030\001 \001(\t\032>\n\030YbtsStopnotificationData\022\022\n" +
-      "\nrestarting\030\001 \001(\010\022\016\n\006reason\030\002 \001(\t\"V\n\007Sms" +
-      "Data\022>\n\nsubscriber\030\001 \001(\0132*.com.microsoft" +
-      ".cellsar.protobuf.Subscriber\022\013\n\003msg\030\002 \001(",
-      "\t\"\355\001\n\rSmsFailedData\022A\n\rto_subscriber\030\001 \001" +
-      "(\0132*.com.microsoft.cellsar.protobuf.Subs" +
-      "criber\022\r\n\005error\030\002 \001(\t\022\016\n\006reason\030\003 \001(\t\022\016\n" +
-      "\006silent\030\004 \001(\010\022\030\n\020silent_sms_count\030\005 \001(\004\022" +
-      "C\n\017from_subscriber\030\006 \001(\0132*.com.microsoft" +
-      ".cellsar.protobuf.Subscriber\022\013\n\003msg\030\007 \001(" +
-      "\t\"\376\002\n\013YateMessage\022\014\n\004type\030\001 \001(\t\022\014\n\004time\030" +
-      "\002 \001(\004\022>\n\010phy_data\030\003 \001(\0132,.com.microsoft." +
-      "cellsar.protobuf.yate.PhyData\022D\n\013status_" +
-      "data\030\004 \001(\0132/.com.microsoft.cellsar.proto",
-      "buf.yate.StatusData\022@\n\tybts_data\030\005 \001(\0132-" +
-      ".com.microsoft.cellsar.protobuf.yate.Ybt" +
-      "sData\022>\n\010sms_data\030\006 \001(\0132,.com.microsoft." +
-      "cellsar.protobuf.yate.SmsData\022K\n\017sms_fai" +
-      "led_data\030\007 \001(\01322.com.microsoft.cellsar.p" +
-      "rotobuf.yate.SmsFailedDatab\006proto3"
+      " \001(\002\022\016\n\006tx_pwr\030\006 \001(\002\"\261\001\n\nStatusData\022\026\n\016e" +
+      "ngine_started\030\001 \001(\010\0224\n\005radio\030\002 \001(\0132%.com" +
+      ".microsoft.cellsar.protobuf.Radio\022\024\n\014pen" +
+      "ding_smss\030\003 \001(\r\022?\n\013subscribers\030\004 \003(\0132*.c" +
+      "om.microsoft.cellsar.protobuf.Subscriber",
+      "\"\306\002\n\010YbtsData\022\014\n\004type\030\001 \001(\t\022X\n\021ybts_time" +
+      "out_data\030\002 \001(\0132=.com.microsoft.cellsar.p" +
+      "rotobuf.yate.YbtsData.YbtsTimeoutData\022j\n" +
+      "\032ybts_stopnotification_data\030\003 \001(\0132F.com." +
+      "microsoft.cellsar.protobuf.yate.YbtsData" +
+      ".YbtsStopnotificationData\032&\n\017YbtsTimeout" +
+      "Data\022\023\n\013timeout_for\030\001 \001(\t\032>\n\030YbtsStopnot" +
+      "ificationData\022\022\n\nrestarting\030\001 \001(\010\022\016\n\006rea" +
+      "son\030\002 \001(\t\"V\n\007SmsData\022>\n\nsubscriber\030\001 \001(\013" +
+      "2*.com.microsoft.cellsar.protobuf.Subscr",
+      "iber\022\013\n\003msg\030\002 \001(\t\"\355\001\n\rSmsFailedData\022A\n\rt" +
+      "o_subscriber\030\001 \001(\0132*.com.microsoft.cells" +
+      "ar.protobuf.Subscriber\022\r\n\005error\030\002 \001(\t\022\016\n" +
+      "\006reason\030\003 \001(\t\022\016\n\006silent\030\004 \001(\010\022\030\n\020silent_" +
+      "sms_count\030\005 \001(\004\022C\n\017from_subscriber\030\006 \001(\013" +
+      "2*.com.microsoft.cellsar.protobuf.Subscr" +
+      "iber\022\013\n\003msg\030\007 \001(\t\"\376\002\n\013YateMessage\022\014\n\004typ" +
+      "e\030\001 \001(\t\022\014\n\004time\030\002 \001(\004\022>\n\010phy_data\030\003 \001(\0132" +
+      ",.com.microsoft.cellsar.protobuf.yate.Ph" +
+      "yData\022D\n\013status_data\030\004 \001(\0132/.com.microso",
+      "ft.cellsar.protobuf.yate.StatusData\022@\n\ty" +
+      "bts_data\030\005 \001(\0132-.com.microsoft.cellsar.p" +
+      "rotobuf.yate.YbtsData\022>\n\010sms_data\030\006 \001(\0132" +
+      ",.com.microsoft.cellsar.protobuf.yate.Sm" +
+      "sData\022K\n\017sms_failed_data\030\007 \001(\01322.com.mic" +
+      "rosoft.cellsar.protobuf.yate.SmsFailedDa" +
+      "tab\006proto3"
     };
     com.google.protobuf.Descriptors.FileDescriptor.InternalDescriptorAssigner assigner =
         new com.google.protobuf.Descriptors.FileDescriptor.    InternalDescriptorAssigner() {
@@ -8058,7 +8125,7 @@ public final class FromYate {
     internal_static_com_microsoft_cellsar_protobuf_yate_PhyData_fieldAccessorTable = new
       com.google.protobuf.GeneratedMessageV3.FieldAccessorTable(
         internal_static_com_microsoft_cellsar_protobuf_yate_PhyData_descriptor,
-        new java.lang.String[] { "Subscriber", "Ta", "Te", "UpRssi", "DnRssiDbm", });
+        new java.lang.String[] { "Subscriber", "Ta", "Te", "UpRssi", "DnRssiDbm", "TxPwr", });
     internal_static_com_microsoft_cellsar_protobuf_yate_StatusData_descriptor =
       getDescriptor().getMessageTypes().get(1);
     internal_static_com_microsoft_cellsar_protobuf_yate_StatusData_fieldAccessorTable = new
