@@ -93,11 +93,19 @@ void ocpFromMobileCallback(DJI::onboardSDK::CoreAPI *core_api, Header *header,
       std::cout << "   falling back to default behavior" << std::endl;
       core_api->parseFromMobileCallback(core_api, header, user_data);
    } else if (dtt_msg->is_complete()) {
-      std::cout << "   passing message to yate" << std::endl;
+      std::cout << "   assembling whole FcMessage" << std::endl;
       uint8_t *for_yate;
       uint32_t for_yate_size = dtt_msg->get_whole_message(&for_yate);
 
-      MQCommon::push((const char *)for_yate, for_yate_size);
+      std::cout << "   validating FcMessage" << std::endl;
+      fc::FcMessage fc_message;
+      bool result = fc_message.ParseFromArray((const void *)for_yate, for_yate_size);
+      if (!result) {
+         std::cout << "   ERROR: failed to validate FcMessage" << std::endl;
+      } else {
+         std::cout << "   passing message to yate" << std::endl;
+         MQCommon::push((const char *)for_yate, for_yate_size);
+      }
 
       dtt_manager.remove(id);
       free(for_yate);
