@@ -21,8 +21,8 @@ void inthand(int signum) {
   stop = 1;
 }
 
-void makePhyMessage(char **buffer);
-void makeStatusMessage(char **buffer);
+unsigned int makePhyMessage(char **buffer);
+unsigned int  makeStatusMessage(char **buffer);
 
 int main(int argc, char **argv)
 {
@@ -31,13 +31,14 @@ int main(int argc, char **argv)
 
     for (int i = 0; !stop; i = (i + 1) % 5) {
        char *buffer;
+       unsigned int buflen;
        if (i == 4)
-          makeStatusMessage(&buffer);
+          buflen = makeStatusMessage(&buffer);
        else
-          makePhyMessage(&buffer);
+          buflen = makePhyMessage(&buffer);
        std::cout << buffer << std::endl;
 
-       MQCommon::push(buffer);
+       MQCommon::push(buffer, buflen);
        std::cout << "simulator sent " << strlen(buffer) << " bytes\n";
        std::cout << "----------" << std::endl;
 
@@ -48,7 +49,7 @@ int main(int argc, char **argv)
     return 0;
 }
 
-void makePhyMessage(char **buffer) {
+unsigned int makePhyMessage(char **buffer) {
    const char *phyTemplate = "{\"type\": \"phy\", \"time\": 1502129624628, \"data\": {"
       "\"IMSI\": \"111222333444555\", \"TMSI\": \"007b0001\", \"UpRSSI\": %i, \"DnRSSIdBm\": -82, \"time\": %u"
       "}}\n";
@@ -56,9 +57,10 @@ void makePhyMessage(char **buffer) {
    int upRSSI = -44;
 
    asprintf(buffer, phyTemplate, upRSSI, (unsigned)time(NULL));
+   return strlen(*buffer);
 }
 
-void makeStatusMessage(char **buffer) {
+unsigned int makeStatusMessage(char **buffer) {
    const char *imsi = "111222333444555";
    const char *tmsi = "007b0001";
    const char *msisdn = "17242177";
@@ -69,5 +71,6 @@ void makeStatusMessage(char **buffer) {
       "}}\n";
 
    asprintf(buffer, statusTemplate, imsi, tmsi, msisdn, pendingSMSs);
+   return strlen(*buffer);
 }
 

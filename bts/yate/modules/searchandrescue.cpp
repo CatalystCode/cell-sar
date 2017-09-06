@@ -170,6 +170,7 @@ void SearchAndRescue::write_to_ocp(ObjList &stack, const ExpOperation &oper, Gen
    // get the json string
    ExpOperation *msg = static_cast<ExpOperation*>(args[0]);
    std::string json(msg->c_str());
+   sar_log << json << std::endl;
 
    // convert it to a protobuf object
    yate::YateMessage yate_message;
@@ -182,7 +183,11 @@ void SearchAndRescue::write_to_ocp(ObjList &stack, const ExpOperation &oper, Gen
       unsigned int size = yate_message.ByteSize();
       void *buffer = malloc(size);
       yate_message.SerializeToArray(buffer, size);
-      MQCommon::push((const char *)buffer);
+
+      sar_log << "[DEBUG]> " << "Serialized buffer of length " << size << std::endl;
+      sar_log << yate_message.DebugString() << std::endl;
+
+      MQCommon::push((const char *)buffer, size);
       free(buffer);
 
    } else {

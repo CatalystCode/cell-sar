@@ -32,10 +32,13 @@ var NOT_ALLOWED = 3;
 var DUPLICATE = 4;
 
 function simpleSubscriber(sub) {
+   var imsi = '' + sub.imsi;
+   var tmsi = '' + sub.tmsi;
+   var msisdn = '' + sub.msisdn;
    var result = {
-      'imsi': sub.imsi,
-      'tmsi': sub.tmsi,
-      'msisdn': sub.msisdn
+      'imsi': imsi,
+      'tmsi': tmsi,
+      'msisdn': msisdn
    };
    return result;
 }

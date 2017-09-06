@@ -42,6 +42,8 @@
 #include "sarqueue.h"
 #include "from_fc.pb.h"
 #include "from_yate.pb.h"
+#include "dtt.h"
+#include "dtt_manager.h"
 
 #define CMD_TYPE_SIZE 10
 #define PLMN_REQUEST "plmn\0\0\0\0\0\0"
@@ -54,6 +56,8 @@ using namespace com::microsoft::cellsar::protobuf;
 using namespace google::protobuf::util;
 
 volatile sig_atomic_t stop;
+
+static DttManager dtt_manager;
 
 // Handle sigint
 void int_hand(int signum) {
@@ -74,24 +78,29 @@ void ocpFromMobileCallback(DJI::onboardSDK::CoreAPI *core_api, Header *header,
    char *buffer = (char*)header + sizeof(Header) + 2;
    std::cout << "   obtained byte buffer of length " << buflen << std::endl;
 
-   // check if it is a custom request
-   std::cout << "   checking if the buffer is a custom request" << std::endl;
-   fc::FcMessage fc_message;
-   bool result = fc_message.ParseFromArray((const void *)buffer, buflen);
+   std::cout << "   inspecting DTT packet" << std::endl;
+   uint8_t id = DttManager::parse_id((uint8_t *)buffer, buflen);
+   DttMessage *dtt_msg = dtt_manager.has(id) ? dtt_manager.get(id) : dtt_manager.add(id);
 
-   if (!result) {
+   bool good = dtt_msg->add_packet((uint8_t *)buffer, buflen);
+   if (!good) {
+      dtt_msg = dtt_manager.add(id);
+      good = dtt_msg->add_packet((uint8_t *)buffer, buflen);
+   }
 
-      // fallback to default behavior
-      std::cout << "   no custom request, fallback to default behavior" << std::endl;
+   if (!good) {
+      std::cout << "   could not make sense of the packet..." << std::endl;
+      std::cout << "   falling back to default behavior" << std::endl;
       core_api->parseFromMobileCallback(core_api, header, user_data);
-
-   } else {
-
-      // pass to yate
+   } else if (dtt_msg->is_complete()) {
       std::cout << "   passing message to yate" << std::endl;
-      std::string for_yate(buffer, buflen);
-      MQCommon::push(for_yate.c_str());
+      uint8_t *for_yate;
+      uint32_t for_yate_size = dtt_msg->get_whole_message(&for_yate);
 
+      MQCommon::push((const char *)for_yate, for_yate_size);
+
+      dtt_manager.remove(id);
+      free(for_yate);
    }
    std::cout << "------------------------------" << std::endl;
 }
@@ -116,8 +125,7 @@ bool dji_connect(LinuxSerialDevice* serialDevice, CoreAPI* api, LinuxThread* rea
     return true;
 }
 
-bool handle_yate_message(char *buffer, unsigned int buflen, std::string *message) {
-   std::string result;
+bool check_yate_message(char *buffer, unsigned int buflen) {
    std::cout << "------------------------------" << std::endl;
    std::cout << "Read byte buffer of size " << buflen << " from YATE" << std::endl;
 
@@ -126,7 +134,7 @@ bool handle_yate_message(char *buffer, unsigned int buflen, std::string *message
    bool is_yate_message = yate_message.ParseFromArray((const void *)buffer, buflen);
    if (!is_yate_message) {
       std::cout << "   Could not convert byte array to YateMessage. Skipping." << std::endl;
-   std::cout << "------------------------------" << std::endl;
+      std::cout << "------------------------------" << std::endl;
       return false;
    }
 
@@ -140,7 +148,6 @@ bool handle_yate_message(char *buffer, unsigned int buflen, std::string *message
 
    std::cout << "   Passing YateMessage to the flight controller." << std::endl;
    std::cout << "------------------------------" << std::endl;
-   *message = result;
    return true;
 }
 
@@ -153,7 +160,6 @@ void poll_messages(LinuxSerialDevice* serialDevice, CoreAPI* api, LinuxThread* r
 
   MQCommon::init(OCP);
 
-  std::string message;
   while (!stop) {
         char* buffer;
         unsigned int buflen = MQCommon::pop(&buffer);
@@ -167,12 +173,34 @@ void poll_messages(LinuxSerialDevice* serialDevice, CoreAPI* api, LinuxThread* r
             }
 
             try {
-               if (handle_yate_message(buffer, buflen, &message) && droneConnected)
-                  api->sendToMobile((uint8_t *)message.c_str(), strlen(message.c_str()));
-            }
-            catch (std::exception const& ex) {
+               if (check_yate_message(buffer, buflen)) {
+                  DttMessage dtt_msg((uint8_t *)buffer, buflen);
+
+                  std::cout << "*** Sending DttMessage ***" << std::endl;
+                  std::cout << "protobuf array length: " << buflen << std::endl;
+
+                  while (dtt_msg.has_next_packet()) {
+                     uint8_t *packet;
+                     uint32_t packet_len = dtt_msg.next_packet(&packet);
+
+                     std::cout << " > id=" << (int)packet[DTT_PACKET_ID_FIELD];
+                     std::cout << ", count=" << (int)packet[DTT_PACKET_COUNT_FIELD];
+                     std::cout << ", total=" << (int)packet[DTT_PACKET_TOTAL_FIELD];
+                     std::cout << ", length=" << (int)packet[DTT_PACKET_LENGTH_FIELD];
+                     std::cout << ", data=" << packet_len - DTT_HEADER_LENGTH << " bytes." << std::endl;
+
+                     if (droneConnected)
+                        api->sendToMobile(packet, packet_len);
+
+                     free(packet);
+                  }
+
+                  std::cout << "**************************" << std::endl;
+               }
+            } catch (std::exception const& ex) {
                 std::cout << ex.what() << "\n";
             }
+
         }
         usleep(500000); // Half a second
         if (!droneConnected) iterationsUntilAttempt--;

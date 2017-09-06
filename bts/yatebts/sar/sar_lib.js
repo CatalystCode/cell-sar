@@ -46,30 +46,30 @@ function writeToOCP(data, type) {
       'type': type, 
       'time': now,
 
-      'phy_data': null,
-      'status_data': null,
-      'ybts_data': null,
-      'sms_data': null,
-      'sms_failed_data': null
+      'phyData': null,
+      'statusData': null,
+      'ybtsData': null,
+      'smsData': null,
+      'smsFailedData': null
    };
 
    switch (type) {
       case "phy":
-         msg.phy_data = data;
+         msg.phyData = data;
          break;
       case "status":
-         msg.status_data = data;
+         msg.statusData = data;
          break;
       case "ybts":
-         msg.ybts_data = data;
+         msg.ybtsData = data;
          break;
       case "sms":
-         msg.sms_data = data;
+         msg.smsData = data;
          break;
       case "sms_failed":
-         msg.sms_failed_data = data;
+         msg.smsFailedData = data;
          break;
-      default;
+      default:
          break;
    }
 
@@ -232,8 +232,7 @@ function onPhyinfo(msg) {
       'te': msg.TE,
       'up_rssi': msg.UpRSSI,
       'dn_rssi_dbm': msg.DnRSSIdBm,
-      'tx_pwr': msg.TxPwr,
-      'time': msg.time
+      'tx_pwr': msg.TxPwr
    };
    writeToOCP(phyinfo, 'phy');
 
@@ -339,14 +338,14 @@ function heartbeat() {
 
    var radio = {
       'stopped': radioStopped,
-      'stopped_reason': radioStoppedReason
+      'stoppedReason': radioStoppedReason
    };
 
    var started = Engine.started();
    var info = {
-      'engine_started': started,
+      'engineStarted': started,
       'radio': radio,
-      'pending_smss': pendingSMSs.length,
+      'pendingSmss': pendingSMSs.length,
       'subscribers': subs
    };
 

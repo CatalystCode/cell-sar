@@ -17,7 +17,7 @@ class MQCommon {
    
    public:
 
-      static void push(const char *buffer);
+      static void push(const char *buffer, unsigned int buflen);
       static unsigned int pop(char **buffer);
       static void init(SARProgram prog = YATE);
       static void cleanup();

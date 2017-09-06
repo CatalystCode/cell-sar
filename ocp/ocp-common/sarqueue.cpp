@@ -39,13 +39,13 @@ void MQCommon::cleanup() {
    MQCommon::initialized = false;
 }
 
-void MQCommon::push(const char *buffer) {
+void MQCommon::push(const char *buffer, unsigned int buflen) {
    if (!MQCommon::initialized) MQCommon::init();
 
    if (MQCommon::mode == OCP)
-      mq_send(MQCommon::ocp2yate, buffer, strlen(buffer), 0);
+      mq_send(MQCommon::ocp2yate, buffer, buflen, 0);
    else
-      mq_send(MQCommon::yate2ocp, buffer, strlen(buffer), 0);
+      mq_send(MQCommon::yate2ocp, buffer, buflen, 0);
 }
 
 unsigned int MQCommon::pop(char **buffer) {
