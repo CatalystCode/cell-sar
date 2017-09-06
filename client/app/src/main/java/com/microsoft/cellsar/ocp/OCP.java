@@ -20,6 +20,7 @@ public class OCP {
     private static final String TAG = "OCP";
 
     private FlightController flightController;
+    private static DttManager dttManager = new DttManager();
     public SMSMessageArrayListAdapter chatAdapter;
 
     /* Singleton Instance */
@@ -60,16 +61,35 @@ public class OCP {
         if (this.flightController == null)
             return;
 
-        this.flightController.sendDataToOnboardSDKDevice(m.toByteArray(), null);
+        DttMessage dttMessage = new DttMessage(m.toByteArray());
+        while (dttMessage.hasNextPacket())
+            this.flightController.sendDataToOnboardSDKDevice(dttMessage.nextPacket(), null);
     }
 
     public static YateMessage parseBytes(byte[] bytes) {
         try {
-            return YateMessage.parseFrom(bytes);
-        } catch (InvalidProtocolBufferException e) {
+
+            Log.i(TAG, "Inspecting packet from Yate");
+            int id = DttManager.parseId(bytes);
+            DttMessage dttMsg = dttManager.has(id) ? dttManager.get(id) : dttManager.add(id);
+
+            boolean good = dttMsg.addPacket(bytes);
+            if (!good) {
+                dttMsg = dttManager.add(id);
+                good = dttMsg.addPacket(bytes);
+            }
+
+            if (!good) {
+                Log.w(TAG, "Could not make sense of the packet...");
+                return null;
+            } else if (dttMsg.isComplete()) {
+                return YateMessage.parseFrom(dttMsg.getWholeMessage());
+            }
+
+        } catch (Exception e) {
             Log.e(TAG, "Unable to parse YateMessage: " + e.getMessage());
-            return null;
         }
+        return null;
     }
 
 }
